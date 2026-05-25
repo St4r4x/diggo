@@ -98,6 +98,12 @@ func TestAppModel_SaveMsg_Insert(t *testing.T) {
 	if apps[0].Company != "NewCo" {
 		t.Errorf("expected Company=NewCo, got %q", apps[0].Company)
 	}
+	if len(am.pipeline.apps) != 1 {
+		t.Errorf("expected pipeline to have 1 app after reload, got %d", len(am.pipeline.apps))
+	}
+	if am.statusMsg == "" {
+		t.Errorf("expected non-empty statusMsg after save")
+	}
 }
 
 // TestAppModel_SaveMsg_Update verifies that a SaveMsg with existing ID updates the row.

@@ -87,9 +87,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		var cmds []tea.Cmd
 		var cmd tea.Cmd
 		m.pipeline, cmd = m.pipeline.Update(msg)
-		return m, cmd
+		cmds = append(cmds, cmd)
+		m.stats, cmd = m.stats.Update(msg)
+		cmds = append(cmds, cmd)
+		m.detail, cmd = m.detail.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
 
 	case SaveMsg:
 		var saveErr error
@@ -253,7 +259,6 @@ func (m AppModel) View() string {
 	}{
 		{"Pipeline", viewPipeline},
 		{"Stats", viewStats},
-		{"Detail", viewDetail},
 	}
 	var tabParts []string
 	for _, t := range tabs {

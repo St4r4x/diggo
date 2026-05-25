@@ -122,3 +122,56 @@ class TestExtractOfferFromCardData:
         }
         result = extract_offer_from_card_data(card_data, portal_id="wtfj")
         assert result is None
+
+
+class TestPortalIsActive:
+    def test_active_status_returns_true(self) -> None:
+        from scripts.scan_portals import portal_is_active
+
+        assert portal_is_active({"status": "active"}) is True
+
+    def test_needs_auth_returns_false(self) -> None:
+        from scripts.scan_portals import portal_is_active
+
+        assert portal_is_active({"status": "needs_auth"}) is False
+
+    def test_blocked_returns_false(self) -> None:
+        from scripts.scan_portals import portal_is_active
+
+        assert portal_is_active({"status": "blocked"}) is False
+
+    def test_missing_status_defaults_to_active(self) -> None:
+        from scripts.scan_portals import portal_is_active
+
+        assert portal_is_active({}) is True
+
+    def test_unknown_status_returns_false(self) -> None:
+        from scripts.scan_portals import portal_is_active
+
+        assert portal_is_active({"status": "maintenance"}) is False
+
+
+class TestEffectiveMaxPages:
+    def test_override_takes_precedence(self) -> None:
+        from scripts.scan_portals import _effective_max_pages
+
+        config = {"pagination": {"max_pages": 5}}
+        assert _effective_max_pages(config, max_pages_override=1) == 1
+
+    def test_yaml_value_used_when_no_override(self) -> None:
+        from scripts.scan_portals import _effective_max_pages
+
+        config = {"pagination": {"max_pages": 5}}
+        assert _effective_max_pages(config, max_pages_override=None) == 5
+
+    def test_defaults_to_3_when_not_in_yaml(self) -> None:
+        from scripts.scan_portals import _effective_max_pages
+
+        config = {"pagination": {}}
+        assert _effective_max_pages(config, max_pages_override=None) == 3
+
+    def test_override_zero_is_respected(self) -> None:
+        from scripts.scan_portals import _effective_max_pages
+
+        config = {"pagination": {"max_pages": 5}}
+        assert _effective_max_pages(config, max_pages_override=0) == 0

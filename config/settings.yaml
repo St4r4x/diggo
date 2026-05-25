@@ -15,6 +15,12 @@ search:
     - "Ingénieur Deep Learning"
     - "Data Scientist"
     - "Machine Learning"
+  portal_queries:
+    - "AI Engineer"
+    - "Ingénieur IA"
+    - "Machine Learning"
+    - "Data Scientist"
+    - "Computer Vision"
   location: "Paris"
   contract: "CDI"
   experience_max_years: 3

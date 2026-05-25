@@ -109,17 +109,25 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
 
 
 async def _run_pipeline(settings: dict) -> list[RawOffer]:
-    keyword_list: list[str] = settings.get("search", {}).get(
-        "keywords", ["AI Engineer"]
+    search_cfg: dict = settings.get("search", {})
+    keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])
+    portal_queries: list[str] = search_cfg.get(
+        "portal_queries", [keyword_list[0]] if keyword_list else ["AI Engineer"]
     )
-    portal_keywords = keyword_list[0] if keyword_list else "AI Engineer"
-    location: str = settings.get("search", {}).get("location", "Paris")
+    location: str = search_cfg.get("location", "Paris")
     portal_ids = list_portal_ids()
     logger.info(
-        "Scanning %d portals for '%s' in %s", len(portal_ids), portal_keywords, location
+        "Scanning %d portals with %d queries in %s",
+        len(portal_ids),
+        len(portal_queries),
+        location,
     )
-    portal_raw = await run_scan(portal_ids, keywords=portal_keywords, location=location)
-    logger.info("Scraped %d raw offers from portals", len(portal_raw))
+    portal_raw: list[RawOffer] = []
+    for query in portal_queries:
+        batch = await run_scan(portal_ids, keywords=query, location=location)
+        logger.info("Query '%s': %d raw offers", query, len(batch))
+        portal_raw.extend(batch)
+    logger.info("Scraped %d raw offers from portals (before dedup)", len(portal_raw))
     ats_raw = await scan_ats(keywords=keyword_list)
     logger.info("Scraped %d raw offers from ATS", len(ats_raw))
     raw = portal_raw + ats_raw

@@ -1,0 +1,138 @@
+"""Tests for pre_filter module."""
+
+from __future__ import annotations
+
+
+from scripts.models import RawOffer
+from scripts.pre_filter import score_offer, pre_filter
+
+
+MOCK_SETTINGS = {
+    "search": {
+        "keywords": ["AI Engineer", "ML Engineer", "LLM Engineer"],
+        "location": "Paris",
+    },
+    "scoring": {
+        "thresholds": {"recommend": 4.0, "consider": 3.0},
+        "target_salary_min": 40000,
+        "target_salary_max": 55000,
+    },
+    "target_companies": {
+        "french_ai": ["Mistral AI", "Hugging Face"],
+        "big_tech": ["Google", "Meta"],
+    },
+}
+
+
+def _offer(
+    title: str, company: str = "Unknown Corp", location: str = "Paris"
+) -> RawOffer:
+    return RawOffer(
+        title=title,
+        company=company,
+        url="https://x.com",
+        portal="wtfj",
+        location=location,
+    )
+
+
+class TestScoreOffer:
+    """Tests for score_offer()."""
+
+    def test_perfect_match_scores_high(self) -> None:
+        offer = _offer("AI Engineer", company="Mistral AI", location="Paris")
+        score, tags = score_offer(offer, MOCK_SETTINGS)
+        # keyword match (+1) + target company (+1) + location (+1) = 3.0 minimum
+        assert score >= 3.0
+
+    def test_no_keyword_match_scores_low(self) -> None:
+        offer = _offer("Java Developer", company="Random Corp", location="Lyon")
+        score, tags = score_offer(offer, MOCK_SETTINGS)
+        assert score < 3.0
+
+    def test_keyword_match_adds_to_score(self) -> None:
+        offer_match = _offer("ML Engineer", company="Unknown", location="Lyon")
+        offer_no = _offer("Java Developer", company="Unknown", location="Lyon")
+        score_match, _ = score_offer(offer_match, MOCK_SETTINGS)
+        score_no, _ = score_offer(offer_no, MOCK_SETTINGS)
+        assert score_match > score_no
+
+    def test_target_company_adds_to_score(self) -> None:
+        offer_target = _offer("ML Engineer", company="Mistral AI", location="Lyon")
+        offer_other = _offer("ML Engineer", company="Random Corp", location="Lyon")
+        score_t, _ = score_offer(offer_target, MOCK_SETTINGS)
+        score_o, _ = score_offer(offer_other, MOCK_SETTINGS)
+        assert score_t > score_o
+
+    def test_location_match_adds_to_score(self) -> None:
+        offer_paris = _offer("ML Engineer", company="Unknown", location="Paris")
+        offer_other = _offer("ML Engineer", company="Unknown", location="Marseille")
+        score_p, _ = score_offer(offer_paris, MOCK_SETTINGS)
+        score_o, _ = score_offer(offer_other, MOCK_SETTINGS)
+        assert score_p > score_o
+
+    def test_tags_contain_matched_keywords(self) -> None:
+        offer = _offer("LLM Engineer", company="Unknown", location="Lyon")
+        _, tags = score_offer(offer, MOCK_SETTINGS)
+        assert "LLM Engineer" in tags
+
+    def test_score_capped_at_five(self) -> None:
+        # Offer that matches everything multiple times
+        offer = _offer(
+            "AI Engineer ML Engineer LLM Engineer",
+            company="Mistral AI",
+            location="Paris",
+        )
+        score, _ = score_offer(offer, MOCK_SETTINGS)
+        assert score <= 5.0
+
+    def test_case_insensitive_keyword_match(self) -> None:
+        offer = _offer("ai engineer", company="Unknown", location="Lyon")
+        score, tags = score_offer(offer, MOCK_SETTINGS)
+        assert score > 0
+
+    def test_case_insensitive_company_match(self) -> None:
+        offer = _offer("Developer", company="mistral ai", location="Lyon")
+        score, _ = score_offer(offer, MOCK_SETTINGS)
+        # company match should contribute
+        offer_no = _offer("Developer", company="Random Corp", location="Lyon")
+        score_no, _ = score_offer(offer_no, MOCK_SETTINGS)
+        assert score > score_no
+
+
+class TestPreFilter:
+    """Tests for pre_filter()."""
+
+    def test_empty_list_returns_empty(self) -> None:
+        assert pre_filter([], MOCK_SETTINGS) == []
+
+    def test_below_threshold_dropped(self) -> None:
+        offers = [_offer("Java Developer", company="Random Corp", location="Lyon")]
+        result = pre_filter(offers, MOCK_SETTINGS)
+        assert result == []
+
+    def test_above_threshold_kept(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Paris")]
+        result = pre_filter(offers, MOCK_SETTINGS)
+        assert len(result) == 1
+
+    def test_score_written_to_offer(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Paris")]
+        result = pre_filter(offers, MOCK_SETTINGS)
+        assert result[0].score > 0
+
+    def test_tags_written_to_offer(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Paris")]
+        result = pre_filter(offers, MOCK_SETTINGS)
+        assert len(result[0].tags) > 0
+
+    def test_mixed_list_filters_correctly(self) -> None:
+        offers = [
+            _offer("AI Engineer", company="Mistral AI", location="Paris"),
+            _offer("Java Developer", company="Random Corp", location="Lyon"),
+            _offer("ML Engineer", company="Hugging Face", location="Paris"),
+        ]
+        result = pre_filter(offers, MOCK_SETTINGS)
+        assert len(result) == 2
+        titles = [o.title for o in result]
+        assert "Java Developer" not in titles

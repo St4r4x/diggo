@@ -1,0 +1,7 @@
+output/
+data/
+reports/
+__pycache__/
+*.pyc
+.env
+*.db

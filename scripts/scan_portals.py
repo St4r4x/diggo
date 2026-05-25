@@ -159,7 +159,7 @@ def portal_is_active(config: dict) -> bool:
 def _effective_max_pages(config: dict, max_pages_override: Optional[int] = None) -> int:
     if max_pages_override is not None:
         return max_pages_override
-    return config["pagination"].get("max_pages", 3)
+    return config.get("pagination", {}).get("max_pages", 3)
 
 
 async def scrape_portal(
@@ -177,6 +177,10 @@ async def scrape_portal(
         logger.warning(
             "[%s] Skipped — status: %s", portal_id, config.get("status", "active")
         )
+        return []
+
+    if "pagination" not in config:
+        logger.error("[%s] Missing 'pagination' config — skipping", portal_id)
         return []
 
     selectors = config["selectors"]

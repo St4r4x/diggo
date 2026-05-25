@@ -91,7 +91,7 @@ class DB:
         self.conn.execute("DELETE FROM applications WHERE id = ?", (id,))
         self.conn.commit()
 
-    def update_status(self, id: int, status: str) -> dict:
+    def update_status(self, id: int, status: str) -> dict | None:
         return self.update(id, {"status": status})
 
     def get_stats(self) -> dict:

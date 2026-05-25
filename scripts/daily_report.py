@@ -101,7 +101,11 @@ def _render_offer_entry(offer: RawOffer) -> list[str]:
 
 
 async def _run_pipeline(settings: dict) -> list[RawOffer]:
-    keywords: str = settings.get("search", {}).get("keywords", ["AI Engineer"])[0]
+    keyword_list: list[str] = settings.get("search", {}).get(
+        "keywords", ["AI Engineer"]
+    )
+    # Use primary keyword for portal search; pre_filter scores against the full list
+    keywords: str = keyword_list[0] if keyword_list else "AI Engineer"
     location: str = settings.get("search", {}).get("location", "Paris")
     portal_ids = list_portal_ids()
 

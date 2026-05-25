@@ -1,0 +1,93 @@
+/* Print-optimised A4 prep sheet */
+@page {
+  size: A4;
+  margin: 18mm 22mm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Arial', sans-serif;
+  font-size: 10pt;
+  color: #222;
+  line-height: 1.5;
+}
+
+.header {
+  border-bottom: 2px solid #4c1d95;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+}
+
+.header-company {
+  font-size: 14pt;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #4c1d95;
+}
+
+.header-meta {
+  font-size: 9pt;
+  color: #555;
+  margin-top: 3px;
+}
+
+.section-title {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #4c1d95;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+  margin-bottom: 10px;
+  margin-top: 18px;
+}
+
+.company-summary {
+  font-size: 9.5pt;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.tech-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.badge {
+  background: #ede9fe;
+  color: #4c1d95;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 8.5pt;
+  font-weight: 600;
+}
+
+.question-block {
+  margin-bottom: 12px;
+  page-break-inside: avoid;
+}
+
+.question-theme {
+  display: inline-block;
+  background: #4c1d95;
+  color: #fff;
+  border-radius: 3px;
+  padding: 1px 7px;
+  font-size: 8pt;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.question-text {
+  font-size: 9.5pt;
+  color: #222;
+  padding-left: 6px;
+  border-left: 3px solid #ede9fe;
+}

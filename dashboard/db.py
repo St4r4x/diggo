@@ -126,5 +126,5 @@ class DB:
 
 
 def open_db(path: Path) -> DB:
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), check_same_thread=False)
     return DB(conn)

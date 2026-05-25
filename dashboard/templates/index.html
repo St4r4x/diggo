@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex h-full gap-0">
+
+  <!-- Left panel: filters + list -->
+  <div class="w-96 shrink-0 flex flex-col border-r border-slate-700 bg-slate-900">
+    <!-- Filter bar -->
+    <div class="p-3 border-b border-slate-700 flex flex-col gap-2">
+      <input
+        class="w-full bg-slate-800 text-slate-200 text-sm rounded px-3 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
+        type="text" name="q" placeholder="Rechercher entreprise ou rôle..."
+        hx-get="/offers" hx-trigger="keyup changed delay:300ms"
+        hx-target="#offer-list" hx-include="[name='status'],[name='grade']"
+        id="search-input">
+      <div class="flex gap-2">
+        <select name="status" id="status-filter"
+          class="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
+          hx-get="/offers" hx-trigger="change"
+          hx-target="#offer-list" hx-include="[name='q'],[name='grade']">
+          <option value="">Tous statuts</option>
+          {% for s in statuses %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+        <select name="grade" id="grade-filter"
+          class="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
+          hx-get="/offers" hx-trigger="change"
+          hx-target="#offer-list" hx-include="[name='q'],[name='status']">
+          <option value="">Tous grades</option>
+          {% for g in ["A","B","C","D","F"] %}
+          <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <!-- Offer list -->
+    <div id="offer-list" class="flex-1 scrollable">
+      {% include "partials/offer_list.html" %}
+    </div>
+  </div>
+
+  <!-- Right panel: detail -->
+  <div id="offer-detail" class="flex-1 scrollable p-6">
+    {% include "partials/offer_empty.html" %}
+  </div>
+
+</div>
+{% endblock %}

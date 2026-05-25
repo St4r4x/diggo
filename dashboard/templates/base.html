@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>career-ops-fr</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; }
+    .scrollable { overflow-y: auto; }
+  </style>
+</head>
+<body class="h-screen flex flex-col">
+  <nav class="bg-slate-800 px-4 py-3 flex items-center gap-6 border-b border-slate-700 shrink-0">
+    <span class="font-bold text-violet-400 text-lg">career-ops-fr</span>
+    <a href="/" class="text-slate-300 hover:text-white text-sm">Pipeline</a>
+    <a href="/stats" class="text-slate-300 hover:text-white text-sm">Stats</a>
+  </nav>
+  <main class="flex-1 overflow-hidden">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

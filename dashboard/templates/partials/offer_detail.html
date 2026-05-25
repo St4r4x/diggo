@@ -29,9 +29,9 @@
     <dt class="text-slate-400">Relance</dt>
     <dd class="text-slate-200">{{ offer.follow_up_date }}</dd>
     {% endif %}
-    {% if offer.offer_url %}
+    {% if offer.offer_url and offer.offer_url.startswith(('http://', 'https://')) %}
     <dt class="text-slate-400">URL</dt>
-    <dd><a href="{{ offer.offer_url }}" target="_blank"
+    <dd><a href="{{ offer.offer_url }}" target="_blank" rel="noopener noreferrer"
           class="text-violet-400 hover:text-violet-300 underline break-all text-xs">
       {{ offer.offer_url }}</a></dd>
     {% endif %}
@@ -65,7 +65,7 @@
         class="text-xs px-2 py-1 rounded font-medium border
           {% if s == offer.status %}border-violet-500 {{ STATUS_COLORS.get(s, '') }}{% else %}border-slate-600 text-slate-400 hover:border-slate-400{% endif %}"
         hx-post="/offers/{{ offer.id }}/status"
-        hx-vals='{"status": "{{ s }}"}'
+        hx-vals='{{ {"status": s} | tojson }}'
         hx-target="#offer-detail"
         hx-swap="innerHTML">
         {{ s }}

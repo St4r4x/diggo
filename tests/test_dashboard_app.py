@@ -133,4 +133,12 @@ class TestOfferDetail:
         db = dashboard_app.app.state.db
         row = db.get_all({})[0]
         r = client_with_data.get(f"/offers/{row['id']}")
-        assert row["offer_url"] in r.text
+        assert f'href="{row["offer_url"]}"' in r.text
+
+    def test_shows_grade_badge(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert row["score_grade"] in r.text

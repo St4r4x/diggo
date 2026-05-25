@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS applications (
     status TEXT NOT NULL DEFAULT 'À envoyer',
     send_date TEXT, contacts TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '', cv_path TEXT NOT NULL DEFAULT '',
-    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT
+    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT,
+    description TEXT NOT NULL DEFAULT ''
 )"""
 
 
@@ -143,6 +144,23 @@ class TestOfferDetail:
         r = client_with_data.get(f"/offers/{row['id']}")
         assert row["score_grade"] in r.text
 
+    def test_shows_description_excerpt(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.conn.execute(
+            "UPDATE applications SET description = ? WHERE company = ?",
+            (
+                "This is a long job description with many details about requirements.",
+                "Mistral AI",
+            ),
+        )
+        db.conn.commit()
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+        assert "This is a long job description" in r.text
+
 
 class TestOfferEdit:
     def test_edit_returns_form(self, client_with_data):
@@ -175,6 +193,7 @@ class TestOfferEdit:
                 "contacts": "",
                 "cv_path": "",
                 "cover_letter_path": "",
+                "description": "",
             },
         )
         assert r.status_code == 200

@@ -24,7 +24,8 @@ _FOLLOW_UP_DAYS = 7
 
 _SELECT = """
 SELECT id, company, role, offer_url, detection_date, score_grade, score_value,
-       status, send_date, contacts, notes, cv_path, cover_letter_path, follow_up_date
+       status, send_date, contacts, notes, cv_path, cover_letter_path,
+       follow_up_date, description
 FROM applications
 """
 
@@ -75,6 +76,7 @@ class DB:
             "cv_path",
             "cover_letter_path",
             "follow_up_date",
+            "description",
         }
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:

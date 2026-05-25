@@ -22,7 +22,7 @@ search:
 scoring:
   thresholds:
     recommend: 4.0
-    consider: 3.0
+    consider: 1.0
   target_salary_min: 40000
   target_salary_max: 55000
 

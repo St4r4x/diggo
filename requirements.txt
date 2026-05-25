@@ -1,4 +1,5 @@
 weasyprint==62.3.0
+pydyf==0.11.0
 jinja2==3.1.4
 pyyaml==6.0.2
 pytest==8.2.2

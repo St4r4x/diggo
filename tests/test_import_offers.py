@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS applications (
     notes              TEXT    NOT NULL DEFAULT '',
     cv_path            TEXT    NOT NULL DEFAULT '',
     cover_letter_path  TEXT    NOT NULL DEFAULT '',
-    follow_up_date     TEXT
+    follow_up_date     TEXT,
+    description        TEXT    NOT NULL DEFAULT ''
 )
 """
 
@@ -118,6 +119,26 @@ class TestInsertOffer:
         insert_offer(conn, offer)
         row = conn.execute("SELECT detection_date FROM applications").fetchone()
         assert row[0] == date.today().isoformat()
+
+    def test_inserts_description(self) -> None:
+        conn = _make_conn()
+        offer = RawOffer(
+            title="AI Engineer",
+            company="Acme",
+            url="https://x.com/1",
+            portal="p",
+            description="We are looking for an AI Engineer with 3+ years experience.",
+        )
+        insert_offer(conn, offer)
+        row = conn.execute("SELECT description FROM applications").fetchone()
+        assert row[0] == "We are looking for an AI Engineer with 3+ years experience."
+
+    def test_inserts_empty_description_by_default(self) -> None:
+        conn = _make_conn()
+        offer = RawOffer(title="Dev", company="Co", url="https://x.com/1", portal="p")
+        insert_offer(conn, offer)
+        row = conn.execute("SELECT description FROM applications").fetchone()
+        assert row[0] == ""
 
 
 class TestImportOffers:

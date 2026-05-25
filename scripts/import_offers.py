@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS applications (
     notes              TEXT    NOT NULL DEFAULT '',
     cv_path            TEXT    NOT NULL DEFAULT '',
     cover_letter_path  TEXT    NOT NULL DEFAULT '',
-    follow_up_date     TEXT
+    follow_up_date     TEXT,
+    description        TEXT    NOT NULL DEFAULT ''
 )
 """
 
@@ -70,8 +71,8 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
     conn.execute(
         """INSERT INTO applications
            (company, role, offer_url, detection_date, score_grade, score_value,
-            status, send_date, contacts, notes, cv_path, cover_letter_path, follow_up_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '', '', '', '', NULL)""",
+            status, send_date, contacts, notes, cv_path, cover_letter_path, follow_up_date, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '', '', '', '', NULL, ?)""",
         (
             offer.company,
             offer.title,
@@ -80,6 +81,7 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
             score_to_grade(offer.score),
             offer.score,
             "À envoyer",
+            offer.description,
         ),
     )
 

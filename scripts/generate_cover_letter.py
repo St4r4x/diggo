@@ -48,9 +48,10 @@ def render_html(context: dict) -> str:
 
 
 def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     slug = offer.lower().replace(" ", "-")
-    output_path = OUTPUT_DIR / f"cover-letter-{slug}-{output_date}.pdf"
+    out_dir = OUTPUT_DIR / f"{slug}-{output_date}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output_path = out_dir / f"cover-letter-{slug}-{output_date}.pdf"
     html_content = render_html(context)
     css_path = TEMPLATE_DIR / "cover-letter.css"
     HTML(string=html_content, base_url=str(TEMPLATE_DIR)).write_pdf(

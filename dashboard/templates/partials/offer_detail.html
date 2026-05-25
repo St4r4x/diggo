@@ -49,6 +49,20 @@
     {% endif %}
   </dl>
 
+  {% if offer.description %}
+  <div class="mb-6">
+    <p class="text-slate-400 text-sm mb-1">Description</p>
+    <details>
+      <summary class="text-slate-300 text-sm cursor-pointer hover:text-white">
+        {{ offer.description[:200] }}{% if offer.description|length > 200 %}…{% endif %}
+      </summary>
+      {% if offer.description|length > 200 %}
+      <p class="text-slate-300 text-sm mt-2 whitespace-pre-wrap bg-slate-800 rounded p-3">{{ offer.description }}</p>
+      {% endif %}
+    </details>
+  </div>
+  {% endif %}
+
   {% if offer.notes %}
   <div class="mb-6">
     <p class="text-slate-400 text-sm mb-1">Notes</p>
@@ -91,5 +105,23 @@
       hx-confirm="Supprimer cette candidature ?">
       🗑 Supprimer
     </button>
+
+    <button
+      class="text-sm px-4 py-2 rounded bg-violet-800 hover:bg-violet-700 text-white"
+      onclick="copyPrepCmd({{ offer.id }})"
+      id="prep-btn-{{ offer.id }}">
+      Préparer candidature
+    </button>
+
+    <script>
+    function copyPrepCmd(id) {
+      const cmd = "claude --mode modes/prepare-candidature.md --offer-id " + id;
+      navigator.clipboard.writeText(cmd).then(function() {
+        var btn = document.getElementById("prep-btn-" + id);
+        btn.textContent = "Commande copiée !";
+        setTimeout(function() { btn.textContent = "Préparer candidature"; }, 2000);
+      });
+    }
+    </script>
   </div>
 </div>

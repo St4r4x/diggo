@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS applications (
     status TEXT NOT NULL DEFAULT 'À envoyer',
     send_date TEXT, contacts TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '', cv_path TEXT NOT NULL DEFAULT '',
-    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT
+    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT,
+    description TEXT NOT NULL DEFAULT ''
 )"""
 
 
@@ -126,6 +127,20 @@ class TestUpdate:
         rid = _insert(db, company="Acme")
         result = db.update(rid, {"notes": "Updated"})
         assert result["notes"] == "Updated"
+
+    def test_update_description(self) -> None:
+        conn = sqlite3.connect(":memory:")
+        conn.execute(CREATE_SQL)
+        conn.commit()
+        conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date) VALUES (?,?,?,?)",
+            ("Acme", "Dev", "https://x.com/1", "2026-05-25"),
+        )
+        conn.commit()
+        db = DB(conn)
+        row = db.get_all({})[0]
+        updated = db.update(row["id"], {"description": "Job description text here."})
+        assert updated["description"] == "Job description text here."
 
 
 class TestDelete:

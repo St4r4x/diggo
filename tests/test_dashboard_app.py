@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS applications (
     status TEXT NOT NULL DEFAULT 'À envoyer',
     send_date TEXT, contacts TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '', cv_path TEXT NOT NULL DEFAULT '',
-    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT
+    cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT,
+    description TEXT NOT NULL DEFAULT ''
 )"""
 
 
@@ -143,6 +144,23 @@ class TestOfferDetail:
         r = client_with_data.get(f"/offers/{row['id']}")
         assert row["score_grade"] in r.text
 
+    def test_shows_description_excerpt(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.conn.execute(
+            "UPDATE applications SET description = ? WHERE company = ?",
+            (
+                "This is a long job description with many details about requirements.",
+                "Mistral AI",
+            ),
+        )
+        db.conn.commit()
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+        assert "This is a long job description" in r.text
+
 
 class TestOfferEdit:
     def test_edit_returns_form(self, client_with_data):
@@ -175,11 +193,44 @@ class TestOfferEdit:
                 "contacts": "",
                 "cv_path": "",
                 "cover_letter_path": "",
+                "description": "",
             },
         )
         assert r.status_code == 200
         updated = db.get_by_id(row["id"])
         assert updated["notes"] == "Test note"
+
+    def test_save_does_not_clear_existing_description(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        db.conn.execute(
+            "UPDATE applications SET description = ? WHERE id = ?",
+            ("Original job description text.", row["id"]),
+        )
+        db.conn.commit()
+        client_with_data.post(
+            f"/offers/{row['id']}",
+            data={
+                "company": row["company"],
+                "role": row["role"],
+                "detection_date": row["detection_date"],
+                "score_grade": row["score_grade"],
+                "score_value": str(row["score_value"]),
+                "status": row["status"],
+                "notes": "Updated note",
+                "offer_url": row["offer_url"] or "",
+                "send_date": "",
+                "follow_up_date": "",
+                "contacts": "",
+                "cv_path": "",
+                "cover_letter_path": "",
+                "description": "",
+            },
+        )
+        updated = db.get_by_id(row["id"])
+        assert updated["description"] == "Original job description text."
 
     def test_save_returns_404_for_missing(self, client):
         r = client.post(

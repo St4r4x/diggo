@@ -60,16 +60,26 @@ class TestGreenhouseProvider:
                 "jobs": [
                     {
                         "title": "AI Engineer",
+                        "id": 1,
                         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
                         "location": {"name": "Paris"},
                     },
                     {
                         "title": "ML Engineer",
+                        "id": 2,
                         "absolute_url": "https://boards.greenhouse.io/acme/jobs/2",
                         "location": {"name": "Remote"},
                     },
                 ]
             },
+        )
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/1",
+            json={"content": ""},
+        )
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/2",
+            json={"content": ""},
         )
         import httpx
 
@@ -119,6 +129,10 @@ class TestLeverProvider:
                     "categories": {"location": "Paris, France"},
                 }
             ],
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/123",
+            json={"descriptionPlain": ""},
         )
         import httpx
 
@@ -208,11 +222,16 @@ class TestScanAts:
                 "jobs": [
                     {
                         "title": "AI Eng",
+                        "id": 1,
                         "absolute_url": "https://gh.io/1",
                         "location": {"name": "Paris"},
                     }
                 ]
             },
+        )
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/1",
+            json={"content": ""},
         )
         httpx_mock.add_response(
             url="https://api.lever.co/v0/postings/acmelever",
@@ -223,6 +242,10 @@ class TestScanAts:
                     "categories": {"location": "Paris"},
                 }
             ],
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acmelever/1",
+            json={"descriptionPlain": ""},
         )
         offers = await scan_ats(ats_map_path=ats_map)
         assert len(offers) == 2
@@ -243,6 +266,10 @@ class TestScanAts:
                     "categories": {"location": ""},
                 }
             ],
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/1",
+            json={"descriptionPlain": ""},
         )
         offers = await scan_ats(ats_map_path=ats_map, company_filter="Acme")
         assert len(offers) == 1
@@ -280,6 +307,161 @@ class TestScanAts:
                 },
             ],
         )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/1",
+            json={"descriptionPlain": ""},
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/2",
+            json={"descriptionPlain": ""},
+        )
         offers = await scan_ats(ats_map_path=ats_map, keywords=["AI Engineer"])
         assert len(offers) == 1
         assert offers[0].title == "AI Engineer"
+
+
+class TestGreenhouseProviderDescription:
+    @pytest.mark.asyncio
+    async def test_fetch_populates_description(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs",
+            json={
+                "jobs": [
+                    {
+                        "title": "AI Engineer",
+                        "id": 42,
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/42",
+                        "location": {"name": "Paris"},
+                    }
+                ]
+            },
+        )
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/42",
+            json={"content": "<p>We need a <b>Python</b> expert.</p>"},
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await GreenhouseProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == "We need a Python expert."
+
+    @pytest.mark.asyncio
+    async def test_description_detail_failure_yields_empty_string(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs",
+            json={
+                "jobs": [
+                    {
+                        "title": "AI Engineer",
+                        "id": 99,
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/99",
+                        "location": {"name": "Paris"},
+                    }
+                ]
+            },
+        )
+        httpx_mock.add_response(
+            url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/99",
+            status_code=500,
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await GreenhouseProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == ""
+
+
+class TestLeverProviderDescription:
+    @pytest.mark.asyncio
+    async def test_fetch_populates_description(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme",
+            json=[
+                {
+                    "text": "Data Scientist",
+                    "hostedUrl": "https://jobs.lever.co/acme/abc-123",
+                    "categories": {"location": "Paris"},
+                }
+            ],
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/abc-123",
+            json={"descriptionPlain": "Work on ML models at scale."},
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await LeverProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == "Work on ML models at scale."
+
+    @pytest.mark.asyncio
+    async def test_description_detail_failure_yields_empty_string(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme",
+            json=[
+                {
+                    "text": "Data Scientist",
+                    "hostedUrl": "https://jobs.lever.co/acme/abc-123",
+                    "categories": {"location": "Paris"},
+                }
+            ],
+        )
+        httpx_mock.add_response(
+            url="https://api.lever.co/v0/postings/acme/abc-123",
+            status_code=404,
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await LeverProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == ""
+
+
+class TestAshbyProviderDescription:
+    @pytest.mark.asyncio
+    async def test_fetch_populates_description(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.ashbyhq.com/posting-api/job-board/acme",
+            json={
+                "jobs": [
+                    {
+                        "title": "LLM Engineer",
+                        "jobUrl": "https://jobs.ashbyhq.com/acme/abc",
+                        "location": "Paris",
+                        "descriptionPlain": "Build production LLM systems.",
+                    }
+                ]
+            },
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await AshbyProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == "Build production LLM systems."
+
+    @pytest.mark.asyncio
+    async def test_missing_description_plain_yields_empty_string(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://api.ashbyhq.com/posting-api/job-board/acme",
+            json={
+                "jobs": [
+                    {
+                        "title": "LLM Engineer",
+                        "jobUrl": "https://jobs.ashbyhq.com/acme/abc",
+                        "location": "Paris",
+                    }
+                ]
+            },
+        )
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            offers = await AshbyProvider.fetch("Acme Corp", "acme", client)
+        assert offers[0].description == ""

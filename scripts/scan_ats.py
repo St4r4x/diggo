@@ -29,6 +29,11 @@ _DEFAULT_ATS_MAP = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 _TIMEOUT = 10.0
 
 
+def _strip_html(html: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", html)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 class GreenhouseProvider:
     id = "greenhouse"
 
@@ -49,8 +54,21 @@ class GreenhouseProvider:
             title = j.get("title", "").strip()
             job_url = j.get("absolute_url", "").strip()
             location = (j.get("location") or {}).get("name", "").strip() or None
+            job_id = j.get("id")
             if not title:
                 continue
+            description = ""
+            if job_id:
+                detail_url = (
+                    f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{job_id}"
+                )
+                try:
+                    detail_resp = await client.get(detail_url, timeout=_TIMEOUT)
+                    detail_resp.raise_for_status()
+                    raw_content = detail_resp.json().get("content", "")
+                    description = _strip_html(raw_content)[:8000]
+                except Exception:
+                    pass
             offers.append(
                 RawOffer(
                     title=title,
@@ -58,6 +76,7 @@ class GreenhouseProvider:
                     url=job_url,
                     portal="greenhouse",
                     location=location,
+                    description=description,
                 )
             )
         return offers
@@ -87,6 +106,16 @@ class LeverProvider:
             location = (j.get("categories") or {}).get("location", "").strip() or None
             if not title:
                 continue
+            description = ""
+            posting_id = job_url.rstrip("/").rsplit("/", 1)[-1] if job_url else ""
+            if posting_id:
+                detail_url = f"https://api.lever.co/v0/postings/{slug}/{posting_id}"
+                try:
+                    detail_resp = await client.get(detail_url, timeout=_TIMEOUT)
+                    detail_resp.raise_for_status()
+                    description = detail_resp.json().get("descriptionPlain", "")[:8000]
+                except Exception:
+                    pass
             offers.append(
                 RawOffer(
                     title=title,
@@ -94,6 +123,7 @@ class LeverProvider:
                     url=job_url,
                     portal="lever",
                     location=location,
+                    description=description,
                 )
             )
         return offers
@@ -121,6 +151,7 @@ class AshbyProvider:
             location = (j.get("location") or "").strip() or None
             if not title:
                 continue
+            description = (j.get("descriptionPlain") or "")[:8000]
             offers.append(
                 RawOffer(
                     title=title,
@@ -128,6 +159,7 @@ class AshbyProvider:
                     url=job_url,
                     portal="ashby",
                     location=location,
+                    description=description,
                 )
             )
         return offers

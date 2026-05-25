@@ -10,8 +10,8 @@ build/
 *.db
 .venv/
 venv/
-dashboard/dashboard
 # docs/ is tracked (plans, specs)
 .pytest_cache/
 .coverage
 htmlcov/
+.superpowers/

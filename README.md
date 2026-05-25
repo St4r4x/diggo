@@ -12,3 +12,12 @@ Fork adapté de [career-ops](https://github.com/santifer/career-ops) pour le mar
 # Générer un CV PDF tailoré
 python scripts/generate_pdf.py --offer "Mistral AI" --date "2026-06-01"
 ```
+
+### Dashboard
+
+```bash
+cd dashboard
+PYTHONPATH=. uvicorn app:app --reload --port 8000
+```
+
+Open http://localhost:8000

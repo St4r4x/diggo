@@ -103,3 +103,34 @@ class TestOfferList:
         r = client_with_data.get("/offers?q=mistral")
         assert "Mistral AI" in r.text
         assert "Doctrine" not in r.text
+
+
+class TestOfferDetail:
+    def test_returns_200_for_existing(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+
+    def test_shows_company_and_role(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert row["company"] in r.text
+        assert row["role"] in r.text
+
+    def test_returns_404_for_missing(self, client):
+        r = client.get("/offers/999")
+        assert r.status_code == 404
+
+    def test_shows_offer_url_as_link(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert row["offer_url"] in r.text

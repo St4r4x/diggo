@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -80,5 +80,21 @@ async def offer_list(
         "partials/offer_list.html",
         {
             "offers": offers,
+        },
+    )
+
+
+@app.get("/offers/{offer_id}", response_class=HTMLResponse)
+async def offer_detail(request: Request, offer_id: int):
+    db = request.app.state.db
+    offer = db.get_by_id(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_detail.html",
+        {
+            "offer": offer,
+            "statuses": VALID_STATUSES,
         },
     )

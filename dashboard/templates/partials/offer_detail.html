@@ -1,0 +1,95 @@
+<div class="max-w-2xl">
+  <!-- Header -->
+  <div class="flex items-start justify-between mb-4">
+    <div>
+      <h2 class="text-xl font-bold text-white">{{ offer.company }}</h2>
+      <p class="text-slate-400">{{ offer.role }}</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <span class="text-sm px-3 py-1 rounded font-bold
+        {{ GRADE_COLORS.get(offer.score_grade, 'bg-gray-700 text-gray-200') }}">
+        {{ offer.score_grade }} {{ "%.1f"|format(offer.score_value) }}
+      </span>
+      <span class="text-sm px-3 py-1 rounded font-medium
+        {{ STATUS_COLORS.get(offer.status, 'bg-gray-700 text-gray-200') }}">
+        {{ offer.status }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Fields -->
+  <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6">
+    <dt class="text-slate-400">Détecté le</dt>
+    <dd class="text-slate-200">{{ offer.detection_date }}</dd>
+    {% if offer.send_date %}
+    <dt class="text-slate-400">Envoyé le</dt>
+    <dd class="text-slate-200">{{ offer.send_date }}</dd>
+    {% endif %}
+    {% if offer.follow_up_date %}
+    <dt class="text-slate-400">Relance</dt>
+    <dd class="text-slate-200">{{ offer.follow_up_date }}</dd>
+    {% endif %}
+    {% if offer.offer_url %}
+    <dt class="text-slate-400">URL</dt>
+    <dd><a href="{{ offer.offer_url }}" target="_blank"
+          class="text-violet-400 hover:text-violet-300 underline break-all text-xs">
+      {{ offer.offer_url }}</a></dd>
+    {% endif %}
+    {% if offer.cv_path %}
+    <dt class="text-slate-400">CV</dt>
+    <dd class="text-slate-200 text-xs break-all">{{ offer.cv_path }}</dd>
+    {% endif %}
+    {% if offer.cover_letter_path %}
+    <dt class="text-slate-400">LM</dt>
+    <dd class="text-slate-200 text-xs break-all">{{ offer.cover_letter_path }}</dd>
+    {% endif %}
+    {% if offer.contacts %}
+    <dt class="text-slate-400">Contacts</dt>
+    <dd class="text-slate-200">{{ offer.contacts }}</dd>
+    {% endif %}
+  </dl>
+
+  {% if offer.notes %}
+  <div class="mb-6">
+    <p class="text-slate-400 text-sm mb-1">Notes</p>
+    <p class="text-slate-200 text-sm whitespace-pre-wrap bg-slate-800 rounded p-3">{{ offer.notes }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Status quick-change -->
+  <div class="mb-4">
+    <p class="text-slate-400 text-sm mb-2">Changer le statut</p>
+    <div class="flex flex-wrap gap-2">
+      {% for s in statuses %}
+      <button
+        class="text-xs px-2 py-1 rounded font-medium border
+          {% if s == offer.status %}border-violet-500 {{ STATUS_COLORS.get(s, '') }}{% else %}border-slate-600 text-slate-400 hover:border-slate-400{% endif %}"
+        hx-post="/offers/{{ offer.id }}/status"
+        hx-vals='{"status": "{{ s }}"}'
+        hx-target="#offer-detail"
+        hx-swap="innerHTML">
+        {{ s }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="flex gap-3">
+    <button
+      class="text-sm px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white"
+      hx-get="/offers/{{ offer.id }}/edit"
+      hx-target="#offer-detail"
+      hx-swap="innerHTML">
+      ✏️ Modifier
+    </button>
+    <button
+      class="text-sm px-4 py-2 rounded bg-red-800 hover:bg-red-700 text-white"
+      hx-delete="/offers/{{ offer.id }}"
+      hx-target="#offer-detail"
+      hx-swap="innerHTML"
+      hx-confirm="Supprimer cette candidature ?">
+      🗑 Supprimer
+    </button>
+  </div>
+</div>

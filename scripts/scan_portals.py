@@ -9,7 +9,7 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import parse_qs, quote_plus, urlencode, urljoin, urlparse, urlunparse
 
 import yaml
 
@@ -117,6 +117,41 @@ def list_portal_ids() -> list[str]:
     return sorted(p.stem for p in _PORTALS_DIR.glob("*.yaml"))
 
 
+async def _card_text(card, sel: str) -> str:
+    if not sel:
+        return ""
+    try:
+        el = await card.query_selector(sel)
+        return (await el.inner_text()).strip() if el else ""
+    except Exception:
+        return ""
+
+
+async def _card_href(card, sel: str) -> str:
+    if not sel:
+        return ""
+    try:
+        el = await card.query_selector(sel)
+        return (await el.get_attribute("href") or "").strip() if el else ""
+    except Exception:
+        return ""
+
+
+async def _card_datetime(card, sel: str) -> str:
+    if not sel:
+        return ""
+    try:
+        el = await card.query_selector(sel)
+        if el:
+            dt = await el.get_attribute("datetime")
+            if dt:
+                return dt.strip()
+            return (await el.inner_text()).strip()
+        return ""
+    except Exception:
+        return ""
+
+
 async def scrape_portal(portal_id: str, keywords: str, location: str) -> list[RawOffer]:
     from playwright.async_api import async_playwright
 
@@ -124,113 +159,104 @@ async def scrape_portal(portal_id: str, keywords: str, location: str) -> list[Ra
     selectors = config["selectors"]
     pagination = config["pagination"]
     base_url = config["base_url"]
+    pagination_type = pagination["type"]
+    page_size = pagination.get("page_size", 10)
     offers: list[RawOffer] = []
 
     async with async_playwright() as pw:
         browser = await pw.firefox.launch(headless=True)
-        context = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
-            )
-        )
-        page = await context.new_page()
-        url = build_search_url(
-            config["search_url_template"], keywords=keywords, location=location
-        )
-        current_page = 0
-        max_pages = pagination.get("max_pages", 3)
-
-        while current_page < max_pages:
-            logger.info(
-                "[%s] Navigating to page %d: %s", portal_id, current_page + 1, url
-            )
-            try:
-                await page.goto(url, wait_until="networkidle", timeout=30_000)
-            except Exception as exc:
-                logger.warning("[%s] Navigation error: %s", portal_id, exc)
-                break
-
-            try:
-                await page.wait_for_selector(selectors["offer_card"], timeout=10_000)
-            except Exception:
-                logger.warning(
-                    "[%s] No offer cards found on page %d", portal_id, current_page + 1
+        try:
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
                 )
-                break
+            )
+            page = await context.new_page()
+            url = build_search_url(
+                config["search_url_template"], keywords=keywords, location=location
+            )
+            current_page = 0
+            max_pages = pagination.get("max_pages", 3)
 
-            if pagination["type"] == "scroll":
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await asyncio.sleep(2)
-
-            cards = await page.query_selector_all(selectors["offer_card"])
-
-            for card in cards:
-
-                async def _text(sel: str) -> str:
+            while current_page < max_pages:
+                # next_button portals: after page 0, navigation is done by clicking — skip goto
+                if not (current_page > 0 and pagination_type == "next_button"):
+                    logger.info(
+                        "[%s] Navigating to page %d: %s",
+                        portal_id,
+                        current_page + 1,
+                        url,
+                    )
                     try:
-                        el = await card.query_selector(sel)
-                        return (await el.inner_text()).strip() if el else ""
-                    except Exception:
-                        return ""
+                        await page.goto(url, wait_until="networkidle", timeout=30_000)
+                    except Exception as exc:
+                        logger.warning("[%s] Navigation error: %s", portal_id, exc)
+                        break
 
-                async def _href(sel: str) -> str:
-                    try:
-                        el = await card.query_selector(sel)
-                        return (
-                            (await el.get_attribute("href") or "").strip() if el else ""
-                        )
-                    except Exception:
-                        return ""
-
-                async def _datetime_attr(sel: str) -> str:
-                    try:
-                        el = await card.query_selector(sel)
-                        if el:
-                            dt = await el.get_attribute("datetime")
-                            if dt:
-                                return dt.strip()
-                            return (await el.inner_text()).strip()
-                        return ""
-                    except Exception:
-                        return ""
-
-                card_data = {
-                    "title": await _text(selectors["title"]),
-                    "company": await _text(selectors["company"]),
-                    "url": await _href(selectors["url"]),
-                    "location": await _text(selectors.get("location", "")),
-                    "date": await _datetime_attr(selectors.get("date", "")),
-                }
-
-                offer = extract_offer_from_card_data(
-                    card_data, portal_id=portal_id, base_url=base_url
-                )
-                if offer:
-                    offers.append(offer)
-
-            if pagination["type"] == "next_button":
-                next_btn = await page.query_selector(pagination["next_selector"])
-                if not next_btn:
+                try:
+                    await page.wait_for_selector(
+                        selectors["offer_card"], timeout=10_000
+                    )
+                except Exception:
+                    logger.warning(
+                        "[%s] No offer cards found on page %d",
+                        portal_id,
+                        current_page + 1,
+                    )
                     break
-                await next_btn.click()
-                await page.wait_for_load_state("networkidle")
-                current_page += 1
-            elif pagination["type"] == "page_param":
-                current_page += 1
-                from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 
-                parsed = urlparse(url)
-                params = parse_qs(parsed.query)
-                params[pagination["page_param"]] = [str(current_page * 10)]
-                new_query = urlencode({k: v[0] for k, v in params.items()})
-                url = urlunparse(parsed._replace(query=new_query))
-            elif pagination["type"] == "scroll":
-                current_page += 1
-            else:
-                break
+                if pagination_type == "scroll":
+                    await page.evaluate(
+                        "window.scrollTo(0, document.body.scrollHeight)"
+                    )
+                    await page.wait_for_load_state("networkidle")
 
-        await browser.close()
+                cards = await page.query_selector_all(selectors["offer_card"])
+                logger.info(
+                    "[%s] Found %d cards on page %d",
+                    portal_id,
+                    len(cards),
+                    current_page + 1,
+                )
 
+                for card in cards:
+                    card_data = {
+                        "title": await _card_text(card, selectors["title"]),
+                        "company": await _card_text(card, selectors["company"]),
+                        "url": await _card_href(card, selectors["url"]),
+                        "location": await _card_text(
+                            card, selectors.get("location", "")
+                        ),
+                        "date": await _card_datetime(card, selectors.get("date", "")),
+                    }
+                    offer = extract_offer_from_card_data(
+                        card_data, portal_id=portal_id, base_url=base_url
+                    )
+                    if offer:
+                        offers.append(offer)
+
+                if pagination_type == "next_button":
+                    next_btn = await page.query_selector(pagination["next_selector"])
+                    if not next_btn:
+                        break
+                    await next_btn.click()
+                    await page.wait_for_load_state("networkidle")
+                    current_page += 1
+                elif pagination_type == "page_param":
+                    current_page += 1
+                    parsed = urlparse(url)
+                    params = parse_qs(parsed.query)
+                    params[pagination["page_param"]] = [str(current_page * page_size)]
+                    new_query = urlencode({k: v[0] for k, v in params.items()})
+                    url = urlunparse(parsed._replace(query=new_query))
+                elif pagination_type == "scroll":
+                    current_page += 1
+                else:
+                    break
+        finally:
+            await browser.close()
+
+    logger.info("[%s] Total offers scraped: %d", portal_id, len(offers))
     return offers
 
 

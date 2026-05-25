@@ -1,0 +1,34 @@
+# ATS job board map for career-ops-fr target companies.
+# Provider is auto-detected from careers_url pattern.
+# To add a company: add one entry with name + careers_url.
+# Supported patterns: greenhouse.io, jobs.lever.co, jobs.ashbyhq.com
+
+# --- Greenhouse ---
+- name: "Mistral AI"
+  careers_url: "https://job-boards.greenhouse.io/mistralai"
+
+- name: "Dataiku"
+  careers_url: "https://job-boards.greenhouse.io/dataiku"
+
+- name: "Artefact"
+  careers_url: "https://job-boards.greenhouse.io/artefact"
+
+# --- Lever ---
+- name: "Doctrine"
+  careers_url: "https://jobs.lever.co/doctrine"
+
+- name: "ContentSquare"
+  careers_url: "https://jobs.lever.co/contentsquare"
+
+- name: "Ekimetrics"
+  careers_url: "https://jobs.lever.co/ekimetrics"
+
+# --- Ashby ---
+- name: "Nabla"
+  careers_url: "https://jobs.ashbyhq.com/nabla"
+
+- name: "Alan"
+  careers_url: "https://jobs.ashbyhq.com/alan"
+
+- name: "Owkin"
+  careers_url: "https://jobs.ashbyhq.com/owkin"

@@ -1,0 +1,19 @@
+portal_id: glassdoor
+name: "Glassdoor France"
+base_url: "https://www.glassdoor.fr"
+search_url_template: "https://www.glassdoor.fr/Emploi/emplois.htm?sc.keyword={keywords}&locT=C&locName={location}"
+search_params:
+  keywords: ""
+  location: "Paris"
+selectors:
+  offer_card: "li.react-job-listing"
+  title: "a.JobCard_jobTitle__GLyJ1"
+  company: "span.EmployerProfile_compactEmployerName__9MGcV"
+  url: "a.JobCard_jobTitle__GLyJ1"
+  location: "div.JobCard_location__rCz3x"
+  date: "div.JobCard_listingAge__KuaxZ"
+pagination:
+  type: next_button
+  max_pages: 5
+  next_selector: "button[data-test='pagination-next']"
+  page_param: ""

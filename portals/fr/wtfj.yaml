@@ -1,0 +1,19 @@
+portal_id: wtfj
+name: "Welcome to the Jungle"
+base_url: "https://www.welcometothejungle.com"
+search_url_template: "https://www.welcometothejungle.com/fr/jobs?query={keywords}&aroundQuery={location}"
+search_params:
+  keywords: ""
+  location: "Paris"
+selectors:
+  offer_card: "li[data-testid='search-results-list-item-wrapper']"
+  title: "h3[data-testid='job-title']"
+  company: "span[data-testid='company-title']"
+  url: "a[data-testid='job-link']"
+  location: "span[data-testid='job-location']"
+  date: "time"
+pagination:
+  type: next_button
+  max_pages: 5
+  next_selector: "a[data-testid='pagination-next-page']"
+  page_param: ""

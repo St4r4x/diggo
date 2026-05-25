@@ -1,0 +1,19 @@
+portal_id: indeed
+name: "Indeed France"
+base_url: "https://fr.indeed.com"
+search_url_template: "https://fr.indeed.com/jobs?q={keywords}&l={location}"
+search_params:
+  keywords: ""
+  location: "Paris"
+selectors:
+  offer_card: "div.job_seen_beacon"
+  title: "h2.jobTitle span[title]"
+  company: "span.companyName"
+  url: "h2.jobTitle a"
+  location: "div.companyLocation"
+  date: "span.date"
+pagination:
+  type: page_param
+  max_pages: 5
+  next_selector: ""
+  page_param: "start"

@@ -1,0 +1,19 @@
+portal_id: linkedin
+name: "LinkedIn France"
+base_url: "https://www.linkedin.com"
+search_url_template: "https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&f_WT=2"
+search_params:
+  keywords: ""
+  location: "Paris"
+selectors:
+  offer_card: "li.jobs-search__results-list > div"
+  title: "h3.base-search-card__title"
+  company: "h4.base-search-card__subtitle"
+  url: "a.base-card__full-link"
+  location: "span.job-search-card__location"
+  date: "time.job-search-card__listdate"
+pagination:
+  type: scroll
+  max_pages: 3
+  next_selector: ""
+  page_param: ""

@@ -1,0 +1,19 @@
+portal_id: apec
+name: "APEC"
+base_url: "https://www.apec.fr"
+search_url_template: "https://www.apec.fr/candidat/recherche-emploi.html/emploi?motsCles={keywords}&lieuTravail={location}"
+search_params:
+  keywords: ""
+  location: "Paris"
+selectors:
+  offer_card: "div.result-item"
+  title: "h2.result-item-title a"
+  company: "span.result-item-company"
+  url: "h2.result-item-title a"
+  location: "span.result-item-location"
+  date: "span.result-item-date"
+pagination:
+  type: next_button
+  max_pages: 5
+  next_selector: "a.pagination-next"
+  page_param: ""

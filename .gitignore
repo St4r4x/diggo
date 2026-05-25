@@ -10,6 +10,8 @@ build/
 *.db
 .venv/
 venv/
+dashboard/dashboard
+docs/
 .pytest_cache/
 .coverage
 htmlcov/

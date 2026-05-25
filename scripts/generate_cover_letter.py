@@ -111,8 +111,8 @@ if __name__ == "__main__":
         with open(args.context_file, "r", encoding="utf-8") as fh:
             extra = json.load(fh)
         ctx = default_context(
-            company=extra.get("company", ""),
-            role=extra.get("role", ""),
+            company=extra.get("company") or "Mistral AI",
+            role=extra.get("role") or "AI Engineer",
         )
         if "recipient" in extra:
             ctx["recipient"] = extra["recipient"]

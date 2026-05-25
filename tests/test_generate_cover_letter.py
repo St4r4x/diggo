@@ -77,3 +77,14 @@ def test_render_html_empty_role_omits_role_div():
     html = render_html(ctx)
     assert "Acme" in html
     assert 'class="role"' not in html
+
+
+def test_default_context_contains_required_keys():
+    from scripts.generate_cover_letter import default_context
+
+    ctx = default_context(company="Acme", role="Dev")
+    assert ctx["company"] == "Acme"
+    assert ctx["role"] == "Dev"
+    assert ctx["name"] == "Arnaud Thery"
+    assert ctx["email"] == "St4r4x@gmail.com"
+    assert len(ctx["paragraphs"]) == 3

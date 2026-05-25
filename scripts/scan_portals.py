@@ -179,6 +179,10 @@ async def scrape_portal(
         )
         return []
 
+    if "selectors" not in config:
+        logger.error("[%s] Missing 'selectors' config — skipping", portal_id)
+        return []
+
     if "pagination" not in config:
         logger.error("[%s] Missing 'pagination' config — skipping", portal_id)
         return []

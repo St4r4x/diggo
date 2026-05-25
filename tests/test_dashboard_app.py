@@ -234,6 +234,22 @@ class TestStats:
         r = client_with_data.get("/stats")
         assert r.status_code == 200
 
-    def test_stats_shows_total(self, client_with_data):
+    def test_stats_shows_total_count(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        stats = db.get_stats()
         r = client_with_data.get("/stats")
-        assert "2" in r.text  # 2 offers inserted in fixture
+        assert str(stats["total"]) in r.text
+
+    def test_stats_empty_db_returns_200(self, client):
+        r = client.get("/stats")
+        assert r.status_code == 200
+        assert "0" in r.text
+
+    def test_stats_shows_all_statuses(self, client_with_data):
+        from db import VALID_STATUSES
+
+        r = client_with_data.get("/stats")
+        for s in VALID_STATUSES:
+            assert s in r.text

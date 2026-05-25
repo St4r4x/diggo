@@ -1,13 +1,14 @@
 # dashboard/app.py
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from db import DB, VALID_STATUSES, open_db
+from db import VALID_STATUSES, open_db
 
 DB_PATH = Path(__file__).parent / "data" / "applications.db"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -32,26 +33,27 @@ GRADE_COLORS: dict[str, str] = {
     "F": "bg-red-700 text-white",
 }
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.db = open_db(DB_PATH)
+    yield
+    app.state.db.conn.close()
+
+
+app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Register color maps as Jinja2 globals so they don't appear in per-request
-# context (which would cause an unhashable-type error in Jinja2's LRU cache).
+# Register color maps as Jinja2 globals so every template (including
+# {% include %} partials) can access them without repeating them in
+# every TemplateResponse call.
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 
 
-def _get_db(request: Request) -> DB:
-    db = getattr(request.app.state, "db", None)
-    if db is None:
-        request.app.state.db = open_db(DB_PATH)
-        db = request.app.state.db
-    return db
-
-
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    db = _get_db(request)
+    db = request.app.state.db
     offers = db.get_all({})
     return templates.TemplateResponse(
         request,
@@ -70,7 +72,7 @@ async def offer_list(
     grade: str = Query(""),
     q: str = Query(""),
 ):
-    db = _get_db(request)
+    db = request.app.state.db
     filters = {k: v for k, v in {"status": status, "grade": grade, "q": q}.items() if v}
     offers = db.get_all(filters)
     return templates.TemplateResponse(

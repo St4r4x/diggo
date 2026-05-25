@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
-from db import DB, VALID_STATUSES
+from db import DB
 
 CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS applications (
@@ -167,3 +167,16 @@ class TestGetStats:
         stats = db.get_stats()
         assert stats["by_status"]["À envoyer"] == 1
         assert stats["by_status"]["Envoyée"] == 1
+
+    def test_response_rate(self, db):
+        _insert(db, status="Envoyée")  # sent, no response
+        _insert(db, status="Entretien RH")  # sent + response
+        stats = db.get_stats()
+        assert "response_rate" in stats
+        assert stats["response_rate"] == 50.0  # 1 response / 2 sent * 100
+
+    def test_interview_count(self, db):
+        _insert(db, status="À envoyer")
+        _insert(db, status="Entretien tech")
+        stats = db.get_stats()
+        assert stats["interview_count"] == 1

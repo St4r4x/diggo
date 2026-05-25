@@ -60,7 +60,7 @@ class DB:
         row = self.conn.execute(_SELECT + "WHERE id = ?", (id,)).fetchone()
         return _row_to_dict(row) if row else None
 
-    def update(self, id: int, fields: dict) -> dict:
+    def update(self, id: int, fields: dict) -> dict | None:
         allowed = {
             "company",
             "role",

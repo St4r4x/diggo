@@ -1,0 +1,69 @@
+search:
+  keywords:
+    - "AI Engineer"
+    - "ML Engineer"
+    - "Machine Learning Engineer"
+    - "Computer Vision Engineer"
+    - "Deep Learning Engineer"
+    - "LLM Engineer"
+    - "RAG Engineer"
+    - "NLP Engineer"
+  location: "Paris"
+  contract: "CDI"
+  experience_max_years: 3
+
+scoring:
+  thresholds:
+    recommend: 4.0
+    consider: 3.0
+  target_salary_min: 40000
+  target_salary_max: 55000
+
+target_companies:
+  big_tech:
+    - Google
+    - Meta
+    - Microsoft
+    - Amazon
+    - Apple
+    - Salesforce
+    - LinkedIn
+  french_ai:
+    - Mistral AI
+    - Hugging Face
+    - Dataiku
+    - Shift Technology
+    - Owkin
+    - Nabla
+    - SkillCorner
+    - LightOn
+    - Craft AI
+    - Illuin Technology
+    - Yseop
+    - Artefact
+    - Ekimetrics
+    - Quantmetry
+    - Sicara
+    - Meritis
+  french_tech:
+    - Criteo
+    - Algolia
+    - ContentSquare
+    - Doctrine
+    - Alan
+    - Qonto
+    - Doctolib
+    - BlaBlaCar
+    - ManoMano
+    - Ledger
+    - Deezer
+  esn_grands_groupes:
+    - Capgemini Engineering
+    - Thales
+    - Sopra Steria
+    - Wavestone
+    - OCTO Technology
+    - OnePoint
+    - CGI
+
+follow_up_days: 7

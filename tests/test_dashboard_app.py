@@ -200,6 +200,38 @@ class TestOfferEdit:
         updated = db.get_by_id(row["id"])
         assert updated["notes"] == "Test note"
 
+    def test_save_does_not_clear_existing_description(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        db.conn.execute(
+            "UPDATE applications SET description = ? WHERE id = ?",
+            ("Original job description text.", row["id"]),
+        )
+        db.conn.commit()
+        client_with_data.post(
+            f"/offers/{row['id']}",
+            data={
+                "company": row["company"],
+                "role": row["role"],
+                "detection_date": row["detection_date"],
+                "score_grade": row["score_grade"],
+                "score_value": str(row["score_value"]),
+                "status": row["status"],
+                "notes": "Updated note",
+                "offer_url": row["offer_url"] or "",
+                "send_date": "",
+                "follow_up_date": "",
+                "contacts": "",
+                "cv_path": "",
+                "cover_letter_path": "",
+                "description": "",
+            },
+        )
+        updated = db.get_by_id(row["id"])
+        assert updated["description"] == "Original job description text."
+
     def test_save_returns_404_for_missing(self, client):
         r = client.post(
             "/offers/999",

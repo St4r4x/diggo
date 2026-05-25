@@ -3,5 +3,13 @@ data/
 reports/
 __pycache__/
 *.pyc
+*.egg-info/
+dist/
+build/
 .env
 *.db
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/

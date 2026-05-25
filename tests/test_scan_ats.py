@@ -21,11 +21,14 @@ class TestResolveProvider:
         assert provider is GreenhouseProvider
         assert slug == "acme"
 
-    def test_greenhouse_boards_url_detected(self) -> None:
-        entry = {"name": "Acme", "careers_url": "https://boards.greenhouse.io/acme"}
+    def test_greenhouse_job_boards_url_detected(self) -> None:
+        entry = {
+            "name": "Acme",
+            "careers_url": "https://job-boards.greenhouse.io/mistralai",
+        }
         provider, slug = resolve_provider(entry)
         assert provider is GreenhouseProvider
-        assert slug == "acme"
+        assert slug == "mistralai"
 
     def test_lever_url_detected(self) -> None:
         entry = {"name": "Acme", "careers_url": "https://jobs.lever.co/acme"}

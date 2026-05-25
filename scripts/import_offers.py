@@ -112,7 +112,7 @@ async def _run_pipeline(settings: dict) -> list[RawOffer]:
     keyword_list: list[str] = settings.get("search", {}).get(
         "keywords", ["AI Engineer"]
     )
-    keywords = keyword_list[0] if keyword_list else "AI Engineer"
+    keywords = " ".join(keyword_list) if keyword_list else "AI Engineer"
     location: str = settings.get("search", {}).get("location", "Paris")
     portal_ids = list_portal_ids()
     logger.info(

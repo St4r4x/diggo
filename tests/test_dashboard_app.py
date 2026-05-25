@@ -227,3 +227,13 @@ class TestOfferStatus:
         assert r.status_code == 200
         updated = db.get_by_id(row["id"])
         assert updated["status"] == "Envoyée"
+
+
+class TestStats:
+    def test_stats_returns_200(self, client_with_data):
+        r = client_with_data.get("/stats")
+        assert r.status_code == 200
+
+    def test_stats_shows_total(self, client_with_data):
+        r = client_with_data.get("/stats")
+        assert "2" in r.text  # 2 offers inserted in fixture

@@ -190,3 +190,17 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
             "statuses": VALID_STATUSES,
         },
     )
+
+
+@app.get("/stats", response_class=HTMLResponse)
+async def stats_page(request: Request):
+    db = request.app.state.db
+    stats = db.get_stats()
+    return templates.TemplateResponse(
+        request,
+        "stats.html",
+        {
+            "stats": stats,
+            "statuses": VALID_STATUSES,
+        },
+    )

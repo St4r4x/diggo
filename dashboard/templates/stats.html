@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-8 max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold text-white mb-8">Statistiques</h1>
+
+  <div class="grid grid-cols-2 gap-4 mb-8">
+    <div class="bg-slate-800 rounded-lg p-4">
+      <p class="text-slate-400 text-sm">Total candidatures</p>
+      <p class="text-3xl font-bold text-white">{{ stats.total }}</p>
+    </div>
+    <div class="bg-slate-800 rounded-lg p-4">
+      <p class="text-slate-400 text-sm">Taux de réponse</p>
+      <p class="text-3xl font-bold text-white">{{ stats.response_rate }}%</p>
+    </div>
+    <div class="bg-slate-800 rounded-lg p-4">
+      <p class="text-slate-400 text-sm">Entretiens obtenus</p>
+      <p class="text-3xl font-bold text-white">{{ stats.interview_count }}</p>
+    </div>
+    <div class="bg-slate-800 rounded-lg p-4 {% if stats.stale_count > 0 %}border border-amber-500{% endif %}">
+      <p class="text-slate-400 text-sm">Relances en retard (+7j)</p>
+      <p class="text-3xl font-bold {% if stats.stale_count > 0 %}text-amber-400{% else %}text-white{% endif %}">
+        {{ stats.stale_count }}
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-lg font-semibold text-white mb-4">Par statut</h2>
+  <div class="flex flex-col gap-2">
+    {% for s in statuses %}
+    {% set count = stats.by_status.get(s, 0) %}
+    <div class="flex items-center gap-3">
+      <span class="w-36 text-xs px-2 py-1 rounded font-medium text-center
+        {{ STATUS_COLORS.get(s, 'bg-gray-700 text-gray-200') }}">{{ s }}</span>
+      <div class="flex-1 bg-slate-800 rounded-full h-2">
+        {% if stats.total > 0 %}
+        <div class="bg-violet-500 h-2 rounded-full"
+          style="width: {{ [count / stats.total * 100, 100] | min | int }}%"></div>
+        {% endif %}
+      </div>
+      <span class="text-slate-300 text-sm w-6 text-right">{{ count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

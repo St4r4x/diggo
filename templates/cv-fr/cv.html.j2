@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="cv.css">
+</head>
+<body>
+
+<div class="header">
+  <h1>{{ name }}</h1>
+  <div class="title">{{ title }}</div>
+  <div class="contact">
+    {{ email }} &nbsp;·&nbsp; {{ phone }} &nbsp;·&nbsp; {{ location }}
+    {% if linkedin %} &nbsp;·&nbsp; {{ linkedin }}{% endif %}
+    {% if github %} &nbsp;·&nbsp; {{ github }}{% endif %}
+  </div>
+</div>
+
+{% if summary %}
+<div class="section">
+  <div class="section-title">Profil</div>
+  <p>{{ summary }}</p>
+</div>
+{% endif %}
+
+<div class="section">
+  <div class="section-title">Expérience</div>
+  {% for job in experience %}
+  <div class="job">
+    <div class="job-header">
+      <h3>{{ job.title }}</h3>
+      <span class="job-date">{{ job.period }}</span>
+    </div>
+    <div class="job-company">{{ job.company }} &nbsp;·&nbsp; {{ job.type }}</div>
+    <ul>
+      {% for bullet in job.bullets %}
+      <li>{{ bullet }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="section">
+  <div class="section-title">Compétences</div>
+  <div class="skills-grid">
+    {% for skill in skills %}
+    <span class="skill-tag {% if skill in highlighted_skills %}highlight{% endif %}">{{ skill }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Formation</div>
+  {% for edu in education %}
+  <div class="job">
+    <div class="job-header">
+      <h3>{{ edu.degree }}</h3>
+      <span class="job-date">{{ edu.period }}</span>
+    </div>
+    <div class="job-company">{{ edu.school }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if languages %}
+<div class="section">
+  <div class="section-title">Langues</div>
+  {% for lang in languages %}
+  <span>{{ lang }}</span>{% if not loop.last %} &nbsp;·&nbsp; {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+</body>
+</html>

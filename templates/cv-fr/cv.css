@@ -1,0 +1,49 @@
+/* Print-optimized, ATS-friendly — no tables, no floats, 1 page A4 */
+@page {
+  size: A4;
+  margin: 12mm 14mm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Arial', sans-serif;
+  font-size: 10pt;
+  color: #222;
+  line-height: 1.4;
+}
+
+h1 { font-size: 18pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+h2 { font-size: 9pt; font-weight: 400; letter-spacing: 3px; text-transform: uppercase;
+     color: #555; margin-bottom: 6px; }
+h3 { font-size: 10pt; font-weight: 700; margin-top: 8px; }
+
+.header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 10px; }
+.header .title { font-size: 11pt; letter-spacing: 4px; text-transform: uppercase; color: #444; }
+.contact { font-size: 9pt; color: #555; margin-top: 4px; }
+
+.section { margin-bottom: 10px; }
+.section-title {
+  font-size: 9pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  border-bottom: 1px solid #bbb; padding-bottom: 2px; margin-bottom: 6px;
+}
+
+.job { margin-bottom: 6px; }
+.job-header { display: flex; justify-content: space-between; align-items: baseline; }
+.job-company { font-size: 9pt; color: #555; }
+.job-date { font-size: 9pt; color: #777; }
+
+ul { padding-left: 14px; }
+li { margin-bottom: 2px; font-size: 9.5pt; }
+
+.skills-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.skill-tag {
+  background: #f0f0f0; border-radius: 3px;
+  padding: 1px 6px; font-size: 8.5pt; color: #333;
+}
+
+.highlight { color: #1a1aff; font-weight: 600; }
+
+@media print {
+  body { -webkit-print-color-adjust: exact; }
+}

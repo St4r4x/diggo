@@ -152,10 +152,33 @@ async def _card_datetime(card, sel: str) -> str:
         return ""
 
 
-async def scrape_portal(portal_id: str, keywords: str, location: str) -> list[RawOffer]:
+def portal_is_active(config: dict) -> bool:
+    return config.get("status", "active") == "active"
+
+
+def _effective_max_pages(config: dict, max_pages_override: Optional[int] = None) -> int:
+    if max_pages_override is not None:
+        return max_pages_override
+    return config["pagination"].get("max_pages", 3)
+
+
+async def scrape_portal(
+    portal_id: str,
+    keywords: str,
+    location: str,
+    *,
+    max_pages_override: Optional[int] = None,
+) -> list[RawOffer]:
     from playwright.async_api import async_playwright
 
     config = load_portal_config(portal_id)
+
+    if not portal_is_active(config):
+        logger.warning(
+            "[%s] Skipped — status: %s", portal_id, config.get("status", "active")
+        )
+        return []
+
     selectors = config["selectors"]
     pagination = config["pagination"]
     base_url = config["base_url"]
@@ -176,7 +199,7 @@ async def scrape_portal(portal_id: str, keywords: str, location: str) -> list[Ra
                 config["search_url_template"], keywords=keywords, location=location
             )
             current_page = 0
-            max_pages = pagination.get("max_pages", 3)
+            max_pages = _effective_max_pages(config, max_pages_override)
 
             while current_page < max_pages:
                 # next_button portals: after page 0, navigation is done by clicking — skip goto
@@ -261,9 +284,16 @@ async def scrape_portal(portal_id: str, keywords: str, location: str) -> list[Ra
 
 
 async def run_scan(
-    portal_ids: list[str], keywords: str, location: str
+    portal_ids: list[str],
+    keywords: str,
+    location: str,
+    *,
+    max_pages_override: Optional[int] = None,
 ) -> list[RawOffer]:
-    tasks = [scrape_portal(pid, keywords, location) for pid in portal_ids]
+    tasks = [
+        scrape_portal(pid, keywords, location, max_pages_override=max_pages_override)
+        for pid in portal_ids
+    ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     all_offers: list[RawOffer] = []
     for pid, result in zip(portal_ids, results):
@@ -284,11 +314,23 @@ def main() -> None:
     group.add_argument("--all", action="store_true", help="Scrape all portals")
     parser.add_argument("--keywords", default="AI Engineer")
     parser.add_argument("--location", default="Paris")
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Override max pages per portal (useful for smoke-testing)",
+    )
     args = parser.parse_args()
 
     portal_ids = list_portal_ids() if args.all else [args.portal]
     offers = asyncio.run(
-        run_scan(portal_ids, keywords=args.keywords, location=args.location)
+        run_scan(
+            portal_ids,
+            keywords=args.keywords,
+            location=args.location,
+            max_pages_override=args.max_pages,
+        )
     )
     for offer in offers:
         print(f"[{offer.portal}] {offer.title} @ {offer.company} — {offer.url}")

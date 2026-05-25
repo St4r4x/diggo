@@ -142,3 +142,67 @@ class TestOfferDetail:
         row = db.get_all({})[0]
         r = client_with_data.get(f"/offers/{row['id']}")
         assert row["score_grade"] in r.text
+
+
+class TestOfferEdit:
+    def test_edit_returns_form(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}/edit")
+        assert r.status_code == 200
+        assert "form" in r.text.lower() or "input" in r.text.lower()
+
+    def test_save_updates_notes(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.post(
+            f"/offers/{row['id']}",
+            data={
+                "company": row["company"],
+                "role": row["role"],
+                "detection_date": row["detection_date"],
+                "score_grade": row["score_grade"],
+                "score_value": str(row["score_value"]),
+                "status": row["status"],
+                "notes": "Test note",
+                "offer_url": row["offer_url"] or "",
+                "send_date": "",
+                "follow_up_date": "",
+                "contacts": "",
+                "cv_path": "",
+                "cover_letter_path": "",
+            },
+        )
+        assert r.status_code == 200
+        updated = db.get_by_id(row["id"])
+        assert updated["notes"] == "Test note"
+
+
+class TestOfferDelete:
+    def test_delete_removes_row(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        rid = row["id"]
+        r = client_with_data.delete(f"/offers/{rid}")
+        assert r.status_code == 200
+        assert db.get_by_id(rid) is None
+
+
+class TestOfferStatus:
+    def test_status_change_returns_updated_detail(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.post(
+            f"/offers/{row['id']}/status", data={"status": "Envoyée"}
+        )
+        assert r.status_code == 200
+        updated = db.get_by_id(row["id"])
+        assert updated["status"] == "Envoyée"

@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -84,12 +84,98 @@ async def offer_list(
     )
 
 
+@app.get("/offers/{offer_id}/edit", response_class=HTMLResponse)
+async def offer_edit_form(request: Request, offer_id: int):
+    db = request.app.state.db
+    offer = db.get_by_id(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_form.html",
+        {
+            "offer": offer,
+            "statuses": VALID_STATUSES,
+        },
+    )
+
+
 @app.get("/offers/{offer_id}", response_class=HTMLResponse)
 async def offer_detail(request: Request, offer_id: int):
     db = request.app.state.db
     offer = db.get_by_id(offer_id)
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_detail.html",
+        {
+            "offer": offer,
+            "statuses": VALID_STATUSES,
+        },
+    )
+
+
+@app.post("/offers/{offer_id}", response_class=HTMLResponse)
+async def offer_save(
+    request: Request,
+    offer_id: int,
+    company: str = Form(""),
+    role: str = Form(""),
+    offer_url: str = Form(""),
+    detection_date: str = Form(""),
+    score_grade: str = Form(""),
+    score_value: str = Form("0"),
+    status: str = Form("À envoyer"),
+    send_date: str = Form(""),
+    follow_up_date: str = Form(""),
+    contacts: str = Form(""),
+    notes: str = Form(""),
+    cv_path: str = Form(""),
+    cover_letter_path: str = Form(""),
+):
+    db = request.app.state.db
+    fields = {
+        "company": company,
+        "role": role,
+        "offer_url": offer_url,
+        "detection_date": detection_date,
+        "score_grade": score_grade,
+        "score_value": float(score_value) if score_value else 0.0,
+        "status": status,
+        "send_date": send_date or None,
+        "follow_up_date": follow_up_date or None,
+        "contacts": contacts,
+        "notes": notes,
+        "cv_path": cv_path,
+        "cover_letter_path": cover_letter_path,
+    }
+    offer = db.update(offer_id, fields)
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_detail.html",
+        {
+            "offer": offer,
+            "statuses": VALID_STATUSES,
+        },
+    )
+
+
+@app.delete("/offers/{offer_id}", response_class=HTMLResponse)
+async def offer_delete(request: Request, offer_id: int):
+    db = request.app.state.db
+    db.delete(offer_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_empty.html",
+        {},
+    )
+
+
+@app.post("/offers/{offer_id}/status", response_class=HTMLResponse)
+async def offer_status(request: Request, offer_id: int, status: str = Form(...)):
+    db = request.app.state.db
+    offer = db.update_status(offer_id, status)
     return templates.TemplateResponse(
         request,
         "partials/offer_detail.html",

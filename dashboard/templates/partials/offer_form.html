@@ -1,0 +1,60 @@
+<!-- dashboard/templates/partials/offer_form.html -->
+<form hx-post="/offers/{{ offer.id }}"
+      hx-target="#offer-detail"
+      hx-swap="innerHTML"
+      class="max-w-2xl flex flex-col gap-3">
+
+  <h2 class="text-lg font-bold text-white mb-2">Modifier — {{ offer.company }}</h2>
+
+  {% set fields = [
+    ("company", "Entreprise", offer.company, "text"),
+    ("role", "Rôle", offer.role, "text"),
+    ("offer_url", "URL offre", offer.offer_url, "text"),
+    ("detection_date", "Date détection (YYYY-MM-DD)", offer.detection_date, "text"),
+    ("score_grade", "Grade (A/B/C/D/F)", offer.score_grade, "text"),
+    ("score_value", "Score (0.0–5.0)", offer.score_value, "text"),
+    ("send_date", "Date envoi (YYYY-MM-DD)", offer.send_date or "", "text"),
+    ("follow_up_date", "Date relance (YYYY-MM-DD)", offer.follow_up_date or "", "text"),
+    ("contacts", "Contacts", offer.contacts, "text"),
+    ("cv_path", "Chemin CV", offer.cv_path, "text"),
+    ("cover_letter_path", "Chemin LM", offer.cover_letter_path, "text"),
+  ] %}
+
+  {% for name, label, value, type in fields %}
+  <div>
+    <label class="text-slate-400 text-xs block mb-1">{{ label }}</label>
+    <input type="{{ type }}" name="{{ name }}" value="{{ value }}"
+      class="w-full bg-slate-800 text-slate-200 text-sm rounded px-3 py-2 border border-slate-600 focus:outline-none focus:border-violet-500">
+  </div>
+  {% endfor %}
+
+  <div>
+    <label class="text-slate-400 text-xs block mb-1">Statut</label>
+    <select name="status"
+      class="w-full bg-slate-800 text-slate-200 text-sm rounded px-3 py-2 border border-slate-600 focus:outline-none focus:border-violet-500">
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if s == offer.status %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label class="text-slate-400 text-xs block mb-1">Notes</label>
+    <textarea name="notes" rows="4"
+      class="w-full bg-slate-800 text-slate-200 text-sm rounded px-3 py-2 border border-slate-600 focus:outline-none focus:border-violet-500">{{ offer.notes }}</textarea>
+  </div>
+
+  <div class="flex gap-3 mt-2">
+    <button type="submit"
+      class="text-sm px-4 py-2 rounded bg-violet-700 hover:bg-violet-600 text-white font-medium">
+      Sauvegarder
+    </button>
+    <button type="button"
+      class="text-sm px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white"
+      hx-get="/offers/{{ offer.id }}"
+      hx-target="#offer-detail"
+      hx-swap="innerHTML">
+      Annuler
+    </button>
+  </div>
+</form>

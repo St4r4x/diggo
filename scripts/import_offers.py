@@ -112,13 +112,13 @@ async def _run_pipeline(settings: dict) -> list[RawOffer]:
     keyword_list: list[str] = settings.get("search", {}).get(
         "keywords", ["AI Engineer"]
     )
-    keywords = " ".join(keyword_list) if keyword_list else "AI Engineer"
+    portal_keywords = keyword_list[0] if keyword_list else "AI Engineer"
     location: str = settings.get("search", {}).get("location", "Paris")
     portal_ids = list_portal_ids()
     logger.info(
-        "Scanning %d portals for '%s' in %s", len(portal_ids), keywords, location
+        "Scanning %d portals for '%s' in %s", len(portal_ids), portal_keywords, location
     )
-    portal_raw = await run_scan(portal_ids, keywords=keywords, location=location)
+    portal_raw = await run_scan(portal_ids, keywords=portal_keywords, location=location)
     logger.info("Scraped %d raw offers from portals", len(portal_raw))
     ats_raw = await scan_ats(keywords=keyword_list)
     logger.info("Scraped %d raw offers from ATS", len(ats_raw))

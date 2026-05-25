@@ -19,6 +19,7 @@ class RawOffer:
     date_posted: Optional[date] = None
     score: float = 0.0
     tags: list[str] = field(default_factory=list)
+    description: str = ""
 
     def dedup_key(self) -> str:
         title_norm = self.title.lower().strip()

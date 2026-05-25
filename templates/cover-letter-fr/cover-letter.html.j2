@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="cover-letter.css">
+</head>
+<body>
+
+<div class="sender">
+  <div class="sender-name">{{ name }}</div>
+  <div class="sender-info">{{ email }} &nbsp;·&nbsp; {{ phone }} &nbsp;·&nbsp; {{ location }}</div>
+</div>
+
+<div class="meta">
+  <div class="date">{{ date_str }}</div>
+  <div class="recipient-block">
+    <div class="company">{{ company }}</div>
+    {% if role %}<div class="role">{{ role }}</div>{% endif %}
+  </div>
+</div>
+
+<div class="subject">
+  Objet&nbsp;: Candidature — {{ role }}{% if company %} chez {{ company }}{% endif %}
+</div>
+
+<div class="salutation">{{ recipient }}</div>
+
+{% for para in paragraphs %}
+<p>{{ para }}</p>
+{% endfor %}
+
+<div class="closing">
+  <p>Dans l'attente de votre retour, je reste disponible pour un entretien.</p>
+  <p class="signature">{{ name }}</p>
+</div>
+
+</body>
+</html>

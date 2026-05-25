@@ -117,8 +117,11 @@ async def _run_pipeline(settings: dict) -> list[RawOffer]:
     logger.info(
         "Scanning %d portals for '%s' in %s", len(portal_ids), keywords, location
     )
-    raw = await run_scan(portal_ids, keywords=keywords, location=location)
-    logger.info("Scraped %d raw offers", len(raw))
+    portal_raw = await run_scan(portal_ids, keywords=keywords, location=location)
+    logger.info("Scraped %d raw offers from portals", len(portal_raw))
+    ats_raw = await scan_ats(keywords=keyword_list)
+    logger.info("Scraped %d raw offers from ATS", len(ats_raw))
+    raw = portal_raw + ats_raw
     deduped = deduplicate(raw)
     logger.info("After dedup: %d offers", len(deduped))
     filtered = pre_filter(deduped, settings)

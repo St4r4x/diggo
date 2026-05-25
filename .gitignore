@@ -11,7 +11,7 @@ build/
 .venv/
 venv/
 dashboard/dashboard
-docs/
+# docs/ is tracked (plans, specs)
 .pytest_cache/
 .coverage
 htmlcov/

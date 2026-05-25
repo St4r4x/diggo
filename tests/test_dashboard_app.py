@@ -181,6 +181,27 @@ class TestOfferEdit:
         updated = db.get_by_id(row["id"])
         assert updated["notes"] == "Test note"
 
+    def test_save_returns_404_for_missing(self, client):
+        r = client.post(
+            "/offers/999",
+            data={
+                "company": "X",
+                "role": "Y",
+                "detection_date": "2026-01-01",
+                "score_grade": "A",
+                "score_value": "4.0",
+                "status": "À envoyer",
+                "notes": "",
+                "offer_url": "",
+                "send_date": "",
+                "follow_up_date": "",
+                "contacts": "",
+                "cv_path": "",
+                "cover_letter_path": "",
+            },
+        )
+        assert r.status_code == 404
+
 
 class TestOfferDelete:
     def test_delete_removes_row(self, client_with_data):

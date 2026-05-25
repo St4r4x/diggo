@@ -135,13 +135,19 @@ async def offer_save(
     cover_letter_path: str = Form(""),
 ):
     db = request.app.state.db
+    if db.get_by_id(offer_id) is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    try:
+        sv = float(score_value)
+    except (ValueError, TypeError):
+        sv = 0.0
     fields = {
         "company": company,
         "role": role,
         "offer_url": offer_url,
         "detection_date": detection_date,
         "score_grade": score_grade,
-        "score_value": float(score_value) if score_value else 0.0,
+        "score_value": sv,
         "status": status,
         "send_date": send_date or None,
         "follow_up_date": follow_up_date or None,

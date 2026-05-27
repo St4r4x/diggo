@@ -1,0 +1,23 @@
+services:
+  dashboard:
+    build: .
+    command: ["dashboard"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./dashboard/data:/app/dashboard/data
+      - ./reports:/app/reports
+      - ./output:/app/output
+      - ./config:/app/config:ro
+    restart: unless-stopped
+
+  pipeline:
+    build: .
+    command: ["pipeline"]
+    volumes:
+      - ./dashboard/data:/app/dashboard/data
+      - ./reports:/app/reports
+      - ./output:/app/output
+      - ./config:/app/config:ro
+    profiles:
+      - manual

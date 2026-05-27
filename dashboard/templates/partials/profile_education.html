@@ -1,1 +1,60 @@
-<p class="text-slate-500 text-sm">Formation — à implémenter</p>
+{% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
+{% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
+<p class="pf-label mb-2" style="font-size:0.8rem; color:#94a3b8;">Diplômes</p>
+<div id="edu-cards">
+  {% for edu in profile.education %}
+  <div class="pf-card edu-card mb-2">
+    <div class="grid grid-cols-2 gap-2 mb-1">
+      <div style="grid-column:span 2"><label class="pf-label">Diplôme</label>
+        <input class="pf-input" name="degree" value="{{ edu.degree }}"></div>
+      <div><label class="pf-label">École</label>
+        <input class="pf-input" name="school" value="{{ edu.school }}"></div>
+      <div><label class="pf-label">Période</label>
+        <input class="pf-input" name="period" value="{{ edu.period }}"></div>
+    </div>
+    <button type="button" class="pf-del-btn"
+      onclick="this.closest('.edu-card').remove()">✕ Supprimer</button>
+  </div>
+  {% endfor %}
+</div>
+<button type="button" class="pf-add-btn mb-3" onclick="addEduCard()">+ Ajouter un diplôme</button>
+
+<p class="pf-label mb-1" style="font-size:0.8rem; color:#94a3b8;">Certifications (une par ligne)</p>
+<textarea id="cert-items" class="pf-input mb-2" rows="5"
+  style="resize:vertical">{{ profile.certifications | join('\n') }}</textarea>
+
+<div class="flex justify-end mt-1">
+  <button type="button" class="pf-save-btn"
+    hx-post="/profile/education"
+    hx-target="#section-education"
+    hx-swap="innerHTML"
+    hx-vals="js:{data: collectEducation()}">Sauvegarder</button>
+</div>
+<script>
+function collectEducation() {
+  const cards = document.querySelectorAll('#edu-cards .edu-card');
+  const education = Array.from(cards).map(c => ({
+    degree: c.querySelector('[name=degree]').value.trim(),
+    school: c.querySelector('[name=school]').value.trim(),
+    period: c.querySelector('[name=period]').value.trim(),
+  }));
+  const certifications = document.getElementById('cert-items').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  return JSON.stringify({education, certifications});
+}
+function addEduCard() {
+  const tpl = `<div class="pf-card edu-card mb-2">
+    <div class="grid grid-cols-2 gap-2 mb-1">
+      <div style="grid-column:span 2"><label class="pf-label">Diplôme</label>
+        <input class="pf-input" name="degree" value=""></div>
+      <div><label class="pf-label">École</label>
+        <input class="pf-input" name="school" value=""></div>
+      <div><label class="pf-label">Période</label>
+        <input class="pf-input" name="period" value=""></div>
+    </div>
+    <button type="button" class="pf-del-btn"
+      onclick="this.closest('.edu-card').remove()">✕ Supprimer</button>
+  </div>`;
+  document.getElementById('edu-cards').insertAdjacentHTML('beforeend', tpl);
+}
+</script>

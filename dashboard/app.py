@@ -313,3 +313,49 @@ async def profile_save_skills(request: Request, data: str = Form("")):
         "partials/profile_skills.html",
         {"profile": profile_data, "saved": True},
     )
+
+
+@app.post("/profile/education", response_class=HTMLResponse)
+async def profile_save_education(request: Request, data: str = Form("")):
+    import json
+    import profile_parser
+
+    profile_data = profile_parser.load_profile()
+    try:
+        parsed = json.loads(data)
+        profile_data["education"] = parsed.get("education", [])
+        profile_data["certifications"] = parsed.get("certifications", [])
+    except (json.JSONDecodeError, ValueError):
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_education.html",
+            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
+        )
+    profile_parser.save_profile(profile_data)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_education.html",
+        {"profile": profile_data, "saved": True},
+    )
+
+
+@app.post("/profile/projects", response_class=HTMLResponse)
+async def profile_save_projects(request: Request, data: str = Form("")):
+    import json
+    import profile_parser
+
+    profile_data = profile_parser.load_profile()
+    try:
+        profile_data["projects"] = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_projects.html",
+            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
+        )
+    profile_parser.save_profile(profile_data)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_projects.html",
+        {"profile": profile_data, "saved": True},
+    )

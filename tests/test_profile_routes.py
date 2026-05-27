@@ -236,3 +236,72 @@ class TestSaveSkills:
         text = profile_file.read_text(encoding="utf-8")
         assert "Deep Learning" in text
         assert "PyTorch" in text
+
+
+class TestSaveEducation:
+    def test_save_education_returns_200(self, profile_client):
+        import json
+
+        payload = json.dumps(
+            {
+                "education": [
+                    {"degree": "MSc", "school": "School", "period": "2022–2024"}
+                ],
+                "certifications": ["AWS ML"],
+            }
+        )
+        r = profile_client.post("/profile/education", data={"data": payload})
+        assert r.status_code == 200
+
+    def test_save_education_response_contains_flash(self, profile_client):
+        import json
+
+        r = profile_client.post(
+            "/profile/education",
+            data={"data": json.dumps({"education": [], "certifications": []})},
+        )
+        assert "Sauvegardé" in r.text
+
+    def test_save_education_persists(self, profile_client, profile_files):
+        import json
+
+        _, profile_file = profile_files
+        payload = json.dumps(
+            {
+                "education": [
+                    {"degree": "PhD AI", "school": "ENS", "period": "2025–2028"}
+                ],
+                "certifications": ["GCP ML Engineer"],
+            }
+        )
+        profile_client.post("/profile/education", data={"data": payload})
+        text = profile_file.read_text(encoding="utf-8")
+        assert "PhD AI" in text
+        assert "GCP ML Engineer" in text
+
+
+class TestSaveProjects:
+    def test_save_projects_returns_200(self, profile_client):
+        import json
+
+        payload = json.dumps([{"name": "my-proj", "description": "A project"}])
+        r = profile_client.post("/profile/projects", data={"data": payload})
+        assert r.status_code == 200
+
+    def test_save_projects_response_contains_flash(self, profile_client):
+        import json
+
+        r = profile_client.post("/profile/projects", data={"data": json.dumps([])})
+        assert "Sauvegardé" in r.text
+
+    def test_save_projects_persists(self, profile_client, profile_files):
+        import json
+
+        _, profile_file = profile_files
+        payload = json.dumps(
+            [{"name": "awesome-tool", "description": "Does great things"}]
+        )
+        profile_client.post("/profile/projects", data={"data": payload})
+        text = profile_file.read_text(encoding="utf-8")
+        assert "awesome-tool" in text
+        assert "Does great things" in text

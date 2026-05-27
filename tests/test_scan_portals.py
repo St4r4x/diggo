@@ -203,6 +203,7 @@ class TestFetchDescriptionUnit:
         mock_page.goto.assert_awaited_once_with(
             "https://example.com/offer/1", wait_until="networkidle", timeout=20_000
         )
+        mock_page.close.assert_awaited_once()
 
     def test_returns_empty_string_when_selector_not_found(self) -> None:
         import asyncio
@@ -221,6 +222,7 @@ class TestFetchDescriptionUnit:
             _fetch_description(mock_context, "https://example.com/offer/2", "div.desc")
         )
         assert result == ""
+        mock_page.close.assert_awaited_once()
 
     def test_returns_empty_string_on_navigation_error(self) -> None:
         import asyncio
@@ -238,3 +240,4 @@ class TestFetchDescriptionUnit:
             _fetch_description(mock_context, "https://example.com/offer/3", "div.desc")
         )
         assert result == ""
+        mock_page.close.assert_awaited_once()

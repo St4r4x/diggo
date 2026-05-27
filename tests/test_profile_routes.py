@@ -53,16 +53,22 @@ SAMPLE_PROFILE_MD = textwrap.dedent("""\
 
 
 @pytest.fixture
-def profile_client(tmp_path, monkeypatch):
+def profile_files(tmp_path):
+    contact_file = tmp_path / "contact.yaml"
+    profile_file = tmp_path / "profile.md"
+    contact_file.write_text(SAMPLE_CONTACT_YAML, encoding="utf-8")
+    profile_file.write_text(SAMPLE_PROFILE_MD, encoding="utf-8")
+    return contact_file, profile_file
+
+
+@pytest.fixture
+def profile_client(profile_files, monkeypatch):
     import profile_parser as parser_mod
     import sqlite3
     import app as dashboard_app
     from db import DB
 
-    contact_file = tmp_path / "contact.yaml"
-    profile_file = tmp_path / "profile.md"
-    contact_file.write_text(SAMPLE_CONTACT_YAML, encoding="utf-8")
-    profile_file.write_text(SAMPLE_PROFILE_MD, encoding="utf-8")
+    contact_file, profile_file = profile_files
     monkeypatch.setattr(parser_mod, "_CONTACT_YAML", contact_file)
     monkeypatch.setattr(parser_mod, "_PROFILE_MD", profile_file)
 
@@ -113,61 +119,8 @@ class TestSaveContact:
         )
         assert r.status_code == 200
 
-    def test_save_contact_persists_to_yaml(self, profile_client, tmp_path, monkeypatch):
-        import profile_parser as parser_mod
-
-        contact_file = tmp_path / "contact.yaml"
-        profile_file = tmp_path / "profile.md"
-        contact_file.write_text(
-            """\
-name: Test User
-title: AI Engineer
-email: test@example.com
-phone: "+33 6 00 00 00 00"
-location: Paris
-linkedin: ""
-github: github.com/testuser
-""",
-            encoding="utf-8",
-        )
-        profile_file.write_text(
-            """\
-# Profile — Test User
-
-## Contact
-- Email: test@example.com
-- Phone: +33 6 00 00 00 00
-- Location: Paris
-- LinkedIn:
-- GitHub: github.com/testuser
-
-## Summary
-An experienced engineer.
-
-## Experience
-
-### ML Engineer — Acme Corp (CDI, January 2024 – Present)
-- Built a pipeline
-
-## Education
-- **MSc AI** — Great School (2022–2024)
-
-## Certifications & Training
-- AWS ML
-
-## Skills
-
-### Machine Learning
-- PyTorch
-
-## Personal Projects
-
-- **cool-project**: A cool project
-""",
-            encoding="utf-8",
-        )
-        monkeypatch.setattr(parser_mod, "_CONTACT_YAML", contact_file)
-        monkeypatch.setattr(parser_mod, "_PROFILE_MD", profile_file)
+    def test_save_contact_persists_to_yaml(self, profile_client, profile_files):
+        contact_file, _ = profile_files
         profile_client.post(
             "/profile/contact",
             data={

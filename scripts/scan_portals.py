@@ -8,8 +8,11 @@ import logging
 import re
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import parse_qs, quote_plus, urlencode, urljoin, urlparse, urlunparse
+
+if TYPE_CHECKING:
+    from playwright.async_api import BrowserContext
 
 import yaml
 
@@ -157,7 +160,7 @@ async def _card_datetime(card, sel: str) -> str:
         return ""
 
 
-async def _fetch_description(context, url: str, selector: str) -> str:
+async def _fetch_description(context: BrowserContext, url: str, selector: str) -> str:
     """Navigate to a detail page and return inner_text of selector, or '' on failure."""
     page = await context.new_page()
     try:

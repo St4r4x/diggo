@@ -175,3 +175,66 @@ class TestEffectiveMaxPages:
 
         config = {"pagination": {"max_pages": 5}}
         assert _effective_max_pages(config, max_pages_override=0) == 0
+
+
+class TestFetchDescriptionUnit:
+    """Unit tests for _fetch_description using a mock Playwright page."""
+
+    def test_returns_inner_text_when_selector_found(self) -> None:
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from scripts.scan_portals import _fetch_description
+
+        mock_el = AsyncMock()
+        mock_el.inner_text = AsyncMock(return_value="  job description text  ")
+
+        mock_page = AsyncMock()
+        mock_page.goto = AsyncMock()
+        mock_page.query_selector = AsyncMock(return_value=mock_el)
+
+        mock_context = MagicMock()
+        mock_context.new_page = AsyncMock(return_value=mock_page)
+
+        result = asyncio.run(
+            _fetch_description(mock_context, "https://example.com/offer/1", "div.desc")
+        )
+        assert result == "job description text"
+        mock_page.goto.assert_awaited_once_with(
+            "https://example.com/offer/1", wait_until="networkidle", timeout=20_000
+        )
+
+    def test_returns_empty_string_when_selector_not_found(self) -> None:
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from scripts.scan_portals import _fetch_description
+
+        mock_page = AsyncMock()
+        mock_page.goto = AsyncMock()
+        mock_page.query_selector = AsyncMock(return_value=None)
+
+        mock_context = MagicMock()
+        mock_context.new_page = AsyncMock(return_value=mock_page)
+
+        result = asyncio.run(
+            _fetch_description(mock_context, "https://example.com/offer/2", "div.desc")
+        )
+        assert result == ""
+
+    def test_returns_empty_string_on_navigation_error(self) -> None:
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from scripts.scan_portals import _fetch_description
+
+        mock_page = AsyncMock()
+        mock_page.goto = AsyncMock(side_effect=Exception("timeout"))
+
+        mock_context = MagicMock()
+        mock_context.new_page = AsyncMock(return_value=mock_page)
+
+        result = asyncio.run(
+            _fetch_description(mock_context, "https://example.com/offer/3", "div.desc")
+        )
+        assert result == ""

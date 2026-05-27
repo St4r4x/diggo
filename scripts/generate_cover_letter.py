@@ -8,11 +8,20 @@ import json
 from datetime import date
 from pathlib import Path
 
+import yaml
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "cover-letter-fr"
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
+_CONTACT_FILE = Path(__file__).parent.parent / "config" / "contact.yaml"
+
+
+def _load_contact() -> dict:
+    if _CONTACT_FILE.exists():
+        with _CONTACT_FILE.open(encoding="utf-8") as fh:
+            return yaml.safe_load(fh) or {}
+    return {}
 
 
 def build_cover_letter_context(
@@ -62,12 +71,13 @@ def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
 
 
 def default_context(company: str = "Mistral AI", role: str = "AI Engineer") -> dict:
+    c = _load_contact()
     return build_cover_letter_context(
-        name="Your Name",
-        title="AI/ML Engineer",
-        email="you@example.com",
-        phone="+33 6 00 00 00 00",
-        location="Paris (disponible fin 2026)",
+        name=c.get("name", "Your Name"),
+        title=c.get("title", "AI/ML Engineer"),
+        email=c.get("email", "you@example.com"),
+        phone=c.get("phone", ""),
+        location=c.get("location", ""),
         date_str=str(date.today()),
         company=company,
         role=role,

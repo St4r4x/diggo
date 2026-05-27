@@ -1,8 +1,9 @@
 output/
 data/
 reports/
-__pycache__/
-*.pyc
+**/__pycache__/
+*/__pycache__/
+**/*.pyc
 *.egg-info/
 dist/
 build/
@@ -16,3 +17,8 @@ venv/
 htmlcov/
 .superpowers/
 graphify-out/
+# personal config — gitignored, see *.example files
+config/profile.md
+config/contact.yaml
+# claude code local settings
+.claude/

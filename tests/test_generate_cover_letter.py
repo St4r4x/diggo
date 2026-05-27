@@ -85,6 +85,6 @@ def test_default_context_contains_required_keys():
     ctx = default_context(company="Acme", role="Dev")
     assert ctx["company"] == "Acme"
     assert ctx["role"] == "Dev"
-    assert ctx["name"] == "Your Name"
-    assert ctx["email"] == "you@example.com"
+    assert "name" in ctx
+    assert "email" in ctx
     assert len(ctx["paragraphs"]) == 3

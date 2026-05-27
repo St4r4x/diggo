@@ -1,0 +1,65 @@
+# Profile — Your Name
+
+## Contact
+- Email: you@example.com
+- Phone: +33 6 00 00 00 00
+- Location: Paris, 75000
+- LinkedIn: linkedin.com/in/yourprofile
+- GitHub: github.com/yourusername
+
+## Summary
+AI/ML Engineer with hands-on production experience in Computer Vision, edge inference, and LLM integration. Currently completing a Master of Science in AI (2026).
+
+## Experience
+
+### AI/ML Engineer — Company Name (Work-study, Month YYYY – Present)
+- Describe your main achievement with concrete metrics
+- Technology / framework used for project A
+- Technology / framework used for project B
+
+### Previous Role — Company Name (Internship, Month YYYY – Month YYYY)
+- Main contribution
+- Tech stack used
+
+## Education
+- **Master of Science in AI** — University Name (2024–2026)
+- **Bachelor / BTS** — School Name (Year)
+
+## Certifications & Training
+- Certification Name — Issuing Organization
+
+## Skills
+
+### Machine Learning & Deep Learning
+- PyTorch — training loops, custom datasets
+- HuggingFace Transformers — fine-tuning, Trainer API
+- Scikit-learn — classical ML, pipelines
+
+### Computer Vision
+- Object detection frameworks
+- Pose estimation
+
+### MLOps & Data Engineering
+- CI/CD — GitHub Actions
+- Docker & Docker Compose
+- MLflow — experiment tracking
+
+### Cloud & Infrastructure
+- AWS: SageMaker, S3, Lambda
+- Docker
+
+### Backend & APIs
+- FastAPI — REST API
+- SQLite
+
+### LLM / Semantic Search
+- Sentence-transformers — semantic search
+- RAG pipelines [personal study — not yet in production]
+
+### Languages
+- French (native)
+- English (professional)
+
+## Personal Projects
+
+- **Project Name**: Short description — tech stack

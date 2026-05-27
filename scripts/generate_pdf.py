@@ -2,13 +2,23 @@
 """Render CV HTML template to PDF using WeasyPrint + Jinja2."""
 
 import argparse
-from pathlib import Path
 from datetime import date
+from pathlib import Path
+
+import yaml
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "cv-fr"
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
+_CONTACT_FILE = Path(__file__).parent.parent / "config" / "contact.yaml"
+
+
+def _load_contact() -> dict:
+    if _CONTACT_FILE.exists():
+        with _CONTACT_FILE.open(encoding="utf-8") as fh:
+            return yaml.safe_load(fh) or {}
+    return {}
 
 
 def build_cv_context(
@@ -64,14 +74,15 @@ def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
 
 
 def default_context() -> dict:
+    c = _load_contact()
     return build_cv_context(
-        name="Your Name",
-        title="AI/ML Engineer",
-        email="you@example.com",
-        phone="+33 6 00 00 00 00",
-        location="Paris (disponible fin 2026)",
-        linkedin="",
-        github="github.com/yourusername",
+        name=c.get("name", "Your Name"),
+        title=c.get("title", "AI/ML Engineer"),
+        email=c.get("email", "you@example.com"),
+        phone=c.get("phone", ""),
+        location=c.get("location", ""),
+        linkedin=c.get("linkedin", ""),
+        github=c.get("github", ""),
         summary=(
             "AI/ML Engineer avec expérience en production : Computer Vision, LLM/RAG, "
             "inférence edge. Alternance chez NeuralVision (2023–2026). "

@@ -1,0 +1,10 @@
+# Copy this file to config/contact.yaml and fill in your details.
+# config/contact.yaml is gitignored — never commit personal data.
+
+name: "Firstname Lastname"
+title: "AI/ML Engineer"
+email: "you@example.com"
+phone: "+33 6 00 00 00 00"
+location: "Paris (disponible fin 2026)"
+linkedin: "linkedin.com/in/yourprofile"
+github: "github.com/yourusername"

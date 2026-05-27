@@ -1,5 +1,5 @@
 portal_id: indeed
-status: active
+status: needs_auth
 name: "Indeed France"
 base_url: "https://fr.indeed.com"
 search_url_template: "https://fr.indeed.com/jobs?q={keywords}&l={location}"

@@ -127,6 +127,19 @@ class DB:
         }
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply any pending schema migrations idempotently."""
+    existing = {
+        row[1] for row in conn.execute("PRAGMA table_info(applications)").fetchall()
+    }
+    if "description" not in existing:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN description TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+
+
 def open_db(path: Path) -> DB:
     conn = sqlite3.connect(str(path), check_same_thread=False)
+    _migrate(conn)
     return DB(conn)

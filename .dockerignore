@@ -1,0 +1,16 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+graphify-out/
+.superpowers/
+.git/
+dashboard/data/
+output/
+reports/
+data/

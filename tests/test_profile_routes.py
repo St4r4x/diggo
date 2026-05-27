@@ -166,3 +166,28 @@ class TestSaveSummary:
             "/profile/summary", data={"summary": "New summary text."}
         )
         assert "Sauvegardé" in r.text
+
+
+class TestSaveExperience:
+    def test_save_experience_returns_200(self, profile_client):
+        import json
+
+        payload = json.dumps(
+            [
+                {
+                    "title": "SWE",
+                    "company": "Acme",
+                    "type": "CDI",
+                    "period": "2024 – Present",
+                    "bullets": ["Built things"],
+                }
+            ]
+        )
+        r = profile_client.post("/profile/experience", data={"data": payload})
+        assert r.status_code == 200
+
+    def test_save_experience_response_contains_flash(self, profile_client):
+        import json
+
+        r = profile_client.post("/profile/experience", data={"data": json.dumps([])})
+        assert "Sauvegardé" in r.text

@@ -267,3 +267,23 @@ async def profile_save_summary(
         "partials/profile_summary.html",
         {"profile": data, "saved": True},
     )
+
+
+@app.post("/profile/experience", response_class=HTMLResponse)
+async def profile_save_experience(
+    request: Request, data: str = Form("")
+) -> HTMLResponse:
+    import json
+    import profile_parser
+
+    profile_data = profile_parser.load_profile()
+    try:
+        profile_data["experience"] = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        profile_data["experience"] = []
+    profile_parser.save_profile(profile_data)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_experience.html",
+        {"profile": profile_data, "saved": True},
+    )

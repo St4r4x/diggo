@@ -13,6 +13,7 @@ selectors:
   url: "a[href*='detail-offre']"
   location: "li:has(img[alt='localisation'])"
   date: "li[title='Date de publication']"
+  description: "apec-poste-informations"
 pagination:
   type: page_param
   max_pages: 5

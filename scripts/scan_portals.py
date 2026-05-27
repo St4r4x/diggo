@@ -307,6 +307,25 @@ async def scrape_portal(
                     current_page += 1
                 else:
                     break
+
+            desc_selector: str = selectors.get("description", "")
+            if desc_selector and offers:
+                sem = asyncio.Semaphore(5)
+
+                async def _enrich(offer: RawOffer) -> None:
+                    if not offer.url:
+                        return
+                    async with sem:
+                        offer.description = await _fetch_description(
+                            context, offer.url, desc_selector
+                        )
+
+                await asyncio.gather(*[_enrich(o) for o in offers])
+                logger.info(
+                    "[%s] Fetched descriptions for %d offers",
+                    portal_id,
+                    sum(1 for o in offers if o.description),
+                )
         finally:
             await browser.close()
 

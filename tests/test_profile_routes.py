@@ -211,3 +211,28 @@ class TestSaveExperience:
         text = profile_file.read_text(encoding="utf-8")
         assert "SWE" in text
         assert "Acme" in text
+
+
+class TestSaveSkills:
+    def test_save_skills_returns_200(self, profile_client):
+        import json
+
+        payload = json.dumps({"Machine Learning": ["PyTorch", "Scikit-learn"]})
+        r = profile_client.post("/profile/skills", data={"data": payload})
+        assert r.status_code == 200
+
+    def test_save_skills_response_contains_flash(self, profile_client):
+        import json
+
+        r = profile_client.post("/profile/skills", data={"data": json.dumps({})})
+        assert "Sauvegardé" in r.text
+
+    def test_save_skills_persists(self, profile_client, profile_files):
+        import json
+
+        _, profile_file = profile_files
+        payload = json.dumps({"Deep Learning": ["PyTorch", "TensorFlow"]})
+        profile_client.post("/profile/skills", data={"data": payload})
+        text = profile_file.read_text(encoding="utf-8")
+        assert "Deep Learning" in text
+        assert "PyTorch" in text

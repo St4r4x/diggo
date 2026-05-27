@@ -201,7 +201,7 @@ class TestFetchDescriptionUnit:
         )
         assert result == "job description text"
         mock_page.goto.assert_awaited_once_with(
-            "https://example.com/offer/1", wait_until="networkidle", timeout=20_000
+            "https://example.com/offer/1", wait_until="domcontentloaded", timeout=20_000
         )
         mock_page.close.assert_awaited_once()
 

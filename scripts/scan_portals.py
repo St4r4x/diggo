@@ -162,9 +162,13 @@ async def _card_datetime(card, sel: str) -> str:
 
 async def _fetch_description(context: BrowserContext, url: str, selector: str) -> str:
     """Navigate to a detail page and return inner_text of selector, or '' on failure."""
-    page = await context.new_page()
     try:
-        await page.goto(url, wait_until="networkidle", timeout=20_000)
+        page = await context.new_page()
+    except Exception:
+        return ""
+    try:
+        await page.goto(url, wait_until="domcontentloaded", timeout=20_000)
+        await page.wait_for_selector(selector, timeout=10_000)
         el = await page.query_selector(selector)
         if el is None:
             return ""

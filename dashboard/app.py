@@ -213,7 +213,7 @@ async def profile_page(request: Request):
     import profile_parser
 
     profile = profile_parser.load_profile()
-    profile_exists = (Path(__file__).parent.parent / "config" / "profile.md").exists()
+    profile_exists = profile_parser._PROFILE_MD.exists()
     return templates.TemplateResponse(
         request,
         "profile.html",

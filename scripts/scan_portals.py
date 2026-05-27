@@ -157,6 +157,21 @@ async def _card_datetime(card, sel: str) -> str:
         return ""
 
 
+async def _fetch_description(context, url: str, selector: str) -> str:
+    """Navigate to a detail page and return inner_text of selector, or '' on failure."""
+    page = await context.new_page()
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=20_000)
+        el = await page.query_selector(selector)
+        if el is None:
+            return ""
+        return (await el.inner_text()).strip()
+    except Exception:
+        return ""
+    finally:
+        await page.close()
+
+
 def portal_is_active(config: dict) -> bool:
     return config.get("status", "active") == "active"
 

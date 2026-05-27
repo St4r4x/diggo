@@ -7,12 +7,19 @@ cd "$SCRIPT_DIR"
 
 DATE=$(date +%Y-%m-%d)
 
+# Use .venv if present (local dev), otherwise system python (container)
+if [ -f ".venv/bin/python" ]; then
+    PYTHON=".venv/bin/python"
+else
+    PYTHON="python"
+fi
+
 echo "=== career-ops-fr daily run — $DATE ==="
 
 echo "[1/2] Generating daily report..."
-.venv/bin/python scripts/daily_report.py
+PYTHONPATH=. $PYTHON scripts/daily_report.py
 
 echo "[2/2] Importing offers into dashboard DB..."
-.venv/bin/python scripts/import_offers.py
+PYTHONPATH=. $PYTHON scripts/import_offers.py
 
 echo "Done — open the dashboard to review new offers."

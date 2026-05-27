@@ -167,6 +167,14 @@ class TestSaveSummary:
         )
         assert "Sauvegardé" in r.text
 
+    def test_save_summary_persists(self, profile_client, profile_files):
+        _, profile_file = profile_files
+        profile_client.post(
+            "/profile/summary", data={"summary": "Brand new summary text."}
+        )
+        text = profile_file.read_text(encoding="utf-8")
+        assert "Brand new summary text." in text
+
 
 class TestSaveExperience:
     def test_save_experience_returns_200(self, profile_client):

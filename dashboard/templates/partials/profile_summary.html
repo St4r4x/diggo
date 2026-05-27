@@ -1,4 +1,5 @@
 {% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
+{% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
 <form hx-post="/profile/summary" hx-target="#section-summary" hx-swap="innerHTML">
   <textarea class="pf-input mb-2" name="summary" rows="4"
     style="resize:vertical">{{ profile.summary }}</textarea>

@@ -1,6 +1,7 @@
 # dashboard/app.py
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+import profile_parser
 from db import VALID_STATUSES, open_db
 
 DB_PATH = Path(__file__).parent / "data" / "applications.db"
@@ -210,7 +212,6 @@ async def stats_page(request: Request):
 
 @app.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request):
-    import profile_parser
 
     profile = profile_parser.load_profile()
     profile_exists = profile_parser._PROFILE_MD.exists()
@@ -232,7 +233,6 @@ async def profile_save_contact(
     linkedin: str = Form(""),
     github: str = Form(""),
 ) -> HTMLResponse:
-    import profile_parser
 
     data = profile_parser.load_profile()
     data["contact"] = {
@@ -244,7 +244,14 @@ async def profile_save_contact(
         "linkedin": linkedin,
         "github": github,
     }
-    profile_parser.save_profile(data)
+    try:
+        profile_parser.save_profile(data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_contact.html",
+            {"profile": data, "saved": False, "error": "Erreur lors de la sauvegarde"},
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_contact.html",
@@ -257,11 +264,17 @@ async def profile_save_summary(
     request: Request,
     summary: str = Form(""),
 ) -> HTMLResponse:
-    import profile_parser
 
     data = profile_parser.load_profile()
     data["summary"] = summary
-    profile_parser.save_profile(data)
+    try:
+        profile_parser.save_profile(data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_summary.html",
+            {"profile": data, "saved": False, "error": "Erreur lors de la sauvegarde"},
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_summary.html",
@@ -273,9 +286,6 @@ async def profile_save_summary(
 async def profile_save_experience(
     request: Request, data: str = Form("")
 ) -> HTMLResponse:
-    import json
-    import profile_parser
-
     profile_data = profile_parser.load_profile()
     try:
         profile_data["experience"] = json.loads(data)
@@ -295,9 +305,6 @@ async def profile_save_experience(
 
 @app.post("/profile/skills", response_class=HTMLResponse)
 async def profile_save_skills(request: Request, data: str = Form("")):
-    import json
-    import profile_parser
-
     profile_data = profile_parser.load_profile()
     try:
         profile_data["skills"] = json.loads(data)
@@ -317,9 +324,6 @@ async def profile_save_skills(request: Request, data: str = Form("")):
 
 @app.post("/profile/education", response_class=HTMLResponse)
 async def profile_save_education(request: Request, data: str = Form("")):
-    import json
-    import profile_parser
-
     profile_data = profile_parser.load_profile()
     try:
         parsed = json.loads(data)
@@ -341,9 +345,6 @@ async def profile_save_education(request: Request, data: str = Form("")):
 
 @app.post("/profile/projects", response_class=HTMLResponse)
 async def profile_save_projects(request: Request, data: str = Form("")):
-    import json
-    import profile_parser
-
     profile_data = profile_parser.load_profile()
     try:
         profile_data["projects"] = json.loads(data)

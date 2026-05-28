@@ -4,19 +4,20 @@ Automated AI/ML job search pipeline for the French market — scraping, scoring,
 
 ## Features
 
-- **Portal scraping** — APEC, LinkedIn, Glassdoor, Indeed, WTTJ with offer description fetching
-- **ATS scraping** — Greenhouse, Lever, Ashby for target companies
+- **Multi-source scraping** — APEC, Indeed, WTTJ, LinkedIn, Glassdoor portals + direct ATS (Greenhouse, Lever, Ashby)
+- **Description fetching** — platform-specific strategies: public REST APIs (Lever, Greenhouse, APEC internal webservice, Ashby JSON-LD); Playwright browser only for Indeed (Cloudflare-protected)
 - **LLM scoring** — offers scored 0–5 and graded A–F against your profile
 - **Daily report** — markdown digest of recommended offers
-- **Dashboard** — FastAPI + HTMX web UI to track applications (status, notes, CV/LM paths)
+- **Dashboard** — FastAPI + HTMX + Tailwind web UI to track applications (Candidatures, Stats, Profil pages)
+- **Profile editor** — `/profile` page to edit `config/profile.md` and `config/contact.yaml` directly from the browser
 - **PDF generation** — tailored CV, cover letter, and interview prep sheet via WeasyPrint + Jinja2
-- **Claude Code skill** — `modes/prepare-candidature.md` drives end-to-end application prep
+- **Claude Code modes** — `modes/prepare-candidature.md` drives end-to-end application prep
 
 ## Quick start
 
 ```bash
 # 1. Clone and create virtualenv
-git clone git@github.com:St4r4x/career-ops-fr.git
+git clone git@github.com-personal:St4r4x/career-ops-fr.git
 cd career-ops-fr
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -48,25 +49,48 @@ docker compose up dashboard
 
 # Full pipeline run (one-shot)
 docker compose --profile manual run --rm pipeline
+
+# Backfill missing descriptions on existing offers
+docker compose exec dashboard python3 scripts/backfill_descriptions.py
 ```
 
-## Claude Code skills
+## Description fetching strategies
+
+The `scripts/backfill_descriptions.py` script recovers missing job descriptions without LLM or agent usage (~98% coverage with pure HTTP):
+
+| Platform | Strategy | Browser needed |
+|----------|----------|---------------|
+| APEC | Internal REST API (`cms/webservices/offre/public`) discovered via network interception | No |
+| Lever | Public REST API (`api.lever.co/v0/postings/{company}/{uuid}`) | No |
+| Greenhouse | Public boards API (`boards-api.greenhouse.io/v1/boards/{company}/jobs/{id}`) | No |
+| Ashby | JSON-LD `JobPosting` block embedded in static HTML | No |
+| Indeed | Playwright with canonical URL (`/voir-emploi?jk=`) | Yes (Cloudflare) |
+
+## Claude Code modes
 
 With [Claude Code](https://claude.ai/code), open this repo and use:
 
 ```
 # Score a new offer (paste description in chat)
-# → open modes/score-offer.md
+/score-offer
 
 # Generate tailored CV + cover letter + prep sheet for an offer in the DB
-# → open modes/prepare-candidature.md --offer-id <id>
+/prepare-candidature
 ```
+
+## Dashboard pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Candidatures — Kanban-style application tracker |
+| `/stats` | Statistics and pipeline overview |
+| `/profile` | Profile editor — edit profile.md and contact.yaml in-browser |
 
 ## Configuration
 
 | File | Purpose |
 |------|---------|
-| `config/profile.md` | Your full professional profile (gitignored) |
+| `config/profile.md` | Full professional profile (gitignored) |
 | `config/contact.yaml` | Name, email, phone, GitHub (gitignored) |
 | `config/settings.yaml` | Search keywords, scoring thresholds, target companies |
 | `config/ats_map.yaml` | Target company ATS URLs (Greenhouse / Lever / Ashby) |
@@ -75,18 +99,37 @@ With [Claude Code](https://claude.ai/code), open this repo and use:
 ## Project structure
 
 ```
-scripts/        pipeline logic (scan, dedup, pre-filter, import, report, PDF gen)
-dashboard/      FastAPI + HTMX application tracker
-templates/      Jinja2 + CSS templates for CV / cover letter / prep sheet
-portals/        portal YAML configs
-config/         profile and settings (profile.md and contact.yaml are gitignored)
-modes/          Claude Code skill prompts
-tests/          pytest suite
+scripts/                  Pipeline logic
+  import_offers.py        Full scan → dedup → score → DB import
+  backfill_descriptions.py Fetch missing descriptions (HTTP-first, Playwright fallback)
+  scan_portals.py         Portal scraping (APEC, Indeed, WTTJ, LinkedIn, Glassdoor)
+  scan_ats.py             ATS scraping (Greenhouse, Lever, Ashby)
+  daily_report.py         Markdown digest generation
+  generate_pdf.py         CV PDF generation (WeasyPrint + Jinja2)
+  generate_cover_letter.py Cover letter PDF generation
+  generate_prep_sheet.py  Interview prep sheet PDF generation
+  pre_filter.py           Keyword-based pre-filtering
+  dedup.py                Accent-insensitive deduplication
+  models.py               Shared data models
+
+dashboard/                FastAPI web application
+  app.py                  Routes: /, /stats, /profile (+ HTMX partials)
+  db.py                   SQLite persistence layer
+  profile_parser.py       Load/save profile.md and contact.yaml
+  templates/              Jinja2 templates (base, pages, partials)
+  data/                   applications.db (gitignored)
+
+templates/                PDF templates (CV, cover letter, prep sheet)
+portals/fr/               Portal scraper YAML configs
+config/                   Profile and settings (profile.md and contact.yaml gitignored)
+modes/                    Claude Code mode prompts
+tests/                    pytest suite (197 tests)
+output/                   Generated PDFs (gitignored)
 ```
 
 ## Requirements
 
 - Python 3.11+
-- Playwright (Chromium)
-- WeasyPrint (system fonts + Cairo required — see [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html))
-- Anthropic API key (for scoring and prepare-candidature skill)
+- Playwright (Chromium) — only required for Indeed scraping
+- WeasyPrint (system fonts + Cairo — see [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html))
+- Anthropic API key (for scoring and prepare-candidature mode)

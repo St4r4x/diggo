@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-05-28
+
+### Added
+- `scripts/rescore.py` — migration script to rescore all 196 existing DB offers using updated `score_offer()` and `score_to_grade()` functions; supports `--dry-run` and `--db PATH` flags; tracks `id, old_grade, old_score → new_grade, new_score` in logs
+- `tests/test_rescore.py` — 8 tests: `TestInferPortal` (4 portal detection tests) and `TestRescore` (4 behavior tests: dry-run safety, grade updates, idempotency, summary dict)
+
 ---
 
 ## 2026-05-28

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import sqlite3
@@ -109,11 +110,10 @@ class LeverApiExtractor:
 
 
 class GreenhouseApiExtractor:
-    """Greenhouse public boards API — champ `content` HTML, no auth."""
+    """Greenhouse public boards API — `content` field is HTML, no auth required."""
 
     needs_browser = False
 
-    # job-boards.greenhouse.io/{company}/jobs/{id}
     _PATH_RE = re.compile(r"greenhouse\.io/([^/]+)/jobs/(\d+)", re.IGNORECASE)
 
     async def extract(self, client: httpx.AsyncClient, url: str) -> str:
@@ -133,49 +133,66 @@ class GreenhouseApiExtractor:
         return _html_to_text(html) if html else ""
 
 
-# ---------------------------------------------------------------------------
-# Browser extractors  (Playwright required)
-# ---------------------------------------------------------------------------
+class ApecApiExtractor:
+    """APEC internal webservice — discovered via network interception, no auth required.
 
+    Combines texteHtml (mission) + texteHtmlProfil (profile) + texteHtmlEntreprise (company).
+    The offer ID includes an optional uppercase letter suffix (e.g. 178734687W).
+    """
 
-class ApecExtractor:
-    """APEC: Angular custom element — no public API, browser required."""
+    needs_browser = False
 
-    needs_browser = True
+    _OFFRE_RE = re.compile(r"/detail-offre/(\d+[A-Z]?)", re.IGNORECASE)
+    _API = "https://www.apec.fr/cms/webservices/offre/public?numeroOffre={}"
 
-    async def extract(self, page: Page, url: str) -> str:
-        await page.goto(url, timeout=NAV_TIMEOUT, wait_until="networkidle")
-        try:
-            await page.wait_for_selector(
-                "apec-poste-informations", timeout=SELECTOR_TIMEOUT
-            )
-            return (await page.locator("apec-poste-informations").inner_text()).strip()
-        except Exception:
+    async def extract(self, client: httpx.AsyncClient, url: str) -> str:
+        m = self._OFFRE_RE.search(url)
+        if not m:
             return ""
+        api_url = self._API.format(m.group(1))
+        try:
+            r = await client.get(
+                api_url,
+                timeout=15,
+                headers={**_HEADERS, "Referer": url},
+            )
+            r.raise_for_status()
+            data = r.json()
+        except Exception as exc:
+            logger.debug("APEC API error for %s: %s", url[:80], exc)
+            return ""
+        parts = [
+            _html_to_text(data.get("texteHtml") or ""),
+            _html_to_text(data.get("texteHtmlProfil") or ""),
+            _html_to_text(data.get("texteHtmlEntreprise") or ""),
+        ]
+        return " ".join(p for p in parts if p).strip()
 
 
-class AshbyBrowserExtractor:
-    """Ashby: SPA with tabbed layout — content in the Overview tabpanel."""
+class AshbyJsonLdExtractor:
+    """Ashby: HTML is server-rendered and embeds a JSON-LD JobPosting block with the full description."""
 
-    needs_browser = True
+    needs_browser = False
 
-    _SELECTORS = [
-        "[role='tabpanel']",
-        "[data-testid='job-description']",
-        ".ashby-job-posting-brief-description",
-        ".posting-description",
-    ]
+    _JSONLD_RE = re.compile(
+        r"<script[^>]+application/ld\+json[^>]*>(.*?)</script>", re.DOTALL
+    )
 
-    async def extract(self, page: Page, url: str) -> str:
-        await page.goto(url, timeout=NAV_TIMEOUT, wait_until="networkidle")
-        for sel in self._SELECTORS:
+    async def extract(self, client: httpx.AsyncClient, url: str) -> str:
+        try:
+            r = await client.get(url, timeout=15)
+            r.raise_for_status()
+        except Exception as exc:
+            logger.debug("Ashby fetch error for %s: %s", url[:80], exc)
+            return ""
+        for m in self._JSONLD_RE.finditer(r.text):
             try:
-                await page.wait_for_selector(sel, timeout=SELECTOR_TIMEOUT)
-                text = (await page.locator(sel).inner_text()).strip()
-                if len(text) >= MIN_DESC_LENGTH:
-                    return text
-            except Exception:
+                data = json.loads(m.group(1))
+            except json.JSONDecodeError:
                 continue
+            if data.get("@type") == "JobPosting":
+                html = (data.get("description") or "").strip()
+                return _html_to_text(html) if html else ""
         return ""
 
 
@@ -220,9 +237,9 @@ def get_extractor(
     if "greenhouse.io" in url:
         return GreenhouseApiExtractor()
     if "apec.fr" in url:
-        return ApecExtractor()
+        return ApecApiExtractor()
     if "ashbyhq.com" in url:
-        return AshbyBrowserExtractor()
+        return AshbyJsonLdExtractor()
     if "indeed.com" in url:
         return IndeedExtractor()
     return None

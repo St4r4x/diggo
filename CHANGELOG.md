@@ -12,6 +12,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-05-28
 
 ### Added
+- `scripts/pre_filter.py` — 5 new scoring signals: tech skills in description (capped +1.0), experience years vs threshold (+0.5), CDI contract detection (+0.3), salary range match (+0.3), quality ATS portal bonus (+0.3); company matching now uses `_normalize_company` to strip noise tokens before comparison
+- `tests/test_pre_filter.py` — `TestNewSignals` (11 tests) covering all new signals; added `import pytest` for `pytest.approx`
+
+---
+
+## 2026-05-28
+
+### Added
 - `dashboard/templates/partials/scan_status.html` — HTMX partial for scan button/badge (idle, running, done, error states)
 - `dashboard/app.py` — `POST /scan/start` and `GET /scan/status` endpoints: trigger full import pipeline as asyncio Task with live HTMX polling feedback
 - `tests/test_dashboard_app.py` — `TestScan` (6 tests) and `TestPrepareCandidature` (1 test)

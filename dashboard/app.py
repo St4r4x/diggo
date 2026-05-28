@@ -1,6 +1,7 @@
 # dashboard/app.py
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -39,6 +40,8 @@ GRADE_COLORS: dict[str, str] = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = open_db(DB_PATH)
+    app.state.scan_status = "idle"
+    app.state.scan_result: dict = {"inserted": 0, "skipped": 0, "error": ""}
     yield
     app.state.db.conn.close()
 
@@ -63,6 +66,8 @@ async def index(request: Request):
         {
             "offers": offers,
             "statuses": VALID_STATUSES,
+            "status": request.app.state.scan_status,
+            "result": request.app.state.scan_result,
         },
     )
 
@@ -359,4 +364,53 @@ async def profile_save_projects(request: Request, data: str = Form("")):
         request,
         "partials/profile_projects.html",
         {"profile": profile_data, "saved": True},
+    )
+
+
+async def _run_scan_task(app_state) -> None:
+    from scripts.import_offers import _run_pipeline, import_offers
+    from scripts.pre_filter import load_settings
+
+    try:
+        settings = load_settings()
+        offers = await _run_pipeline(settings)
+        inserted, skipped = import_offers(offers, DB_PATH)
+        app_state.scan_result = {"inserted": inserted, "skipped": skipped, "error": ""}
+        app_state.scan_status = "done"
+    except Exception as exc:
+        app_state.scan_result = {
+            "inserted": 0,
+            "skipped": 0,
+            "error": str(exc).splitlines()[0],
+        }
+        app_state.scan_status = "error"
+
+
+@app.post("/scan/start", response_class=HTMLResponse)
+async def scan_start(request: Request):
+    if request.app.state.scan_status == "running":
+        return templates.TemplateResponse(
+            request,
+            "partials/scan_status.html",
+            {"status": "running", "result": request.app.state.scan_result},
+        )
+    request.app.state.scan_status = "running"
+    request.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
+    asyncio.create_task(_run_scan_task(request.app.state))
+    return templates.TemplateResponse(
+        request,
+        "partials/scan_status.html",
+        {"status": "running", "result": request.app.state.scan_result},
+    )
+
+
+@app.get("/scan/status", response_class=HTMLResponse)
+async def scan_status(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "partials/scan_status.html",
+        {
+            "status": request.app.state.scan_status,
+            "result": request.app.state.scan_result,
+        },
     )

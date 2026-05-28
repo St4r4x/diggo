@@ -32,6 +32,8 @@ def client():
     conn.commit()
     test_db = DB(conn)
     dashboard_app.app.state.db = test_db
+    dashboard_app.app.state.scan_status = "idle"
+    dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
     return TestClient(dashboard_app.app)
 
 
@@ -314,3 +316,109 @@ class TestStats:
         r = client_with_data.get("/stats")
         for s in VALID_STATUSES:
             assert s in r.text
+
+
+class TestScan:
+    def test_scan_start_when_idle_returns_running(self, client, monkeypatch):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "idle"
+
+        def mock_create_task(coro):
+            coro.close()
+            return None
+
+        monkeypatch.setattr("asyncio.create_task", mock_create_task)
+        r = client.post("/scan/start")
+        assert r.status_code == 200
+        assert "Scan en cours" in r.text
+
+    def test_scan_start_when_running_does_not_create_second_task(
+        self, client, monkeypatch
+    ):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "running"
+        created = []
+
+        def mock_create_task(coro):
+            created.append(coro)
+            coro.close()
+            return None
+
+        monkeypatch.setattr("asyncio.create_task", mock_create_task)
+        r = client.post("/scan/start")
+        assert r.status_code == 200
+        assert len(created) == 0
+
+    def test_scan_status_idle(self, client):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "idle"
+        dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
+        r = client.get("/scan/status")
+        assert r.status_code == 200
+        assert "Scanner" in r.text
+        assert "Scan en cours" not in r.text
+
+    def test_scan_status_done_shows_inserted_count(self, client):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "done"
+        dashboard_app.app.state.scan_result = {"inserted": 3, "skipped": 5, "error": ""}
+        r = client.get("/scan/status")
+        assert r.status_code == 200
+        assert "3" in r.text
+
+    def test_scan_status_error_shows_message(self, client):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "error"
+        dashboard_app.app.state.scan_result = {
+            "inserted": 0,
+            "skipped": 0,
+            "error": "Connection timeout",
+        }
+        r = client.get("/scan/status")
+        assert r.status_code == 200
+        assert "Erreur" in r.text
+
+    def test_scan_full_flow(self, client, monkeypatch):
+        import asyncio
+        import app as dashboard_app
+        from app import _run_scan_task
+
+        dashboard_app.app.state.scan_status = "idle"
+        dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
+
+        async def fake_run_pipeline(_settings):
+            return []
+
+        def fake_import_offers(_offers, _path):
+            return (7, 2)
+
+        def fake_load_settings():
+            return {}
+
+        monkeypatch.setattr("scripts.import_offers._run_pipeline", fake_run_pipeline)
+        monkeypatch.setattr("scripts.import_offers.import_offers", fake_import_offers)
+        monkeypatch.setattr("scripts.pre_filter.load_settings", fake_load_settings)
+
+        # Run the task coroutine directly (avoids asyncio.create_task in sync test context)
+        asyncio.run(_run_scan_task(dashboard_app.app.state))
+
+        assert dashboard_app.app.state.scan_status == "done"
+        assert dashboard_app.app.state.scan_result["inserted"] == 7
+
+
+class TestPrepareCandidature:
+    def test_offer_detail_contains_prepare_command(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+        # The command is assembled in JS; verify both the static prefix and the offer id
+        assert "prepare-candidature.md --offer-id" in r.text
+        assert f"copyPrepCmd({row['id']})" in r.text

@@ -11,20 +11,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-05-28
 
+### Added
+- `dashboard/templates/partials/scan_status.html` — HTMX partial for scan button/badge (idle, running, done, error states)
+- `dashboard/app.py` — `POST /scan/start` and `GET /scan/status` endpoints: trigger full import pipeline as asyncio Task with live HTMX polling feedback
+- `tests/test_dashboard_app.py` — `TestScan` (6 tests) and `TestPrepareCandidature` (1 test)
+
 ### Changed
 - `scripts/backfill_descriptions.py` — replaced Playwright with HTTP for APEC and Ashby
   - `ApecApiExtractor`: calls internal REST webservice (`cms/webservices/offre/public`) discovered via network interception; no browser
   - `AshbyJsonLdExtractor`: fetches static HTML and parses the embedded JSON-LD `JobPosting` block; no browser
   - Playwright now only launched when Indeed URLs are present (~2% of offers)
-
-### Changed
 - `scripts/backfill_descriptions.py` — replaced Playwright with public REST APIs for Lever and Greenhouse
   - `LeverApiExtractor`: uses `api.lever.co/v0/postings/{company}/{uuid}`, prefers `descriptionPlain`
   - `GreenhouseApiExtractor`: uses `boards-api.greenhouse.io/v1/boards/{company}/jobs/{id}`, HTML → text via `_html_to_text` (with `html.unescape` pre-pass for doubly-encoded entities)
   - Browser lazy-initialized only when at least one URL requires it
-
-### Changed
 - `dashboard/templates/base.html` — renamed nav link "Pipeline" → "Candidatures"
+- `dashboard/app.py` — `GET /` passes `status` and `result` to template for initial scan button render; lifespan initializes `scan_status`/`scan_result` on `app.state`
+- `dashboard/templates/index.html` — scan button added to filter bar via `scan_status.html` include
+- `tests/test_dashboard_app.py` — `client` fixture initializes `scan_status`/`scan_result` to avoid lifespan bypass issues
 
 ### Removed
 - 15 unrecoverable offers deleted from DB:

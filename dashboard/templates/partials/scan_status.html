@@ -1,0 +1,50 @@
+{% if status == "running" %}
+<div id="scan-status"
+     hx-get="/scan/status"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML">
+  <button disabled
+          class="text-sm px-3 py-1 rounded bg-slate-600 text-slate-400 cursor-not-allowed flex items-center gap-2">
+    <span class="inline-block w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></span>
+    Scan en cours…
+  </button>
+</div>
+
+{% elif status == "done" %}
+<div id="scan-status"
+     hx-get="/offers"
+     hx-trigger="load"
+     hx-target="#offer-list"
+     hx-swap="innerHTML">
+  <button
+    hx-post="/scan/start"
+    hx-target="#scan-status"
+    hx-swap="outerHTML"
+    class="text-sm px-3 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white">
+    ✓ {{ result.inserted }} nouvelle{% if result.inserted != 1 %}s{% endif %} — Scanner
+  </button>
+</div>
+
+{% elif status == "error" %}
+<div id="scan-status">
+  <button
+    hx-post="/scan/start"
+    hx-target="#scan-status"
+    hx-swap="outerHTML"
+    class="text-sm px-3 py-1 rounded bg-red-700 hover:bg-red-600 text-white"
+    title="{{ result.error }}">
+    ✗ Erreur — Réessayer
+  </button>
+</div>
+
+{% else %}
+<div id="scan-status">
+  <button
+    hx-post="/scan/start"
+    hx-target="#scan-status"
+    hx-swap="outerHTML"
+    class="text-sm px-3 py-1 rounded bg-violet-700 hover:bg-violet-600 text-white">
+    Scanner
+  </button>
+</div>
+{% endif %}

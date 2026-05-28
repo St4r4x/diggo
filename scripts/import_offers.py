@@ -46,13 +46,13 @@ CREATE TABLE IF NOT EXISTS applications (
 
 
 def score_to_grade(score: float) -> str:
-    if score >= 4.5:
-        return "A"
     if score >= 4.0:
-        return "B"
-    if score >= 3.5:
-        return "C"
+        return "A"
     if score >= 3.0:
+        return "B"
+    if score >= 2.0:
+        return "C"
+    if score >= 1.0:
         return "D"
     return "F"
 

@@ -42,26 +42,26 @@ def _make_conn() -> sqlite3.Connection:
 
 
 class TestScoreToGrade:
-    def test_a_at_4_5(self) -> None:
-        assert score_to_grade(4.5) == "A"
+    def test_a_at_4_0(self) -> None:
+        assert score_to_grade(4.0) == "A"
 
     def test_a_at_5_0(self) -> None:
         assert score_to_grade(5.0) == "A"
 
-    def test_b_at_4_0(self) -> None:
-        assert score_to_grade(4.0) == "B"
+    def test_b_at_3_0(self) -> None:
+        assert score_to_grade(3.0) == "B"
 
-    def test_b_at_4_4(self) -> None:
-        assert score_to_grade(4.4) == "B"
+    def test_b_at_3_9(self) -> None:
+        assert score_to_grade(3.9) == "B"
 
-    def test_c_at_3_5(self) -> None:
-        assert score_to_grade(3.5) == "C"
+    def test_c_at_2_0(self) -> None:
+        assert score_to_grade(2.0) == "C"
 
-    def test_d_at_3_0(self) -> None:
-        assert score_to_grade(3.0) == "D"
+    def test_d_at_1_0(self) -> None:
+        assert score_to_grade(1.0) == "D"
 
-    def test_f_below_3_0(self) -> None:
-        assert score_to_grade(2.9) == "F"
+    def test_f_below_1_0(self) -> None:
+        assert score_to_grade(0.9) == "F"
 
     def test_f_at_zero(self) -> None:
         assert score_to_grade(0.0) == "F"
@@ -109,7 +109,7 @@ class TestInsertOffer:
         assert row[1] == "AI Engineer"
         assert row[2] == "https://wttj.co/jobs/123"
         assert row[3] == "2026-05-20"
-        assert row[4] == "B"
+        assert row[4] == "A"
         assert abs(row[5] - 4.2) < 0.001
         assert row[6] == "À envoyer"
 

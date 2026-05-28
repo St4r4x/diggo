@@ -10,22 +10,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-05-28
 
 ### Added
-- `scripts/rescore.py` — migration script to rescore all 196 existing DB offers using updated `score_offer()` and `score_to_grade()` functions; supports `--dry-run` and `--db PATH` flags; tracks `id, old_grade, old_score → new_grade, new_score` in logs
-- `tests/test_rescore.py` — 8 tests: `TestInferPortal` (4 portal detection tests) and `TestRescore` (4 behavior tests: dry-run safety, grade updates, idempotency, summary dict)
-
----
-
-## 2026-05-28
-
-### Added
-- `scripts/pre_filter.py` — 5 new scoring signals: tech skills in description (capped +1.0), experience years vs threshold (+0.5), CDI contract detection (+0.3), salary range match (+0.3), quality ATS portal bonus (+0.3); company matching now uses `_normalize_company` to strip noise tokens before comparison
-- `tests/test_pre_filter.py` — `TestNewSignals` (11 tests) covering all new signals; added `import pytest` for `pytest.approx`
-
----
-
-## 2026-05-28
-
-### Added
+- `scripts/rescore.py` — migration script to rescore all existing DB offers with updated signals; supports `--dry-run` and `--db PATH` flags
+- `scripts/pre_filter.py` — 5 new scoring signals: tech skills in description (+0.1/skill, cap +1.0), experience ≤ threshold (+0.5), CDI mention (+0.3), salary in target range (+0.3), ATS quality portal bonus (+0.3); `_normalize_company()` strips noisy suffixes before company matching
+- `tests/test_rescore.py` — 8 tests: `TestInferPortal` (4) and `TestRescore` (dry-run, update, idempotency, summary)
+- `tests/test_pre_filter.py` — `TestNewSignals` class with 11 tests for all new signals
 - `dashboard/templates/partials/scan_status.html` — HTMX partial for scan button/badge (idle, running, done, error states)
 - `dashboard/app.py` — `POST /scan/start` and `GET /scan/status` endpoints: trigger full import pipeline as asyncio Task with live HTMX polling feedback
 - `tests/test_dashboard_app.py` — `TestScan` (6 tests) and `TestPrepareCandidature` (1 test)
@@ -42,6 +30,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/templates/base.html` — renamed nav link "Pipeline" → "Candidatures"
 - `dashboard/app.py` — `GET /` passes `status` and `result` to template for initial scan button render; lifespan initializes `scan_status`/`scan_result` on `app.state`
 - `dashboard/templates/index.html` — scan button added to filter bar via `scan_status.html` include
+- `scripts/import_offers.py` — `score_to_grade()` thresholds recalibrated: A≥4.0, B≥3.0, C≥2.0, D≥1.0, F<1.0
 - `tests/test_dashboard_app.py` — `client` fixture initializes `scan_status`/`scan_result` to avoid lifespan bypass issues
 
 ### Removed

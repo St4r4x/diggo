@@ -9,9 +9,10 @@ Automated AI/ML job search pipeline for the French market — scraping, scoring,
 - **LLM scoring** — offers scored 0–5 and graded A–F against your profile
 - **Daily report** — markdown digest of recommended offers
 - **Dashboard** — FastAPI + HTMX + Tailwind web UI to track applications (Candidatures, Stats, Profil pages)
+- **Scan button** — "Scanner" button in the dashboard triggers the full import pipeline in the background with live HTMX feedback (spinner → count badge → list refresh)
 - **Profile editor** — `/profile` page to edit `config/profile.md` and `config/contact.yaml` directly from the browser
 - **PDF generation** — tailored CV, cover letter, and interview prep sheet via WeasyPrint + Jinja2
-- **Claude Code modes** — `modes/prepare-candidature.md` drives end-to-end application prep
+- **Claude Code modes** — `modes/prepare-candidature.md` drives end-to-end application prep; "Préparer candidature" button in the offer detail panel copies the command to clipboard
 
 ## Quick start
 
@@ -82,7 +83,7 @@ With [Claude Code](https://claude.ai/code), open this repo and use:
 
 | Route | Description |
 |-------|-------------|
-| `/` | Candidatures — Kanban-style application tracker |
+| `/` | Candidatures — Kanban-style tracker + "Scanner" button to trigger the import pipeline |
 | `/stats` | Statistics and pipeline overview |
 | `/profile` | Profile editor — edit profile.md and contact.yaml in-browser |
 

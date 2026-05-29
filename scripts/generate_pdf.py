@@ -2,12 +2,48 @@
 """Render CV HTML template to PDF using WeasyPrint + Jinja2."""
 
 import argparse
+import re as _re
 from datetime import date
 from pathlib import Path
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
+
+_ATS_REPLACEMENTS: list[tuple[str, str]] = [
+    ("—", "--"),  # em-dash
+    ("–", "-"),  # en-dash
+    ("‘", "'"),  # left single quote
+    ("’", "'"),  # right single quote
+    ("“", '"'),  # left double quote
+    ("”", '"'),  # right double quote
+    (" ", " "),  # non-breaking space
+    ("​", ""),  # zero-width space
+    ("‌", ""),  # zero-width non-joiner
+    ("﻿", ""),  # BOM
+]
+
+_STYLE_SCRIPT_RE = _re.compile(
+    r"(<(?:style|script)[^>]*>)(.*?)(</(?:style|script)>)",
+    _re.DOTALL | _re.IGNORECASE,
+)
+
+
+def _normalize_for_ats(html: str) -> str:
+    """Replace typographic characters that break ATS parsers, preserving style/script blocks."""
+    protected: list[str] = []
+
+    def _protect(m: _re.Match) -> str:
+        protected.append(m.group(0))
+        return f"\x00PROTECTED{len(protected) - 1}\x00"
+
+    masked = _STYLE_SCRIPT_RE.sub(_protect, html)
+    for old, new in _ATS_REPLACEMENTS:
+        masked = masked.replace(old, new)
+    for i, block in enumerate(protected):
+        masked = masked.replace(f"\x00PROTECTED{i}\x00", block)
+    return masked
+
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "cv-fr"
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
@@ -64,7 +100,7 @@ def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
     out_dir = OUTPUT_DIR / f"{slug}-{output_date}"
     out_dir.mkdir(parents=True, exist_ok=True)
     output_path = out_dir / f"cv-{slug}-{output_date}.pdf"
-    html_content = render_html(context)
+    html_content = _normalize_for_ats(render_html(context))
     css_path = TEMPLATE_DIR / "cv.css"
     HTML(string=html_content, base_url=str(TEMPLATE_DIR)).write_pdf(
         str(output_path),

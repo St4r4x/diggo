@@ -11,6 +11,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
+
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "prep-sheet-fr"
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
 
@@ -44,7 +45,7 @@ def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
     out_dir = OUTPUT_DIR / f"{slug}-{output_date}"
     out_dir.mkdir(parents=True, exist_ok=True)
     output_path = out_dir / f"prep-sheet-{slug}-{output_date}.pdf"
-    html_content = render_html(context)
+    html_content = _normalize_for_ats(render_html(context))
     css_path = TEMPLATE_DIR / "prep-sheet.css"
     HTML(string=html_content, base_url=str(TEMPLATE_DIR)).write_pdf(
         str(output_path),

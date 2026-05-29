@@ -10,6 +10,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-05-29
 
 ### Added
+- `scripts/generate_pdf.py` — `_normalize_for_ats()` function: replaces typographic characters that break ATS parsers (em-dashes, en-dashes, smart quotes, non-breaking spaces, zero-width spaces) while preserving style/script blocks; applies before WeasyPrint rendering in all PDF generators
+- `tests/test_generate_pdf.py` — `TestNormalizeForAts` class with 6 tests covering em-dash, en-dash, smart quotes, zero-width characters, style block preservation, and plain text passthrough
+
+### Changed
+- `scripts/generate_pdf.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF
+- `scripts/generate_cover_letter.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF; added import of `_normalize_for_ats` from `scripts.generate_pdf`
+- `scripts/generate_prep_sheet.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF; added import of `_normalize_for_ats` from `scripts.generate_pdf`
+
+## 2026-05-29 (Earlier)
+
+### Added
 - `scripts/pre_filter.py` — `_score_legitimacy()` function: penalises low-quality offers with -0.5 for thin description (<300 chars), -0.3 for no tech skills, -0.2 for no salary info; penalty capped at -0.5; adds `legitimacy:thin_desc`, `legitimacy:no_tech`, `legitimacy:no_salary`, and `legitimacy:suspicious` tags
 - `scripts/pre_filter.py` — wired `_score_legitimacy()` call into `score_offer()` before the final return
 - `tests/test_pre_filter.py` — `TestLegitimacy` class with 4 tests covering thin desc, no tech, no salary (no suspicious tag), and clean offer; `_CLEAN_DESC` constant for legitimacy-neutral descriptions

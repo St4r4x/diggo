@@ -71,12 +71,12 @@ The `scripts/backfill_descriptions.py` script recovers missing job descriptions 
 
 With [Claude Code](https://claude.ai/code), open this repo and use:
 
-```
+```bash
 # Score a new offer (paste description in chat)
-/score-offer
+claude --system-prompt "$(cat modes/score-offer.md)"
 
 # Generate tailored CV + cover letter + prep sheet for an offer in the DB
-/prepare-candidature
+claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id>"
 ```
 
 ## Dashboard pages

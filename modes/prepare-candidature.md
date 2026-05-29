@@ -4,19 +4,14 @@ Generate tailored CV PDF, cover letter PDF, and interview prep sheet PDF for a s
 
 ## Input
 
-Called with: `claude --mode modes/prepare-candidature.md --offer-id <id>`
-
-The offer ID is passed as a CLI argument. Read it from `sys.argv`:
-```python
-import sys
-offer_id = None
-for i, arg in enumerate(sys.argv):
-    if arg == "--offer-id" and i + 1 < len(sys.argv):
-        offer_id = sys.argv[i + 1]
-        break
+Called with:
+```bash
+claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id>"
 ```
 
-If `--offer-id` is not in `sys.argv`, ask the user: "Quel est l'ID de l'offre ?"
+Extract the offer ID from the user message. Look for a number after "ID", "id", "offer-id", or "offre".
+
+If no ID is found in the message, ask: "Quel est l'ID de l'offre ?"
 
 ## Instructions
 

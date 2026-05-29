@@ -115,7 +115,7 @@
 
     <script>
     function copyPrepCmd(id) {
-      const cmd = "claude --mode modes/prepare-candidature.md --offer-id " + id;
+      const cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + "\"";
       navigator.clipboard.writeText(cmd).then(function() {
         var btn = document.getElementById("prep-btn-" + id);
         btn.textContent = "Commande copiée !";

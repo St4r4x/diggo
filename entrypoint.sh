@@ -4,8 +4,9 @@ set -euo pipefail
 MODE="${1:-dashboard}"
 
 if [ "$MODE" = "dashboard" ]; then
-    cd /app/dashboard
-    exec uvicorn app:app --host 0.0.0.0 --port 8000
+    cd /app
+    export PYTHONPATH=/app:/app/dashboard
+    exec uvicorn dashboard.app:app --host 0.0.0.0 --port 8000
 elif [ "$MODE" = "pipeline" ]; then
     shift
     cd /app

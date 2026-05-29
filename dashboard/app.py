@@ -41,7 +41,13 @@ GRADE_COLORS: dict[str, str] = {
 async def lifespan(app: FastAPI):
     app.state.db = open_db(DB_PATH)
     app.state.scan_status = "idle"
-    app.state.scan_result: dict = {"inserted": 0, "skipped": 0, "error": ""}
+    app.state.scan_result: dict = {
+        "inserted": 0,
+        "skipped": 0,
+        "found": 0,
+        "scored": 0,
+        "error": "",
+    }
     yield
     app.state.db.conn.close()
 
@@ -368,19 +374,33 @@ async def profile_save_projects(request: Request, data: str = Form("")):
 
 
 async def _run_scan_task(app_state) -> None:
-    from scripts.import_offers import _run_pipeline, import_offers
-    from scripts.pre_filter import load_settings
-
     try:
+        from scripts.import_offers import _run_pipeline, import_offers
+        from scripts.pre_filter import load_settings
+
         settings = load_settings()
+        app_state.scan_result["found"] = 0
+        app_state.scan_result["scored"] = 0
+
         offers = await _run_pipeline(settings)
+        app_state.scan_result["found"] = len(offers)
+        app_state.scan_result["scored"] = len(offers)
+
         inserted, skipped = import_offers(offers, DB_PATH)
-        app_state.scan_result = {"inserted": inserted, "skipped": skipped, "error": ""}
+        app_state.scan_result = {
+            "inserted": inserted,
+            "skipped": skipped,
+            "found": len(offers),
+            "scored": len(offers),
+            "error": "",
+        }
         app_state.scan_status = "done"
     except Exception as exc:
         app_state.scan_result = {
             "inserted": 0,
             "skipped": 0,
+            "found": 0,
+            "scored": 0,
             "error": str(exc).splitlines()[0],
         }
         app_state.scan_status = "error"
@@ -395,7 +415,13 @@ async def scan_start(request: Request):
             {"status": "running", "result": request.app.state.scan_result},
         )
     request.app.state.scan_status = "running"
-    request.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
+    request.app.state.scan_result = {
+        "inserted": 0,
+        "skipped": 0,
+        "found": 0,
+        "scored": 0,
+        "error": "",
+    }
     asyncio.create_task(_run_scan_task(request.app.state))
     return templates.TemplateResponse(
         request,

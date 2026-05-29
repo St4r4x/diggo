@@ -6,7 +6,11 @@
   <button disabled
           class="text-sm px-3 py-1 rounded bg-slate-600 text-slate-400 cursor-not-allowed flex items-center gap-2">
     <span class="inline-block w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></span>
+    {% if result.found is defined and result.found > 0 %}
+    Scan… {{ result.found }} trouvées{% if result.scored is defined and result.scored > 0 %}, {{ result.scored }} scorées{% endif %}
+    {% else %}
     Scan en cours…
+    {% endif %}
   </button>
 </div>
 

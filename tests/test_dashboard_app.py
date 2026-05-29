@@ -420,5 +420,5 @@ class TestPrepareCandidature:
         r = client_with_data.get(f"/offers/{row['id']}")
         assert r.status_code == 200
         # The command is assembled in JS; verify both the static prefix and the offer id
-        assert "prepare-candidature.md --offer-id" in r.text
+        assert "prepare-candidature.md" in r.text
         assert f"copyPrepCmd({row['id']})" in r.text

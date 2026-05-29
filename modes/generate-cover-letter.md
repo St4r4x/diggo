@@ -18,7 +18,7 @@ Write a tailored cover letter for a specific job offer. Called from Claude Code 
 4. Structure: 3 short paragraphs, < 300 words total:
    - **Para 1 (hook):** Why this company specifically — one concrete reason tied to their product or mission. No generic "Je suis passionné par l'IA".
    - **Para 2 (proof):** 2 specific experiences from profile.md that directly address the top 2 requirements. Use numbers or outcomes where possible.
-   - **Para 3 (close):** Short, confident close. Mention availability (fin 2026 / dès que possible).
+   - **Para 3 (close):** Short, confident close. ALWAYS include one sentence about the career pivot (mandatory): "A deliberate pivot — eight years leading a sales team, then retraining as an AI engineer — means I bring both technical depth and the communication skills to work directly with non-technical stakeholders." Adapt the wording to the language of the letter (FR version: "Une reconversion délibérée — 8 ans à manager une équipe commerciale, puis formation en AI engineering — me permet d'allier profondeur technique et capacité à travailler avec des interlocuteurs non techniques."). Mention availability (fin 2026 / as soon as possible).
 5. Tone: direct, professional, no filler phrases ("Je suis motivé", "passionné", etc.)
 6. Save the draft text to `output/<company-slug>-<date>/cover-letter.md` for reference.
 7. Build a JSON context file at `/tmp/cl-context.json`:

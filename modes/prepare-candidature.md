@@ -71,7 +71,7 @@ Rules:
 1. Write 3 paragraphs (< 300 words total, in the language of the job posting):
    - Para 1 (hook): one concrete reason tied to `hook_angle` — never "Je suis passionné par l'IA"
    - Para 2 (proof): 2 specific experiences from the **Experience** section of `config/profile.md` — each backed by a row in the grounding table above
-   - Para 3 (close): confident close, mention availability (fin 2026 / dès que possible)
+   - Para 3 (close): confident close. ALWAYS include one sentence about the career pivot (mandatory): adapt wording to letter language. EN: "A deliberate pivot — eight years leading a sales team, then retraining as an AI engineer — means I bring both technical depth and the communication skills to work directly with non-technical stakeholders." FR: "Une reconversion délibérée — 8 ans à manager une équipe commerciale, puis formation en AI engineering — me permet d'allier profondeur technique et capacité à travailler avec des interlocuteurs non techniques." Then mention availability (fin 2026 / dès que possible).
 2. Never use: "Je suis très motivé", "passionné par", "je me permets de", "dans l'espoir de"
 3. Build `/tmp/cl-context-<slug>.json`:
    ```json

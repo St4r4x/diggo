@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-05-29
 
+### Added
+- `scripts/pre_filter.py` — `_score_legitimacy()` function: penalises low-quality offers with -0.5 for thin description (<300 chars), -0.3 for no tech skills, -0.2 for no salary info; penalty capped at -0.5; adds `legitimacy:thin_desc`, `legitimacy:no_tech`, `legitimacy:no_salary`, and `legitimacy:suspicious` tags
+- `scripts/pre_filter.py` — wired `_score_legitimacy()` call into `score_offer()` before the final return
+- `tests/test_pre_filter.py` — `TestLegitimacy` class with 4 tests covering thin desc, no tech, no salary (no suspicious tag), and clean offer; `_CLEAN_DESC` constant for legitimacy-neutral descriptions
+
+### Changed
+- `tests/test_pre_filter.py` — updated `TestNewSignals` tests to use `_CLEAN_DESC` or relative assertions instead of exact scores, since legitimacy penalties now apply to short/sparse descriptions
+- `tests/test_pre_filter.py` — updated `TestSalaryNormalized` tests to use `_SALARY_BASE` padded descriptions and comparative assertions to decouple from legitimacy side-effects
+
+
+
 ### Changed
 - `scripts/pre_filter.py` — replaced flat salary signal (+0.3 if raw value in range) with package-aware `_score_salary()`: reconstructs French annual package from base salary, 13th month, RTT days, titre-restaurant, and intéressement; returns +0.5 if total in target range, -0.3 if out of range, 0.0 if no salary found
 - `scripts/pre_filter.py` — added 4 new regex constants: `_MONTHS_13_RE`, `_RTT_RE`, `_TR_RE`, `_INTERESSEMENT_RE`

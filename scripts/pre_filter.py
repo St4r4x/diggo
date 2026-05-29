@@ -133,6 +133,30 @@ def _score_salary(
     return -0.3, tag
 
 
+def _score_legitimacy(desc: str, desc_lower: str) -> tuple[float, list[str]]:
+    """Return (penalty, tags) based on offer quality signals. Penalty capped at -0.5."""
+    penalty = 0.0
+    tags: list[str] = []
+
+    if len(desc) < 300:
+        penalty -= 0.5
+        tags.append("legitimacy:thin_desc")
+
+    if not any(skill in desc_lower for skill in _TECH_SKILLS):
+        penalty -= 0.3
+        tags.append("legitimacy:no_tech")
+
+    if not _SALARY_RE.search(desc_lower):
+        penalty -= 0.2
+        tags.append("legitimacy:no_salary")
+
+    capped = max(penalty, -0.5)
+    if capped <= -0.3:
+        tags.append("legitimacy:suspicious")
+
+    return capped, tags
+
+
 def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
     """Compute a relevance score and matched tags for a single offer."""
     score = 0.0
@@ -198,6 +222,12 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
     if offer.portal in _QUALITY_PORTALS:
         score += 0.3
         tags.append(f"portal:{offer.portal}")
+
+    if desc_lower:
+        leg_delta, leg_tags = _score_legitimacy(offer.description or "", desc_lower)
+        if leg_delta != 0.0:
+            score += leg_delta
+            tags.extend(leg_tags)
 
     return min(score, 5.0), tags
 

@@ -132,7 +132,7 @@ def default_context() -> dict:
                 "period": "Janvier 2025 – Présent",
                 "bullets": [
                     "Système d'inférence edge temps réel sur Jetson Orin NX (ARM64) — détection de chute, action recognition",
-                    "Pipeline de benchmark YOLO + RTMPose pour optimiser le F1 sur classe 'lying'",
+                    "Pipeline de benchmark YOLO + RTMPose pour optimiser le F1-score sur détection de posture",
                     "Fine-tuning VideoMAE sur AWS SageMaker Spot (A10G, bf16) avec S3 manifests",
                     "Outil d'annotation multi-utilisateurs (FiftyOne + SQLite)",
                     "CI/CD GitHub Actions, Docker multi-arch, GHCR",

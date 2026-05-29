@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 
 from scripts.dedup import deduplicate
+from scripts.liveness import check_liveness
 from scripts.models import RawOffer
 from scripts.pre_filter import load_settings, pre_filter
 from scripts.scan_ats import scan_ats
@@ -115,6 +116,44 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
     return inserted, skipped
 
 
+def import_offers_with_liveness(
+    offers: list[RawOffer],
+    db_path: Path,
+    *,
+    conn: sqlite3.Connection | None = None,
+) -> tuple[int, int, int]:
+    """Insert new offers, skipping expired ones. Returns (inserted, skipped, expired)."""
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    _conn = conn or sqlite3.connect(str(db_path))
+    try:
+        _conn.execute(_CREATE_TABLE_SQL)
+        urls = existing_urls(_conn)
+        inserted = 0
+        skipped = 0
+        expired_count = 0
+        for offer in offers:
+            if offer.url and offer.url in urls:
+                skipped += 1
+                continue
+            if offer.url:
+                status, reason = check_liveness(offer.url)
+                if status == "expired":
+                    logger.info(
+                        "Skip (expired %s): %s @ %s", reason, offer.title, offer.company
+                    )
+                    expired_count += 1
+                    continue
+            insert_offer(_conn, offer)
+            if offer.url:
+                urls.add(offer.url)
+            inserted += 1
+        _conn.commit()
+    finally:
+        if conn is None:
+            _conn.close()
+    return inserted, skipped, expired_count
+
+
 async def _run_pipeline(settings: dict) -> list[RawOffer]:
     search_cfg: dict = settings.get("search", {})
     keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])
@@ -160,6 +199,11 @@ def main() -> None:
         action="store_true",
         help="Print offers without inserting into DB",
     )
+    parser.add_argument(
+        "--check-liveness",
+        action="store_true",
+        help="Skip offers whose URL is expired before inserting",
+    )
     args = parser.parse_args()
 
     settings = load_settings()
@@ -173,8 +217,15 @@ def main() -> None:
         print(f"\nTotal: {len(offers)} offers (dry run, nothing inserted)")
         return
 
-    inserted, skipped = import_offers(offers, Path(args.db))
-    print(f"Imported {inserted} new offers, skipped {skipped} already present")
+    if args.check_liveness:
+        inserted, skipped, expired = import_offers_with_liveness(offers, Path(args.db))
+        print(
+            f"Imported {inserted} new offers, skipped {skipped} existing, "
+            f"{expired} expired"
+        )
+    else:
+        inserted, skipped = import_offers(offers, Path(args.db))
+        print(f"Imported {inserted} new offers, skipped {skipped} already present")
 
 
 if __name__ == "__main__":

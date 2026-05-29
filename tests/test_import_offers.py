@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import date
+from pathlib import Path
 
+import pytest
 
 from scripts.import_offers import (
     existing_urls,
@@ -193,3 +195,49 @@ class TestImportOffers:
         assert not db_path.exists()
         import_offers([], db_path)
         assert db_path.exists()
+
+
+class TestLivenessIntegration:
+    def test_expired_offer_skipped_with_liveness(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import scripts.import_offers as io
+
+        monkeypatch.setattr(
+            "scripts.import_offers.check_liveness",
+            lambda url, **kw: ("expired", "http_404"),
+        )
+        conn = _make_conn()
+        offer = RawOffer(
+            title="ML Engineer",
+            company="Acme",
+            url="https://jobs.example.com/1",
+            portal="apec",
+        )
+        inserted, skipped, expired = io.import_offers_with_liveness(
+            [offer], Path(":memory:"), conn=conn
+        )
+        assert inserted == 0
+        assert expired == 1
+
+    def test_uncertain_offer_imported_normally(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import scripts.import_offers as io
+
+        monkeypatch.setattr(
+            "scripts.import_offers.check_liveness",
+            lambda url, **kw: ("uncertain", "timeout"),
+        )
+        conn = _make_conn()
+        offer = RawOffer(
+            title="ML Engineer",
+            company="Acme",
+            url="https://jobs.example.com/2",
+            portal="apec",
+        )
+        inserted, skipped, expired = io.import_offers_with_liveness(
+            [offer], Path(":memory:"), conn=conn
+        )
+        assert inserted == 1
+        assert expired == 0

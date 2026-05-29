@@ -219,13 +219,13 @@ class TestNewSignals:
         desc = "Salaire proposé : 45k€ selon profil."
         offer = _offer_with_desc(description=desc)
         score, _ = score_offer(offer, MOCK_SETTINGS_V2)
-        assert score == pytest.approx(0.3, abs=0.01)
+        assert score == pytest.approx(0.5, abs=0.05)  # new signal gives +0.5
 
     def test_salary_out_of_range(self) -> None:
         desc = "Salaire proposé : 80k€ selon profil."
         offer = _offer_with_desc(description=desc)
         score, _ = score_offer(offer, MOCK_SETTINGS_V2)
-        assert score == pytest.approx(0.0, abs=0.01)
+        assert score == pytest.approx(-0.3, abs=0.05)  # out of range → penalty
 
     def test_company_normalization(self) -> None:
         # "CAPGEMINI ENGINEERING FRANCE" should match "Capgemini Engineering"
@@ -247,3 +247,40 @@ class TestNewSignals:
         offer = _offer_with_desc(portal="apec")
         score, _ = score_offer(offer, MOCK_SETTINGS_V2)
         assert score == pytest.approx(0.0, abs=0.01)
+
+
+class TestSalaryNormalized:
+    def test_13th_month_raises_package_into_range(self) -> None:
+        # 3500 × 13 = 45500 → in range [40k-55k] → +0.5
+        desc = "Salaire 3500€/mois + 13ème mois"
+        offer = _offer_with_desc(description=desc)
+        score, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert score == pytest.approx(0.5, abs=0.05)
+        assert any("salary:" in t for t in tags)
+
+    def test_rtt_and_tr_added_to_package(self) -> None:
+        # 38000 base + 10 RTT (~1743) + TR (~1962) = ~41705 → in range → +0.5
+        desc = "Salaire 38000€ annuel, 10 RTT, titre-restaurant"
+        offer = _offer_with_desc(description=desc)
+        score, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert score == pytest.approx(0.5, abs=0.05)
+
+    def test_salary_out_of_range_penalty(self) -> None:
+        # 80k clearly above target → -0.3
+        desc = "Rémunération : 80k€"
+        offer = _offer_with_desc(description=desc)
+        score, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert score == pytest.approx(-0.3, abs=0.05)
+
+    def test_salary_no_info_neutral(self) -> None:
+        desc = "Rejoignez notre équipe dynamique."
+        offer = _offer_with_desc(description=desc)
+        score, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert score == pytest.approx(0.0, abs=0.05)
+
+    def test_interessement_adds_to_package(self) -> None:
+        # 40000 + 5% intéressement = 42000 → in range → +0.5
+        desc = "Salaire 40000€, intéressement selon résultats"
+        offer = _offer_with_desc(description=desc)
+        score, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert score == pytest.approx(0.5, abs=0.05)

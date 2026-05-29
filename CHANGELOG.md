@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-05-29
+
+### Changed
+- `scripts/pre_filter.py` — replaced flat salary signal (+0.3 if raw value in range) with package-aware `_score_salary()`: reconstructs French annual package from base salary, 13th month, RTT days, titre-restaurant, and intéressement; returns +0.5 if total in target range, -0.3 if out of range, 0.0 if no salary found
+- `scripts/pre_filter.py` — added 4 new regex constants: `_MONTHS_13_RE`, `_RTT_RE`, `_TR_RE`, `_INTERESSEMENT_RE`
+- `tests/test_pre_filter.py` — updated `test_salary_in_range` and `test_salary_out_of_range` in `TestNewSignals` to match new +0.5/-0.3 values; added `TestSalaryNormalized` class with 5 tests for package-aware salary logic
+
 ## 2026-05-28
 
 ### Added

@@ -66,6 +66,10 @@ _COMPANY_NOISE = re.compile(
 _EXP_RE = re.compile(r"(\d+)\s*(?:à\s*\d+\s*)?ans?\s+d.expérience", re.IGNORECASE)
 _CDI_RE = re.compile(r"\bCDI\b")
 _SALARY_RE = re.compile(r"(\d{2,3})\s*[kK€]|\b(\d{4,6})\s*€")
+_MONTHS_13_RE = re.compile(r"13[eè]me?\s*mois|treizi[eè]me\s*mois", re.IGNORECASE)
+_RTT_RE = re.compile(r"(\d+)\s*RTT", re.IGNORECASE)
+_TR_RE = re.compile(r"titre[\s-]restaurant|ticket[\s-]restaurant", re.IGNORECASE)
+_INTERESSEMENT_RE = re.compile(r"int[eé]ressement|participation", re.IGNORECASE)
 
 
 def load_settings(path: Path = _SETTINGS_PATH) -> dict:
@@ -84,6 +88,49 @@ def _all_target_companies(settings: dict) -> set[str]:
         for name in category:
             companies.add(_normalize_company(name))
     return companies
+
+
+def _score_salary(
+    desc: str, desc_lower: str, scoring_cfg: dict
+) -> tuple[float, str | None]:
+    """Reconstruct French annual package and return (score_delta, tag_or_None)."""
+    sal_min = scoring_cfg.get("target_salary_min", 0)
+    sal_max = scoring_cfg.get("target_salary_max", 999_999)
+
+    m = _SALARY_RE.search(desc_lower)
+    if not m:
+        return 0.0, None
+
+    if m.group(1):
+        # Thousands shorthand: "45k", "45K", "45€" in the 2-3 digit pattern → annual
+        base_annual = int(m.group(1)) * 1000
+    elif m.group(2):
+        # Raw number: could be monthly (< 10000) or already annual (>= 10000)
+        raw_val = int(m.group(2))
+        if raw_val < 10_000:
+            multiplier = 13 if _MONTHS_13_RE.search(desc_lower) else 12
+            base_annual = raw_val * multiplier
+        else:
+            base_annual = raw_val
+    else:
+        return 0.0, None
+
+    rtt_match = _RTT_RE.search(desc_lower)
+    rtt_days = (
+        int(rtt_match.group(1)) if rtt_match else (10 if "rtt" in desc_lower else 0)
+    )
+    rtt_val = rtt_days * base_annual / 218 if rtt_days else 0.0
+
+    tr_val = 218 * 9.0 if _TR_RE.search(desc_lower) else 0.0
+
+    int_val = base_annual * 0.05 if _INTERESSEMENT_RE.search(desc_lower) else 0.0
+
+    total = base_annual + rtt_val + tr_val + int_val
+    tag = f"salary:{int(total)}"
+
+    if sal_min <= total <= sal_max:
+        return 0.5, tag
+    return -0.3, tag
 
 
 def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
@@ -140,18 +187,13 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
         tags.append("contract:CDI")
 
     if desc_lower:
-        sal_min = scoring_cfg.get("target_salary_min", 0)
-        sal_max = scoring_cfg.get("target_salary_max", 999_999)
-        for m in _SALARY_RE.finditer(desc_lower):
-            raw = m.group(1) or m.group(2)
-            if raw:
-                val = int(raw)
-                if val < 1000:
-                    val *= 1000
-                if sal_min <= val <= sal_max:
-                    score += 0.3
-                    tags.append(f"salary:{val}")
-                    break
+        sal_delta, sal_tag = _score_salary(
+            offer.description or "", desc_lower, scoring_cfg
+        )
+        if sal_delta != 0.0:
+            score += sal_delta
+            if sal_tag:
+                tags.append(sal_tag)
 
     if offer.portal in _QUALITY_PORTALS:
         score += 0.3

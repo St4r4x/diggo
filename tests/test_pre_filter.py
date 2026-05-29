@@ -346,6 +346,25 @@ _CLEAN_DESC = (
 )
 
 
+class TestCvLanguage:
+    def test_explicit_english_cv_required_tagged(self) -> None:
+        desc = _CLEAN_DESC + " Please submit your CV in English."
+        offer = _offer_with_desc(description=desc)
+        _, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert "lang:cv_en_required" in tags
+
+    def test_fluent_english_not_tagged(self) -> None:
+        desc = _CLEAN_DESC + " You are fluent in English."
+        offer = _offer_with_desc(description=desc)
+        _, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert "lang:cv_en_required" not in tags
+
+    def test_no_english_mention_not_tagged(self) -> None:
+        offer = _offer_with_desc(description=_CLEAN_DESC)
+        _, tags = score_offer(offer, MOCK_SETTINGS_V2)
+        assert "lang:cv_en_required" not in tags
+
+
 class TestLegitimacy:
     def test_thin_description_penalty(self) -> None:
         desc = "Poste à pourvoir. Envoyez votre CV."

@@ -72,6 +72,16 @@ _EXP_RE = re.compile(
     re.IGNORECASE,
 )
 _CDI_RE = re.compile(r"\bCDI\b")
+# Detects explicit instruction to submit CV/application in English (not just "fluent in English")
+_CV_EN_RE = re.compile(
+    r"(?:submit|send|provide|write|prepare)\s+(?:your\s+)?(?:cv|resume|application)\s+in\s+english"
+    r"|cv\s+in\s+english"
+    r"|resume\s+in\s+english"
+    r"|english\s+(?:cv|resume)\s+(?:required|only|preferred)"
+    r"|candidature\s+en\s+anglais"
+    r"|dossier\s+en\s+anglais",
+    re.IGNORECASE,
+)
 # Covers "45k€", "45K", "45keuro", "45 000 €"
 _SALARY_RE = re.compile(
     r"(\d{2,3})\s*[kK€]|(\d{2,3})\s*keuro|\b(\d{4,6})\s*€", re.IGNORECASE
@@ -248,6 +258,9 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
         if leg_delta != 0.0:
             score += leg_delta
             tags.extend(leg_tags)
+
+    if desc_lower and _CV_EN_RE.search(offer.description or ""):
+        tags.append("lang:cv_en_required")
 
     return min(score, 5.0), tags
 

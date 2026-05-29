@@ -41,7 +41,7 @@ From the description, extract:
 
 ### Phase 3 — Generate CV
 
-**Language rule:** The CV is always generated in French, regardless of the offer language. Exception: only generate an English CV if the offer explicitly requires it (e.g. "CV in English required", "Please submit your resume in English").
+**Language rule:** The CV is always generated in French, regardless of the offer language. Exception: generate an English CV only if the offer description contains an explicit instruction such as "Please submit your CV in English", "CV in English required", "resume in English", "candidature en anglais" — i.e. an instruction about the submission format, not merely a requirement to be "fluent in English". When in doubt, default to French.
 
 1. Select `highlighted_skills` from `config/profile.md` that match `top_skills` exactly (no invention)
 2. Rewrite the 2-sentence summary to mirror the offer's language (role title, key domain) — in French

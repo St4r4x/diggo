@@ -10,6 +10,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-05-29
 
 ### Added
+- `scripts/liveness.py` — `check_liveness(url)` HTTP-first job URL liveness checker; returns `(status, reason)` with statuses `active | expired | uncertain`; detects expiry via HTTP 404/410, URL path patterns, and a list of French/English body patterns; zero browser, zero LLM
+- `tests/test_liveness.py` — 7 tests covering 404, 410, French body pattern, English body pattern, clean 200 active, network error uncertain, and empty URL uncertain
+
+### Added
 - `scripts/generate_pdf.py` — `_normalize_for_ats()` function: replaces typographic characters that break ATS parsers (em-dashes, en-dashes, smart quotes, non-breaking spaces, zero-width spaces) while preserving style/script blocks; applies before WeasyPrint rendering in all PDF generators
 - `tests/test_generate_pdf.py` — `TestNormalizeForAts` class with 6 tests covering em-dash, en-dash, smart quotes, zero-width characters, style block preservation, and plain text passthrough
 

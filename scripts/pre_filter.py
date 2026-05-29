@@ -63,12 +63,24 @@ _COMPANY_NOISE = re.compile(
     re.IGNORECASE,
 )
 
-_EXP_RE = re.compile(r"(\d+)\s*(?:à\s*\d+\s*)?ans?\s+d.expérience", re.IGNORECASE)
+# Covers "2 ans d'expérience", "2 années d'expérience", "Minimum 2 ans" (WTTJ), "2 years of experience"
+_EXP_RE = re.compile(
+    r"(?:minimum\s+)?(\d+)\s*(?:\+|à\s*\d+\s*)?ann?[eé]es?\s+d.exp[eé]rience"
+    r"|(?:minimum\s+)?(\d+)\s*(?:\+|à\s*\d+\s*)?ans?\s+d.exp[eé]rience"
+    r"|minimum\s+(\d+)\s+ans?"
+    r"|(\d+)\+?\s*years?\s+of\s+experience",
+    re.IGNORECASE,
+)
 _CDI_RE = re.compile(r"\bCDI\b")
-_SALARY_RE = re.compile(r"(\d{2,3})\s*[kK€]|\b(\d{4,6})\s*€")
+# Covers "45k€", "45K", "45keuro", "45 000 €"
+_SALARY_RE = re.compile(
+    r"(\d{2,3})\s*[kK€]|(\d{2,3})\s*keuro|\b(\d{4,6})\s*€", re.IGNORECASE
+)
 _MONTHS_13_RE = re.compile(r"13[eè]me?\s*mois|treizi[eè]me\s*mois", re.IGNORECASE)
-_RTT_RE = re.compile(r"(\d+)\s*RTT", re.IGNORECASE)
-_TR_RE = re.compile(r"titre[\s-]restaurant|ticket[\s-]restaurant", re.IGNORECASE)
+# Covers "15 RTT", "RTT" alone (presence), "RTTs"
+_RTT_RE = re.compile(r"(\d+)\s*RTTs?|\bRTTs?\b", re.IGNORECASE)
+# Covers "titre-restaurant", "ticket restaurant", "swile"
+_TR_RE = re.compile(r"titre[\s-]restaurant|ticket[\s-]restaurant|swile", re.IGNORECASE)
 _INTERESSEMENT_RE = re.compile(r"int[eé]ressement|participation", re.IGNORECASE)
 
 
@@ -102,11 +114,14 @@ def _score_salary(
         return 0.0, None
 
     if m.group(1):
-        # Thousands shorthand: "45k", "45K", "45€" in the 2-3 digit pattern → annual
+        # "45k€" / "45K" shorthand → thousands
         base_annual = int(m.group(1)) * 1000
     elif m.group(2):
-        # Raw number: could be monthly (< 10000) or already annual (>= 10000)
-        raw_val = int(m.group(2))
+        # "50 keuro" shorthand → thousands
+        base_annual = int(m.group(2)) * 1000
+    elif m.group(3):
+        # Raw number "45 000 €" — monthly if < 10 000, else annual
+        raw_val = int(m.group(3))
         if raw_val < 10_000:
             multiplier = 13 if _MONTHS_13_RE.search(desc_lower) else 12
             base_annual = raw_val * multiplier
@@ -116,9 +131,12 @@ def _score_salary(
         return 0.0, None
 
     rtt_match = _RTT_RE.search(desc_lower)
-    rtt_days = (
-        int(rtt_match.group(1)) if rtt_match else (10 if "rtt" in desc_lower else 0)
-    )
+    if rtt_match and rtt_match.group(1):
+        rtt_days = int(rtt_match.group(1))
+    elif rtt_match:
+        rtt_days = 10  # RTT present but no count → assume 10 days
+    else:
+        rtt_days = 0
     rtt_val = rtt_days * base_annual / 218 if rtt_days else 0.0
 
     tr_val = 218 * 9.0 if _TR_RE.search(desc_lower) else 0.0
@@ -200,7 +218,9 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
     if desc_lower:
         exp_match = _EXP_RE.search(desc_lower)
         if exp_match:
-            exp_years = int(exp_match.group(1))
+            # _EXP_RE has 4 capture groups — take the first non-None
+            raw_exp = next(g for g in exp_match.groups() if g is not None)
+            exp_years = int(raw_exp)
             max_exp = search_cfg.get("experience_max_years", 3)
             if exp_years <= max_exp:
                 score += 0.5

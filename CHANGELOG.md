@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-05-29 (later)
+
+### Fixed
+- `scripts/pre_filter.py` — `_EXP_RE`: now covers `Minimum X ans` (WTTJ structured field, 118 occurrences), `années d'expérience`, and `X years of experience` (EN offers); was previously missing ~85% of experience mentions
+- `scripts/pre_filter.py` — `_SALARY_RE`: added `keuro` variant ("50 à 60 keuro")
+- `scripts/pre_filter.py` — `_RTT_RE`: now detects RTT presence without a leading number ("RTT pour tous les CDI"); was silently skipping ~50% of RTT mentions
+- `scripts/pre_filter.py` — `_TR_RE`: added `swile` (meal voucher platform, 3 occurrences)
+- `scripts/pre_filter.py` — `_score_salary()` and `score_offer()`: adapted for new regex group structure
+
+### Changed
+- `dashboard/data/applications.db` — rescored with improved regex coverage (45 offers updated; B: 21→26, C: 49→60)
+
 ## 2026-05-29
 
 ### Added

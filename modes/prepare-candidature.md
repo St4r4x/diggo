@@ -41,8 +41,10 @@ From the description, extract:
 
 ### Phase 3 — Generate CV
 
+**Language rule:** The CV is always generated in French, regardless of the offer language. Exception: only generate an English CV if the offer explicitly requires it (e.g. "CV in English required", "Please submit your resume in English").
+
 1. Select `highlighted_skills` from `config/profile.md` that match `top_skills` exactly (no invention)
-2. Rewrite the 2-sentence summary to mirror the offer's language (role title, key domain)
+2. Rewrite the 2-sentence summary to mirror the offer's language (role title, key domain) — in French
 3. Run:
    ```bash
    python scripts/generate_pdf.py \

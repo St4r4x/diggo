@@ -1,0 +1,80 @@
+# CV content — copy to cv.yaml and fill in your real data
+# cv.yaml is gitignored (personal info)
+
+fr:
+  summary: >
+    AI/ML Engineer avec expérience en production : Computer Vision, LLM/RAG,
+    inférence edge. Alternance chez Company (2023–2026).
+    Master of Science IA (2026). Ancienne carrière en management d'équipe (8 ans).
+
+  experience:
+    - title: "AI/ML Engineer"
+      company: "Your Company"
+      type: "Alternance"
+      period: "Janvier 2025 – Présent"
+      bullets:
+        - "Bullet 1"
+        - "Bullet 2"
+    - title: "Previous Role"
+      company: "Previous Company"
+      type: "Stage"
+      period: "Avril 2023 – Juin 2023"
+      bullets:
+        - "Bullet 1"
+
+  skills:
+    - Python
+    - PyTorch
+    - Docker
+
+  education:
+    - degree: "Master of Science"
+      school: "Your School"
+      period: "2024–2026"
+
+  languages:
+    - "Français (natif)"
+    - "Anglais (professionnel)"
+
+  hobbies:
+    - "Sport"
+    - "Cinéma"
+
+en:
+  summary: >
+    AI/ML Engineer with hands-on production experience in Computer Vision,
+    edge inference, and LLM integration. Work-study at Company (2023–2026).
+    MSc in AI (2026). Former team lead with 8 years of management experience.
+
+  experience:
+    - title: "AI/ML Engineer"
+      company: "Your Company"
+      type: "Work-study"
+      period: "January 2025 – Present"
+      bullets:
+        - "Bullet 1"
+        - "Bullet 2"
+    - title: "Previous Role"
+      company: "Previous Company"
+      type: "Internship"
+      period: "April 2023 – June 2023"
+      bullets:
+        - "Bullet 1"
+
+  skills:
+    - Python
+    - PyTorch
+    - Docker
+
+  education:
+    - degree: "MSc in AI"
+      school: "Your School"
+      period: "2024–2026"
+
+  languages:
+    - "French (native)"
+    - "English (professional)"
+
+  hobbies:
+    - "Sport"
+    - "Cinema"

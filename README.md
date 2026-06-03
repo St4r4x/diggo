@@ -2,135 +2,224 @@
 
 Automated AI/ML job search pipeline for the French market — scraping, scoring, dashboard, and Claude Code-assisted application generation (CV PDF, cover letter, interview prep sheet).
 
-## Features
+## How it works
 
-- **Multi-source scraping** — APEC, Indeed, WTTJ, LinkedIn, Glassdoor portals + direct ATS (Greenhouse, Lever, Ashby)
-- **Description fetching** — platform-specific strategies: public REST APIs (Lever, Greenhouse, APEC internal webservice, Ashby JSON-LD); Playwright browser only for Indeed (Cloudflare-protected)
-- **LLM scoring** — offers scored 0–5 and graded A–F against your profile
-- **Daily report** — markdown digest of recommended offers
-- **Dashboard** — FastAPI + HTMX + Tailwind web UI to track applications (Candidatures, Stats, Profil pages)
-- **Scan button** — "Scanner" button in the dashboard triggers the full import pipeline in the background with live HTMX feedback (spinner → count badge → list refresh)
-- **Profile editor** — `/profile` page to edit `config/profile.md` and `config/contact.yaml` directly from the browser
-- **PDF generation** — tailored CV, cover letter, and interview prep sheet via WeasyPrint + Jinja2
-- **Claude Code modes** — `modes/prepare-candidature.md` drives end-to-end application prep; "Préparer candidature" button in the offer detail panel copies the command to clipboard
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. SCAN          Scrape job portals + ATS → raw offers          │
+│  2. SCORE         Keyword + description signals → grade A–F      │
+│  3. IMPORT        Deduplicate, filter, store in SQLite DB        │
+│  4. DASHBOARD     Review offers, track applications              │
+│  5. APPLY         Generate tailored CV + cover letter + prep     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Steps 1–3 run automatically when you click **Scanner** in the dashboard.
+Step 5 uses Claude Code to generate PDFs for a specific offer.
+
+---
 
 ## Quick start
 
+### 1. Clone and set up
+
 ```bash
-# 1. Clone and create virtualenv
-git clone git@github.com-personal:St4r4x/career-ops-fr.git
+git clone https://github.com/St4r4x/career-ops-fr.git
 cd career-ops-fr
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
+```
 
-# 2. Configure your profile
-cp config/profile.md.example config/profile.md   # edit with your experience
-cp config/contact.yaml.example config/contact.yaml  # edit with your contact info
+### 2. Configure your profile (gitignored — personal data)
 
-# 3. Configure target companies and search settings
-# edit config/settings.yaml and config/ats_map.yaml
+```bash
+cp config/contact.yaml.example config/contact.yaml   # name, email, phone, LinkedIn, GitHub
+cp config/profile.md.example   config/profile.md     # full professional profile for scoring & LLM modes
+cp config/cv.yaml.example      config/cv.yaml        # CV content (experience, skills, education)
+```
 
-# 4. Set your LLM API key
+Edit each file with your real information. These three files are gitignored and never committed.
+
+### 3. Configure search settings
+
+Edit `config/settings.yaml`:
+- `search.keywords` — job titles to search (e.g. "AI Engineer", "ML Engineer")
+- `search.location` — target city (default: "Paris")
+- `scoring.target_salary_min/max` — your salary range in € for scoring
+- `target_companies` — companies that get a scoring bonus
+
+Edit `config/ats_map.yaml` to add direct ATS URLs (Greenhouse / Lever / Ashby) for companies you want to monitor.
+
+### 4. Set your API key
+
+```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+```
 
-# 5. Run the pipeline (scrape + score + import to DB)
-python -m scripts.import_offers
+### 5. Start the dashboard
 
-# 6. Start the dashboard
-cd dashboard && uvicorn app:app --reload --port 8000
+```bash
+docker compose up dashboard
 # → http://localhost:8000
 ```
+
+Click **Scanner** to run the full pipeline. New offers appear in the list automatically.
+
+---
+
+## Dashboard
+
+| Route | Description |
+|-------|-------------|
+| `/` | Candidatures — offer list with filters, notes, status tracking, scan button |
+| `/stats` | Pipeline statistics — response rate, interview count, grade breakdown |
+| `/profile` | Profile editor — edit `profile.md` and `contact.yaml` directly from the browser |
+
+**Offer detail panel:**
+- Change status (À envoyer → Envoyée → Entretien RH → …)
+- Write notes (autosaved with 800ms debounce)
+- Copy the "Préparer candidature" command for Claude Code
+
+---
+
+## Scoring
+
+Offers are scored 0–5 and graded A–F using keyword and description signals — no LLM required:
+
+| Signal | Points |
+|--------|--------|
+| Keyword match in title | +1.0 per keyword |
+| Target company | +1.0 |
+| Location match (Paris) | +1.0 |
+| Junior / alternance | +0.5 |
+| Tech skills in description (Python, PyTorch, Docker…) | +0.1/skill, cap +1.0 |
+| Experience ≤ threshold | +0.5 |
+| CDI mentioned | +0.3 |
+| Salary in target range (FR package: 13e mois, RTT, TR) | +0.5 |
+| ATS quality portal (Lever, Greenhouse, Ashby) | +0.3 |
+| Thin description / no tech / no salary | −0.5 penalty |
+
+**Grade thresholds:** A ≥ 4.0 · B ≥ 3.0 · C ≥ 2.0 · D ≥ 1.0 · F < 1.0
+
+Expired offers ("À envoyer" with a dead URL) are automatically marked **Abandonnée** on each scan.
+
+---
+
+## Generating applications with Claude Code
+
+Open the repo in Claude Code, then use the "Préparer candidature" button on any offer, or run:
+
+```bash
+# Score a new offer (paste the job description in chat)
+claude --system-prompt "$(cat modes/score-offer.md)"
+
+# Generate tailored CV + cover letter + prep sheet for an offer
+claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id>"
+```
+
+`prepare-candidature` runs 5 phases automatically:
+1. Load your profile and fetch the offer description
+2. Analyse the offer (top skills, keywords, gaps, hook angle)
+3. Generate a tailored CV PDF (FR by default; EN if the offer requires it)
+4. Write and generate a cover letter PDF (in the offer's language)
+5. Generate an interview prep sheet PDF (8–12 questions)
+
+All PDFs are saved to `output/<slug>-<date>/` and paths are written back to the DB.
+
+---
+
+## Description fetching
+
+The `scripts/backfill_descriptions.py` script recovers missing descriptions without LLM (~98% coverage via pure HTTP):
+
+| Platform | Strategy | Browser needed |
+|----------|----------|----------------|
+| APEC | Internal REST API (`cms/webservices/offre/public`) | No |
+| Lever | Public REST API (`api.lever.co/v0/postings/{company}/{uuid}`) | No |
+| Greenhouse | Public boards API (`boards-api.greenhouse.io/v1/boards/{company}/jobs/{id}`) | No |
+| Ashby | JSON-LD `JobPosting` block in static HTML | No |
+| Indeed | Playwright with canonical URL | Yes (Cloudflare) |
+
+```bash
+docker compose exec dashboard python3 scripts/backfill_descriptions.py
+```
+
+---
 
 ## Docker
 
 ```bash
-# Dashboard only (persistent data via volumes)
+# Start the dashboard (recommended)
 docker compose up dashboard
 
-# Full pipeline run (one-shot)
+# One-shot pipeline run (scrape + score + import)
 docker compose --profile manual run --rm pipeline
 
-# Backfill missing descriptions on existing offers
+# Backfill missing descriptions
 docker compose exec dashboard python3 scripts/backfill_descriptions.py
 ```
 
-## Description fetching strategies
+---
 
-The `scripts/backfill_descriptions.py` script recovers missing job descriptions without LLM or agent usage (~98% coverage with pure HTTP):
+## Configuration files
 
-| Platform | Strategy | Browser needed |
-|----------|----------|---------------|
-| APEC | Internal REST API (`cms/webservices/offre/public`) discovered via network interception | No |
-| Lever | Public REST API (`api.lever.co/v0/postings/{company}/{uuid}`) | No |
-| Greenhouse | Public boards API (`boards-api.greenhouse.io/v1/boards/{company}/jobs/{id}`) | No |
-| Ashby | JSON-LD `JobPosting` block embedded in static HTML | No |
-| Indeed | Playwright with canonical URL (`/voir-emploi?jk=`) | Yes (Cloudflare) |
+| File | Tracked | Purpose |
+|------|---------|---------|
+| `config/contact.yaml` | ❌ gitignored | Name, email, phone, LinkedIn, GitHub |
+| `config/profile.md` | ❌ gitignored | Full profile used by LLM scoring modes |
+| `config/cv.yaml` | ❌ gitignored | CV content: experience, skills, education, hobbies |
+| `config/settings.yaml` | ✅ | Search keywords, salary range, scoring thresholds, target companies |
+| `config/ats_map.yaml` | ✅ | Direct ATS URLs for Greenhouse / Lever / Ashby companies |
+| `portals/fr/*.yaml` | ✅ | Portal scraper configs (selectors, pagination) |
 
-## Claude Code modes
+`*.example` files are provided for each gitignored config — copy and fill in your data.
 
-With [Claude Code](https://claude.ai/code), open this repo and use:
-
-```bash
-# Score a new offer (paste description in chat)
-claude --system-prompt "$(cat modes/score-offer.md)"
-
-# Generate tailored CV + cover letter + prep sheet for an offer in the DB
-claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id>"
-```
-
-## Dashboard pages
-
-| Route | Description |
-|-------|-------------|
-| `/` | Candidatures — Kanban-style tracker + "Scanner" button to trigger the import pipeline |
-| `/stats` | Statistics and pipeline overview |
-| `/profile` | Profile editor — edit profile.md and contact.yaml in-browser |
-
-## Configuration
-
-| File | Purpose |
-|------|---------|
-| `config/profile.md` | Full professional profile (gitignored) |
-| `config/contact.yaml` | Name, email, phone, GitHub (gitignored) |
-| `config/settings.yaml` | Search keywords, scoring thresholds, target companies |
-| `config/ats_map.yaml` | Target company ATS URLs (Greenhouse / Lever / Ashby) |
-| `portals/fr/*.yaml` | Portal scraper configs (selectors, pagination) |
+---
 
 ## Project structure
 
 ```
-scripts/                  Pipeline logic
-  import_offers.py        Full scan → dedup → score → DB import
-  backfill_descriptions.py Fetch missing descriptions (HTTP-first, Playwright fallback)
-  scan_portals.py         Portal scraping (APEC, Indeed, WTTJ, LinkedIn, Glassdoor)
-  scan_ats.py             ATS scraping (Greenhouse, Lever, Ashby)
-  daily_report.py         Markdown digest generation
-  generate_pdf.py         CV PDF generation (WeasyPrint + Jinja2)
-  generate_cover_letter.py Cover letter PDF generation
-  generate_prep_sheet.py  Interview prep sheet PDF generation
-  pre_filter.py           Keyword-based pre-filtering
-  dedup.py                Accent-insensitive deduplication
-  models.py               Shared data models
+scripts/
+  import_offers.py          Full pipeline: scan → dedup → score → DB import
+  scan_portals.py           Portal scraping (APEC, WTTJ, LinkedIn, Glassdoor, Indeed)
+  scan_ats.py               ATS scraping (Greenhouse, Lever, Ashby)
+  backfill_descriptions.py  Fetch missing descriptions (HTTP-first, Playwright fallback)
+  pre_filter.py             Scoring engine (keyword + description signals)
+  rescore.py                Rescore all existing DB offers (use after changing settings)
+  liveness.py               HTTP-first liveness checker (APEC internal API aware)
+  dedup.py                  Accent-insensitive deduplication
+  daily_report.py           Markdown digest generation
+  generate_pdf.py           CV PDF generation (WeasyPrint + Jinja2, FR/EN)
+  generate_cover_letter.py  Cover letter PDF generation
+  generate_prep_sheet.py    Interview prep sheet PDF generation
+  models.py                 Shared data models
 
-dashboard/                FastAPI web application
-  app.py                  Routes: /, /stats, /profile (+ HTMX partials)
-  db.py                   SQLite persistence layer
-  profile_parser.py       Load/save profile.md and contact.yaml
-  templates/              Jinja2 templates (base, pages, partials)
-  data/                   applications.db (gitignored)
+dashboard/
+  app.py                    FastAPI routes (/, /stats, /profile, /scan/*, /offers/*)
+  db.py                     SQLite persistence layer
+  profile_parser.py         Load/save profile.md and contact.yaml
+  templates/                Jinja2 templates (base, pages, HTMX partials)
+  data/                     applications.db (gitignored)
 
-templates/                PDF templates (CV, cover letter, prep sheet)
-portals/fr/               Portal scraper YAML configs
-config/                   Profile and settings (profile.md and contact.yaml gitignored)
-modes/                    Claude Code mode prompts
-tests/                    pytest suite (197 tests)
-output/                   Generated PDFs (gitignored)
+templates/
+  cv-fr/                    French CV template (HTML + CSS)
+  cv-en/                    English CV template (HTML + CSS)
+  cover-letter-fr/          Cover letter template (FR/EN via context variables)
+  prep-sheet-fr/            Interview prep sheet template
+
+config/                     Settings and gitignored personal data
+modes/                      Claude Code instruction files
+portals/fr/                 Portal scraper YAML configs
+tests/                      pytest suite (256 tests)
+output/                     Generated PDFs (gitignored)
 ```
+
+---
 
 ## Requirements
 
 - Python 3.11+
-- Playwright (Chromium) — only required for Indeed scraping
-- WeasyPrint (system fonts + Cairo — see [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html))
-- Anthropic API key (for scoring and prepare-candidature mode)
+- Playwright (Chromium) — only needed for Indeed scraping
+- WeasyPrint + system fonts (Cairo, Pango) — see [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
+- Anthropic API key — for LLM scoring modes (`score-offer`, `prepare-candidature`)

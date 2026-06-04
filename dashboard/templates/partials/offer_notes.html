@@ -1,5 +1,5 @@
-<div id="offer-notes-{{ offer.id }}">
-  <div class="flex items-center justify-between mb-1.5">
+<div id="offer-notes-{{ offer.id }}" class="flex flex-col h-full">
+  <div class="flex items-center justify-between mb-1.5 shrink-0">
     <p style="color:#8b5cf6;" class="text-sm font-medium">Notes</p>
     {% if saved %}
     <span class="text-xs" style="color:#4ade80;" id="notes-saved-{{ offer.id }}">✓ Sauvegardé</span>
@@ -13,10 +13,9 @@
   </div>
   <textarea
     name="notes"
-    rows="6"
     placeholder="Questions à poser, points clés, impressions, contacts…"
-    class="w-full text-sm rounded-lg p-3 resize-y focus:outline-none transition-colors placeholder-slate-500"
-    style="background:#1e1535;border:1px solid #2d1f5e;color:#e2e8f0;"
+    class="w-full flex-1 text-sm rounded-lg p-3 resize-none focus:outline-none transition-colors placeholder-slate-500"
+    style="background:#1e1535;border:1px solid #2d1f5e;color:#e2e8f0;min-height:8rem;"
     onfocus="this.style.borderColor='#6366f1'"
     onblur="this.style.borderColor='#2d1f5e'"
     hx-post="/offers/{{ offer.id }}/notes"

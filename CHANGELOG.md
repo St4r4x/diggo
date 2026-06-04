@@ -14,8 +14,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/templates/base.html` — new nav style (gradient logo text, indigo active link), shared `.grade-a/b/c/d/f` badge classes, `.bg-accent` / `.bg-accent-rose` gradient utilities
 - `dashboard/templates/index.html` — left panel dark surface, filter inputs and selects dark-styled with indigo focus rings
 - `dashboard/templates/partials/offer_list.html` — avatar initials per company (`bg-accent` gradient circle), gradient grade badges via `.grade-*` classes, hover highlight `#251b45`
-- `dashboard/templates/partials/offer_detail.html` — large avatar header, indigo→transparent gradient divider, indigo metadata labels, styled action buttons (Préparer candidature uses `bg-accent`)
-- `dashboard/templates/partials/offer_notes.html` — dark surface textarea, indigo focus border via `onfocus`/`onblur`
+- `dashboard/templates/partials/offer_detail.html` — large avatar header, indigo→transparent gradient divider, indigo metadata labels, styled action buttons (Préparer candidature uses `bg-accent`); 2-column layout (meta+actions left, description+notes right) occupying full panel height
+- `dashboard/templates/partials/offer_notes.html` — dark surface textarea, indigo focus border via `onfocus`/`onblur`; textarea stretches to fill remaining column height
 - `dashboard/templates/partials/offer_form.html` — dark inputs/select/textarea with indigo focus, gradient save button
 - `dashboard/templates/partials/offer_empty.html` — centered empty state with `bg-accent-rose` placeholder
 - `dashboard/templates/partials/scan_status.html` — idle button uses `bg-accent`, running state shows indigo spinner, done/error states themed

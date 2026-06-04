@@ -10,7 +10,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-04
 
 ### Changed
-- `dashboard/templates/base.html` — redesigned nav with deep-purple gradient background (#1e1535), indigo accent text with bottom border on active state, refined color palette; added shared CSS utility classes (.bg-accent, .text-accent, .grade-a/b/c/d/f) for use across dashboard templates
+- `dashboard/templates/` — full UI redesign: deep-purple gradient background (`#0f0a1e`→`#1a0f30`), Indigo+Rose accent palette (`#6366f1`/`#8b5cf6`/`#ec4899`), rounded-lg cards with surface/raised/border color system (`#1e1535`/`#2d1f5e`); no logic changes
+- `dashboard/templates/base.html` — new nav style (gradient logo text, indigo active link), shared `.grade-a/b/c/d/f` badge classes, `.bg-accent` / `.bg-accent-rose` gradient utilities
+- `dashboard/templates/index.html` — left panel dark surface, filter inputs and selects dark-styled with indigo focus rings
+- `dashboard/templates/partials/offer_list.html` — avatar initials per company (`bg-accent` gradient circle), gradient grade badges via `.grade-*` classes, hover highlight `#251b45`
+- `dashboard/templates/partials/offer_detail.html` — large avatar header, indigo→transparent gradient divider, indigo metadata labels, styled action buttons (Préparer candidature uses `bg-accent`)
+- `dashboard/templates/partials/offer_notes.html` — dark surface textarea, indigo focus border via `onfocus`/`onblur`
+- `dashboard/templates/partials/offer_form.html` — dark inputs/select/textarea with indigo focus, gradient save button
+- `dashboard/templates/partials/offer_empty.html` — centered empty state with `bg-accent-rose` placeholder
+- `dashboard/templates/partials/scan_status.html` — idle button uses `bg-accent`, running state shows indigo spinner, done/error states themed
+- `dashboard/templates/stats.html` — KPI cards with 3px colored top-border gradients, indigo→rose progress bars
+- `dashboard/templates/profile.html` — accordion and form elements updated to match new theme (indigo open-state gradient, gradient save buttons, `#6366f1` input focus)
 
 ---
 

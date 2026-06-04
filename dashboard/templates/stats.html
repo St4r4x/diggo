@@ -1,43 +1,53 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-8 max-w-2xl mx-auto">
-  <h1 class="text-2xl font-bold text-white mb-8">Statistiques</h1>
+<div class="p-8 max-w-2xl mx-auto overflow-y-auto h-full">
+  <h1 class="text-2xl font-bold mb-8" style="color:#f1f5f9;">Statistiques</h1>
 
   <div class="grid grid-cols-2 gap-4 mb-8">
-    <div class="bg-slate-800 rounded-lg p-4">
-      <p class="text-slate-400 text-sm">Total candidatures</p>
-      <p class="text-3xl font-bold text-white">{{ stats.total }}</p>
+
+    <div class="rounded-xl p-5 relative overflow-hidden" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
+      <p class="text-sm mb-1" style="color:#94a3b8;">Total candidatures</p>
+      <p class="text-3xl font-bold" style="color:#f1f5f9;">{{ stats.total }}</p>
     </div>
-    <div class="bg-slate-800 rounded-lg p-4">
-      <p class="text-slate-400 text-sm">Taux de réponse</p>
-      <p class="text-3xl font-bold text-white">{{ stats.response_rate }}%</p>
+
+    <div class="rounded-xl p-5 relative overflow-hidden" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6366f1,#ec4899);"></div>
+      <p class="text-sm mb-1" style="color:#94a3b8;">Taux de réponse</p>
+      <p class="text-3xl font-bold" style="color:#f1f5f9;">{{ stats.response_rate }}%</p>
     </div>
-    <div class="bg-slate-800 rounded-lg p-4">
-      <p class="text-slate-400 text-sm">Entretiens obtenus</p>
-      <p class="text-3xl font-bold text-white">{{ stats.interview_count }}</p>
+
+    <div class="rounded-xl p-5 relative overflow-hidden" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#059669,#34d399);"></div>
+      <p class="text-sm mb-1" style="color:#94a3b8;">Entretiens obtenus</p>
+      <p class="text-3xl font-bold" style="color:#f1f5f9;">{{ stats.interview_count }}</p>
     </div>
-    <div class="bg-slate-800 rounded-lg p-4 {% if stats.stale_count > 0 %}border border-amber-500{% endif %}">
-      <p class="text-slate-400 text-sm">Relances en retard (+7j)</p>
-      <p class="text-3xl font-bold {% if stats.stale_count > 0 %}text-amber-400{% else %}text-white{% endif %}">
+
+    <div class="rounded-xl p-5 relative overflow-hidden"
+         style="background:#1e1535;border:1px solid {% if stats.stale_count > 0 %}rgba(245,158,11,0.4){% else %}#2d1f5e{% endif %};">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#d97706,#f59e0b);"></div>
+      <p class="text-sm mb-1" style="color:#94a3b8;">Relances en retard (+7j)</p>
+      <p class="text-3xl font-bold" style="color:{% if stats.stale_count > 0 %}#fbbf24{% else %}#f1f5f9{% endif %};">
         {{ stats.stale_count }}
       </p>
     </div>
+
   </div>
 
-  <h2 class="text-lg font-semibold text-white mb-4">Par statut</h2>
-  <div class="flex flex-col gap-2">
+  <h2 class="text-lg font-semibold mb-4" style="color:#f1f5f9;">Par statut</h2>
+  <div class="flex flex-col gap-3">
     {% for s in statuses %}
     {% set count = stats.by_status.get(s, 0) %}
     <div class="flex items-center gap-3">
-      <span class="w-36 text-xs px-2 py-1 rounded font-medium text-center
+      <span class="w-36 text-xs px-2 py-1 rounded-lg font-medium text-center
         {{ STATUS_COLORS.get(s, 'bg-gray-700 text-gray-200') }}">{{ s }}</span>
-      <div class="flex-1 bg-slate-800 rounded-full h-2">
+      <div class="flex-1 rounded-full h-2" style="background:#2d1f5e;">
         {% if stats.total > 0 %}
-        <div class="bg-violet-500 h-2 rounded-full"
-          style="width: {{ [count / stats.total * 100, 100] | min | int }}%"></div>
+        <div class="h-2 rounded-full"
+          style="width: {{ [count / stats.total * 100, 100] | min | int }}%;background:linear-gradient(90deg,#6366f1,#ec4899);"></div>
         {% endif %}
       </div>
-      <span class="text-slate-300 text-sm w-6 text-right">{{ count }}</span>
+      <span class="text-sm w-6 text-right" style="color:#cbd5e1;">{{ count }}</span>
     </div>
     {% endfor %}
   </div>

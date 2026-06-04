@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-04
+
+### Changed
+- `dashboard/templates/base.html` — redesigned nav with deep-purple gradient background (#1e1535), indigo accent text with bottom border on active state, refined color palette; added shared CSS utility classes (.bg-accent, .text-accent, .grade-a/b/c/d/f) for use across dashboard templates
+
 ---
 
 ## [0.9.0] — 2026-06-03

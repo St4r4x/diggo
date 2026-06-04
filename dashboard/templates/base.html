@@ -7,16 +7,26 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <style>
-    body { background: #0f172a; color: #e2e8f0; }
+    body { background: #0f0a1e; color: #e2e8f0; }
     .scrollable { overflow-y: auto; }
+    /* Gradient accent utility */
+    .bg-accent { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .bg-accent-rose { background: linear-gradient(135deg, #6366f1, #ec4899); }
+    .text-accent { color: #a5b4fc; }
+    /* Grade badge colors */
+    .grade-a { background: linear-gradient(135deg, #6366f1, #ec4899); color: #fff; }
+    .grade-b { background: linear-gradient(135deg, #1d4ed8, #6366f1); color: #fff; }
+    .grade-c { background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; }
+    .grade-d { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+    .grade-f { background: #374151; color: #9ca3af; }
   </style>
 </head>
-<body class="h-screen flex flex-col">
-  <nav class="bg-slate-800 px-4 py-3 flex items-center gap-6 border-b border-slate-700 shrink-0">
-    <span class="font-bold text-violet-400 text-lg">career-ops-fr</span>
-    <a href="/" class="{{ 'text-violet-400 font-semibold' if request.url.path == '/' else 'text-slate-300 hover:text-white' }} text-sm">Candidatures</a>
-    <a href="/stats" class="{{ 'text-violet-400 font-semibold' if request.url.path == '/stats' else 'text-slate-300 hover:text-white' }} text-sm">Stats</a>
-    <a href="/profile" class="{{ 'text-violet-400 font-semibold' if request.url.path == '/profile' else 'text-slate-300 hover:text-white' }} text-sm">Profil</a>
+<body class="h-screen flex flex-col" style="background: linear-gradient(135deg, #0f0a1e 0%, #1a0f30 100%);">
+  <nav style="background:#1e1535;border-bottom:1px solid #2d1f5e;" class="px-5 py-3 flex items-center gap-6 shrink-0">
+    <span class="font-bold text-lg" style="background:linear-gradient(135deg,#a5b4fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">career-ops-fr</span>
+    <a href="/" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Candidatures</a>
+    <a href="/stats" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/stats' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Stats</a>
+    <a href="/profile" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/profile' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Profil</a>
   </nav>
   <main class="flex-1 overflow-hidden">
     {% block content %}{% endblock %}

@@ -1,63 +1,76 @@
 <div class="max-w-2xl">
+
   <!-- Header -->
-  <div class="flex items-start justify-between mb-4">
-    <div>
-      <h2 class="text-xl font-bold text-white">{{ offer.company }}</h2>
-      <p class="text-slate-400">{{ offer.role }}</p>
+  <div class="flex items-start justify-between mb-5">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold text-white bg-accent shrink-0">
+        {{ (offer.company[:1] | upper) if offer.company else '?' }}
+      </div>
+      <div>
+        <h2 class="text-xl font-bold" style="color:#f1f5f9;">{{ offer.company }}</h2>
+        <p style="color:#a5b4fc;" class="text-sm">{{ offer.role }}</p>
+      </div>
     </div>
-    <div class="flex gap-2 items-center">
-      <span class="text-sm px-3 py-1 rounded font-bold
-        {{ GRADE_COLORS.get(offer.score_grade, 'bg-gray-700 text-gray-200') }}">
+    <div class="flex gap-2 items-center shrink-0">
+      <span class="text-sm px-3 py-1 rounded-lg font-bold
+        {% if offer.score_grade == 'A' %}grade-a
+        {% elif offer.score_grade == 'B' %}grade-b
+        {% elif offer.score_grade == 'C' %}grade-c
+        {% elif offer.score_grade == 'D' %}grade-d
+        {% else %}grade-f{% endif %}">
         {{ offer.score_grade }} {{ "%.1f"|format(offer.score_value) }}
       </span>
-      <span class="text-sm px-3 py-1 rounded font-medium
+      <span class="text-sm px-3 py-1 rounded-lg font-medium
         {{ STATUS_COLORS.get(offer.status, 'bg-gray-700 text-gray-200') }}">
         {{ offer.status }}
       </span>
     </div>
   </div>
 
+  <!-- Divider -->
+  <div style="height:1px;background:linear-gradient(90deg,#6366f1,transparent);margin-bottom:1.25rem;"></div>
+
   <!-- Fields -->
   <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6">
-    <dt class="text-slate-400">Détecté le</dt>
-    <dd class="text-slate-200">{{ offer.detection_date }}</dd>
+    <dt style="color:#8b5cf6;">Détecté le</dt>
+    <dd style="color:#e2e8f0;">{{ offer.detection_date }}</dd>
     {% if offer.send_date %}
-    <dt class="text-slate-400">Envoyé le</dt>
-    <dd class="text-slate-200">{{ offer.send_date }}</dd>
+    <dt style="color:#8b5cf6;">Envoyé le</dt>
+    <dd style="color:#e2e8f0;">{{ offer.send_date }}</dd>
     {% endif %}
     {% if offer.follow_up_date %}
-    <dt class="text-slate-400">Relance</dt>
-    <dd class="text-slate-200">{{ offer.follow_up_date }}</dd>
+    <dt style="color:#8b5cf6;">Relance</dt>
+    <dd style="color:#e2e8f0;">{{ offer.follow_up_date }}</dd>
     {% endif %}
     {% if offer.offer_url and offer.offer_url.startswith(('http://', 'https://')) %}
-    <dt class="text-slate-400">URL</dt>
+    <dt style="color:#8b5cf6;">URL</dt>
     <dd><a href="{{ offer.offer_url }}" target="_blank" rel="noopener noreferrer"
-          class="text-violet-400 hover:text-violet-300 underline break-all text-xs">
+          class="hover:text-indigo-300 underline break-all text-xs" style="color:#a5b4fc;">
       {{ offer.offer_url }}</a></dd>
     {% endif %}
     {% if offer.cv_path %}
-    <dt class="text-slate-400">CV</dt>
-    <dd class="text-slate-200 text-xs break-all">{{ offer.cv_path }}</dd>
+    <dt style="color:#8b5cf6;">CV</dt>
+    <dd style="color:#e2e8f0;" class="text-xs break-all">{{ offer.cv_path }}</dd>
     {% endif %}
     {% if offer.cover_letter_path %}
-    <dt class="text-slate-400">LM</dt>
-    <dd class="text-slate-200 text-xs break-all">{{ offer.cover_letter_path }}</dd>
+    <dt style="color:#8b5cf6;">LM</dt>
+    <dd style="color:#e2e8f0;" class="text-xs break-all">{{ offer.cover_letter_path }}</dd>
     {% endif %}
     {% if offer.contacts %}
-    <dt class="text-slate-400">Contacts</dt>
-    <dd class="text-slate-200">{{ offer.contacts }}</dd>
+    <dt style="color:#8b5cf6;">Contacts</dt>
+    <dd style="color:#e2e8f0;">{{ offer.contacts }}</dd>
     {% endif %}
   </dl>
 
   {% if offer.description %}
   <div class="mb-6">
-    <p class="text-slate-400 text-sm mb-1">Description</p>
+    <p style="color:#8b5cf6;" class="text-sm mb-1">Description</p>
     <details>
-      <summary class="text-slate-300 text-sm cursor-pointer hover:text-white">
+      <summary class="text-sm cursor-pointer hover:text-white transition-colors" style="color:#cbd5e1;">
         {{ offer.description[:200] }}{% if offer.description|length > 200 %}…{% endif %}
       </summary>
       {% if offer.description|length > 200 %}
-      <p class="text-slate-300 text-sm mt-2 whitespace-pre-wrap bg-slate-800 rounded p-3">{{ offer.description }}</p>
+      <p class="text-sm mt-2 whitespace-pre-wrap rounded-lg p-3" style="color:#cbd5e1;background:#1e1535;border:1px solid #2d1f5e;">{{ offer.description }}</p>
       {% endif %}
     </details>
   </div>
@@ -68,13 +81,13 @@
   </div>
 
   <!-- Status quick-change -->
-  <div class="mb-4">
-    <p class="text-slate-400 text-sm mb-2">Changer le statut</p>
+  <div class="mb-5">
+    <p style="color:#8b5cf6;" class="text-sm mb-2">Changer le statut</p>
     <div class="flex flex-wrap gap-2">
       {% for s in statuses %}
       <button
-        class="text-xs px-2 py-1 rounded font-medium border
-          {% if s == offer.status %}border-violet-500 {{ STATUS_COLORS.get(s, '') }}{% else %}border-slate-600 text-slate-400 hover:border-slate-400{% endif %}"
+        class="text-xs px-2.5 py-1 rounded-lg font-medium border transition-colors
+          {% if s == offer.status %}border-indigo-500 {{ STATUS_COLORS.get(s, '') }}{% else %}border-[#2d1f5e] text-slate-400 hover:border-indigo-400 hover:text-slate-200{% endif %}"
         hx-post="/offers/{{ offer.id }}/status"
         hx-vals='{{ {"status": s} | tojson }}'
         hx-target="#offer-detail"
@@ -86,39 +99,44 @@
   </div>
 
   <!-- Action buttons -->
-  <div class="flex gap-3">
+  <div class="flex gap-3 flex-wrap">
     <button
-      class="text-sm px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white"
+      class="text-sm px-4 py-2 rounded-lg text-white font-medium transition-colors"
+      style="background:#1e1535;border:1px solid #2d1f5e;"
+      onmouseover="this.style.borderColor='#6366f1'"
+      onmouseout="this.style.borderColor='#2d1f5e'"
       hx-get="/offers/{{ offer.id }}/edit"
       hx-target="#offer-detail"
       hx-swap="innerHTML">
       ✏️ Modifier
     </button>
     <button
-      class="text-sm px-4 py-2 rounded bg-red-800 hover:bg-red-700 text-white"
+      class="text-sm px-4 py-2 rounded-lg text-white font-medium transition-colors"
+      style="background:rgba(185,28,28,0.25);border:1px solid rgba(185,28,28,0.4);"
+      onmouseover="this.style.background='rgba(185,28,28,0.4)'"
+      onmouseout="this.style.background='rgba(185,28,28,0.25)'"
       hx-delete="/offers/{{ offer.id }}"
       hx-target="#offer-detail"
       hx-swap="innerHTML"
       hx-confirm="Supprimer cette candidature ?">
       🗑 Supprimer
     </button>
-
     <button
-      class="text-sm px-4 py-2 rounded bg-violet-800 hover:bg-violet-700 text-white"
+      class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90"
       onclick="copyPrepCmd({{ offer.id }})"
       id="prep-btn-{{ offer.id }}">
-      Préparer candidature
+      ✦ Préparer candidature
     </button>
-
-    <script>
-    function copyPrepCmd(id) {
-      const cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + "\"";
-      navigator.clipboard.writeText(cmd).then(function() {
-        var btn = document.getElementById("prep-btn-" + id);
-        btn.textContent = "Commande copiée !";
-        setTimeout(function() { btn.textContent = "Préparer candidature"; }, 2000);
-      });
-    }
-    </script>
   </div>
+
+  <script>
+  function copyPrepCmd(id) {
+    const cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + "\"";
+    navigator.clipboard.writeText(cmd).then(function() {
+      var btn = document.getElementById("prep-btn-" + id);
+      btn.textContent = "✓ Commande copiée !";
+      setTimeout(function() { btn.textContent = "✦ Préparer candidature"; }, 2000);
+    });
+  }
+  </script>
 </div>

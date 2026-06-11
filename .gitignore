@@ -11,7 +11,8 @@ build/
 *.db
 .venv/
 venv/
-# docs/ is tracked (plans, specs)
+# docs/ is tracked (plans, specs) — superpowers working plans excluded
+docs/superpowers/plans/
 .pytest_cache/
 .coverage
 htmlcov/

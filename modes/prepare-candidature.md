@@ -15,6 +15,11 @@ If no ID is found in the message, ask: "Quel est l'ID de l'offre ?"
 
 ## Instructions
 
+### Flag `--no-prep`
+
+If the user message contains `--no-prep`, skip Phase 5 entirely (do not generate the prep sheet).
+Run Phase 6 as normal but only update `cv_path` and `cover_letter_path` in the DB.
+
 ### Phase 1 — Load context
 
 1. Read `config/profile.md`

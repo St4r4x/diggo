@@ -164,9 +164,7 @@
 
   </div>
 
-  {% set apply_statuses2 = ["À envoyer", "Envoyée", "Relance"] %}
-  {% set interview_statuses2 = ["Entretien RH", "Entretien tech", "Offre"] %}
-  {% if offer.status in apply_statuses2 %}
+  {% if offer.status in apply_statuses %}
   <script>
   function copyPrepCmd(id) {
     var withLm = document.getElementById("lm-toggle-" + id);
@@ -180,16 +178,24 @@
       var btn = document.getElementById("prep-btn-" + id);
       btn.textContent = "✓ Commande copiée !";
       setTimeout(function() { btn.textContent = "✦ Préparer candidature"; }, 2000);
+    }).catch(function() {
+      var btn = document.getElementById("prep-btn-" + id);
+      btn.textContent = "✗ Copie échouée";
+      setTimeout(function() { btn.textContent = "✦ Préparer candidature"; }, 2000);
     });
   }
   </script>
-  {% elif offer.status in interview_statuses2 %}
+  {% elif offer.status in interview_statuses %}
   <script>
   function copyInterviewCmd(id) {
     var cmd = "claude --system-prompt \"$(cat modes/prepare-entretien.md)\" \"Prépare l'entretien pour l'offre ID " + id + "\"";
-    navigator.clipboard.writeText.call(navigator.clipboard, cmd).then(function() {
+    navigator.clipboard.writeText(cmd).then(function() {
       var btn = document.getElementById("interview-btn-" + id);
       btn.textContent = "✓ Commande copiée !";
+      setTimeout(function() { btn.textContent = "✦ Préparer entretien"; }, 2000);
+    }).catch(function() {
+      var btn = document.getElementById("interview-btn-" + id);
+      btn.textContent = "✗ Copie échouée";
       setTimeout(function() { btn.textContent = "✦ Préparer entretien"; }, 2000);
     });
   }

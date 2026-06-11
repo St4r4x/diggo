@@ -72,6 +72,28 @@ def client_with_data(client):
     return client
 
 
+@pytest.fixture
+def client_with_interview_offer(client):
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    db.conn.execute(
+        "INSERT INTO applications (company, role, offer_url, detection_date, "
+        "score_grade, score_value, status) VALUES (?,?,?,?,?,?,?)",
+        (
+            "Hugging Face",
+            "ML Engineer",
+            "https://apply.workable.com/huggingface/1",
+            "2026-06-01",
+            "A",
+            4.8,
+            "Entretien RH",
+        ),
+    )
+    db.conn.commit()
+    return client
+
+
 class TestRoot:
     def test_returns_200(self, client):
         r = client.get("/")
@@ -445,13 +467,68 @@ class TestScan:
 
 
 class TestPrepareCandidature:
-    def test_offer_detail_contains_prepare_command(self, client_with_data):
+    def test_apply_status_shows_prep_button(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "À envoyer")
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+        assert "copyPrepCmd" in r.text
+        assert f"copyPrepCmd({row['id']})" in r.text
+
+    def test_apply_status_shows_lm_checkbox(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "À envoyer")
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert "lettre" in r.text.lower() or "lm" in r.text.lower()
+
+    def test_apply_status_cv_only_command_uses_generate_cv(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "À envoyer")
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert "generate-cv.md" in r.text
+
+    def test_apply_status_with_lm_command_uses_prepare_candidature(
+        self, client_with_data
+    ):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "À envoyer")
+        r = client_with_data.get(f"/offers/{row['id']}")
+        assert "prepare-candidature.md" in r.text
+        assert "--no-prep" in r.text
+
+    def test_interview_status_shows_interview_button(self, client_with_interview_offer):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "Entretien RH")
+        r = client_with_interview_offer.get(f"/offers/{row['id']}")
+        assert r.status_code == 200
+        assert "copyInterviewCmd" in r.text
+        assert f"copyInterviewCmd({row['id']})" in r.text
+        assert "prepare-entretien.md" in r.text
+
+    def test_interview_status_hides_prep_button(self, client_with_interview_offer):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = next(r for r in db.get_all({}) if r["status"] == "Entretien RH")
+        r = client_with_interview_offer.get(f"/offers/{row['id']}")
+        assert "copyPrepCmd" not in r.text
+
+    def test_terminal_status_shows_no_action_buttons(self, client_with_data):
         import app as dashboard_app
 
         db = dashboard_app.app.state.db
         row = db.get_all({})[0]
+        db.update(row["id"], {"status": "Refusée"})
         r = client_with_data.get(f"/offers/{row['id']}")
-        assert r.status_code == 200
-        # The command is assembled in JS; verify both the static prefix and the offer id
-        assert "prepare-candidature.md" in r.text
-        assert f"copyPrepCmd({row['id']})" in r.text
+        assert "copyPrepCmd" not in r.text
+        assert "copyInterviewCmd" not in r.text

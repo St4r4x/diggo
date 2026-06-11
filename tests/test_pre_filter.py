@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from scripts.models import RawOffer
-from scripts.pre_filter import _is_idf_compatible, pre_filter, score_offer
+from scripts.pre_filter import _is_location_compatible, pre_filter, score_offer
 
 
 MOCK_SETTINGS = {
@@ -396,66 +396,47 @@ class TestLegitimacy:
         assert not any("legitimacy:" in t for t in tags)
 
 
-class TestIsIdfCompatible:
-    """Unit tests for _is_idf_compatible()."""
+class TestIsLocationCompatible:
+    """Unit tests for _is_location_compatible(target, location)."""
 
     def test_empty_location_passes(self) -> None:
-        assert _is_idf_compatible("") is True
+        assert _is_location_compatible("", "Paris") is True
 
-    def test_none_equivalent_passes(self) -> None:
-        assert _is_idf_compatible("") is True
+    def test_exact_match_passes(self) -> None:
+        assert _is_location_compatible("Paris", "Paris") is True
 
-    def test_paris_passes(self) -> None:
-        assert _is_idf_compatible("Paris") is True
+    def test_city_with_suffix_passes(self) -> None:
+        assert _is_location_compatible("Paris 8ème", "Paris") is True
 
-    def test_paris_with_arrondissement_passes(self) -> None:
-        assert _is_idf_compatible("Paris 8ème") is True
-
-    def test_la_defense_passes(self) -> None:
-        assert _is_idf_compatible("La Défense") is True
-
-    def test_issy_les_moulineaux_passes(self) -> None:
-        assert _is_idf_compatible("Issy-les-Moulineaux") is True
-
-    def test_versailles_passes(self) -> None:
-        assert _is_idf_compatible("Versailles") is True
-
-    def test_dept_code_92_passes(self) -> None:
-        assert _is_idf_compatible("92200 Neuilly-sur-Seine") is True
-
-    def test_dept_code_77_passes(self) -> None:
-        assert _is_idf_compatible("77000 Melun") is True
+    def test_case_insensitive(self) -> None:
+        assert _is_location_compatible("PARIS", "Paris") is True
 
     def test_remote_passes(self) -> None:
-        assert _is_idf_compatible("Remote") is True
+        assert _is_location_compatible("Remote", "Paris") is True
 
     def test_full_remote_passes(self) -> None:
-        assert _is_idf_compatible("Full-Remote") is True
+        assert _is_location_compatible("Full-Remote", "Paris") is True
 
     def test_teletravail_passes(self) -> None:
-        assert _is_idf_compatible("Télétravail") is True
+        assert _is_location_compatible("Télétravail", "Paris") is True
 
     def test_hybride_passes(self) -> None:
-        assert _is_idf_compatible("Paris / Hybride") is True
+        assert _is_location_compatible("Paris / Hybride", "Paris") is True
 
-    def test_lyon_rejected(self) -> None:
-        assert _is_idf_compatible("Lyon") is False
+    def test_different_city_rejected(self) -> None:
+        assert _is_location_compatible("Lyon", "Paris") is False
 
-    def test_marseille_rejected(self) -> None:
-        assert _is_idf_compatible("Marseille") is False
+    def test_different_city_rejected_lyon_target(self) -> None:
+        assert _is_location_compatible("Paris", "Lyon") is False
 
-    def test_bordeaux_rejected(self) -> None:
-        assert _is_idf_compatible("Bordeaux") is False
+    def test_lyon_target_accepts_lyon(self) -> None:
+        assert _is_location_compatible("Lyon", "Lyon") is True
 
-    def test_nantes_rejected(self) -> None:
-        assert _is_idf_compatible("Nantes") is False
+    def test_bordeaux_target_accepts_bordeaux(self) -> None:
+        assert _is_location_compatible("Bordeaux", "Bordeaux") is True
 
-    def test_london_rejected(self) -> None:
-        assert _is_idf_compatible("London") is False
-
-    def test_us_remote_rejected(self) -> None:
-        # "Remote" alone passes, but explicit US city should not
-        assert _is_idf_compatible("New York") is False
+    def test_foreign_city_rejected(self) -> None:
+        assert _is_location_compatible("London", "Paris") is False
 
 
 # threshold=2.0 so keyword(+1) + company(+1) = 2.0 passes without location bonus

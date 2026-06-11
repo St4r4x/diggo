@@ -58,75 +58,22 @@ _TECH_SKILLS = frozenset(
 
 _QUALITY_PORTALS = frozenset(["lever", "greenhouse", "ashby"])
 
-# Île-de-France: city names, department names, and postal-code prefixes
-_IDF_KEYWORDS = frozenset(
-    [
-        "paris",
-        "île-de-france",
-        "ile-de-france",
-        "idf",
-        "seine-et-marne",
-        "yvelines",
-        "essonne",
-        "hauts-de-seine",
-        "seine-saint-denis",
-        "val-de-marne",
-        "val-d'oise",
-        "boulogne",
-        "vincennes",
-        "montreuil",
-        "saint-denis",
-        "nanterre",
-        "versailles",
-        "créteil",
-        "creteil",
-        "évry",
-        "evry",
-        "massy",
-        "saclay",
-        "issy",
-        "levallois",
-        "neuilly",
-        "courbevoie",
-        "la défense",
-        "la defense",
-        "châtillon",
-        "chatillon",
-        "suresnes",
-        "bagneux",
-        "malakoff",
-        "antony",
-        "meudon",
-        "vélizy",
-        "velizy",
-        "palaiseau",
-        "gif-sur-yvette",
-        "orsay",
-        "clichy",
-        "pantin",
-        "noisy",
-        "bobigny",
-    ]
-)
-# Matches 5-digit IDF postal codes: 75xxx, 77xxx, 78xxx, 91xxx–95xxx
-_IDF_DEPT_RE = re.compile(r"(?<!\d)(75|77|78|9[1-5])\d{3}(?!\d)")
 _REMOTE_RE = re.compile(
     r"remote|full.remote|télétravail|teletravail|hybride|hybrid", re.IGNORECASE
 )
 
 
-def _is_idf_compatible(location: str) -> bool:
-    """Return True if the location is empty, remote/hybrid, or Paris/IDF."""
+def _is_location_compatible(location: str, target: str) -> bool:
+    """Return True if the offer location is acceptable given the target location.
+
+    Passes when: location is empty, offer is remote/hybrid, or target appears
+    anywhere in the offer location string (case-insensitive).
+    """
     if not location:
         return True
-    loc = location.lower()
-    if _REMOTE_RE.search(loc):
+    if _REMOTE_RE.search(location):
         return True
-    if any(kw in loc for kw in _IDF_KEYWORDS):
-        return True
-    if _IDF_DEPT_RE.search(loc):
-        return True
-    return False
+    return target.lower() in location.lower()
 
 
 _COMPANY_NOISE = re.compile(
@@ -359,7 +306,9 @@ def pre_filter(offers: list[RawOffer], settings: dict) -> list[RawOffer]:
     filter_by_location = bool(location_filter)
     kept: list[RawOffer] = []
     for offer in offers:
-        if filter_by_location and not _is_idf_compatible(offer.location or ""):
+        if filter_by_location and not _is_location_compatible(
+            offer.location or "", location_filter
+        ):
             logger.debug(
                 "Dropped [location]: %s @ %s (location=%r)",
                 offer.title,

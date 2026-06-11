@@ -21,17 +21,12 @@ from typing import Optional
 import httpx
 import yaml
 
-from scripts.models import RawOffer
+from scripts.models import RawOffer, strip_html
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_ATS_MAP = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 _TIMEOUT = 10.0
-
-
-def _strip_html(html: str) -> str:
-    text = re.sub(r"<[^>]+>", " ", html)
-    return re.sub(r"\s+", " ", text).strip()
 
 
 class GreenhouseProvider:
@@ -66,7 +61,7 @@ class GreenhouseProvider:
                     detail_resp = await client.get(detail_url, timeout=_TIMEOUT)
                     detail_resp.raise_for_status()
                     raw_content = detail_resp.json().get("content", "")
-                    description = _strip_html(raw_content)[:8000]
+                    description = strip_html(raw_content)[:8000]
                 except Exception:
                     pass
             offers.append(

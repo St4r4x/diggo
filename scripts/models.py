@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
@@ -25,3 +26,9 @@ class RawOffer:
         title_norm = self.title.lower().strip()
         company_norm = self.company.lower().strip()
         return f"{title_norm}||{company_norm}"
+
+
+def strip_html(html: str) -> str:
+    """Strip HTML tags and collapse whitespace to plain text."""
+    text = re.sub(r"<[^>]+>", " ", html)
+    return re.sub(r"\s+", " ", text).strip()

@@ -323,3 +323,42 @@ class TestSaveProjects:
         r = profile_client.post("/profile/projects", data={"data": "not-json"})
         assert r.status_code == 200
         assert "invalide" in r.text
+
+
+class TestProfileSaveErrors:
+    def test_contact_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post(
+            "/profile/contact",
+            data={
+                "name": "Test",
+                "title": "",
+                "email": "",
+                "phone": "",
+                "location": "",
+                "linkedin": "",
+                "github": "",
+            },
+        )
+        assert r.status_code == 200
+        assert "Erreur" in r.text
+
+    def test_summary_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post("/profile/summary", data={"summary": "Test summary"})
+        assert r.status_code == 200
+        assert "Erreur" in r.text

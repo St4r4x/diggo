@@ -72,5 +72,14 @@
 </div>
 {% endif %}
 
+{% if hobbies %}
+<div class="section">
+  <div class="section-title">Centres d'intérêt</div>
+  {% for hobby in hobbies %}
+  <span>{{ hobby }}</span>{% if not loop.last %} &nbsp;·&nbsp; {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
 </body>
 </html>

@@ -20,7 +20,7 @@
 </div>
 
 <div class="subject">
-  Objet&nbsp;: Candidature — {{ role }}{% if company %} chez {{ company }}{% endif %}
+  {% if subject %}{{ subject }}{% elif lang == "en" %}Re: Application — {{ role }}{% if company %} at {{ company }}{% endif %}{% else %}Objet&nbsp;: Candidature — {{ role }}{% if company %} chez {{ company }}{% endif %}{% endif %}
 </div>
 
 <div class="salutation">{{ recipient }}</div>
@@ -30,7 +30,7 @@
 {% endfor %}
 
 <div class="closing">
-  <p>Dans l'attente de votre retour, je reste disponible pour un entretien.</p>
+  <p>{% if closing_line %}{{ closing_line }}{% elif lang == "en" %}I look forward to hearing from you and am happy to make myself available for an interview at your convenience.{% else %}Dans l'attente de votre retour, je reste disponible pour un entretien.{% endif %}</p>
   <p class="signature">{{ name }}</p>
 </div>
 

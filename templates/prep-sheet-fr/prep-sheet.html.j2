@@ -11,7 +11,7 @@
   <div class="header-meta">{{ role }} &nbsp;·&nbsp; {{ date_str }}</div>
 </div>
 
-<div class="section-title">Entreprise</div>
+<div class="section-title">{{ section_company | default("Entreprise") }}</div>
 
 <div class="company-summary">{{ company_summary }}</div>
 
@@ -23,7 +23,7 @@
 </div>
 {% endif %}
 
-<div class="section-title">Questions d'entretien</div>
+<div class="section-title">{{ section_questions | default("Questions d'entretien") }}</div>
 
 {% for q in questions %}
 <div class="question-block">

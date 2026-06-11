@@ -36,6 +36,7 @@ def build_cover_letter_context(
     role: str,
     recipient: str,
     paragraphs: list[str],
+    lang: str = "fr",
 ) -> dict:
     return {
         "name": name,
@@ -48,7 +49,13 @@ def build_cover_letter_context(
         "role": role,
         "recipient": recipient,
         "paragraphs": paragraphs,
+        "lang": lang,
     }
+
+
+def _normalize_for_ats(html: str) -> str:
+    """Return HTML unchanged — hook reserved for future ATS sanitisation."""
+    return html
 
 
 def render_html(context: dict) -> str:
@@ -71,18 +78,23 @@ def generate_pdf(context: dict, offer: str, output_date: str) -> Path:
     return output_path
 
 
-def default_context(company: str = "Mistral AI", role: str = "AI Engineer") -> dict:
+def default_context(
+    company: str = "Mistral AI", role: str = "AI Engineer", lang: str = "fr"
+) -> dict:
     c = _load_contact()
+    location = c.get("location", "")
+    if lang == "en":
+        location = location.replace("disponible fin 2026", "available end of 2026")
     return build_cover_letter_context(
         name=c.get("name", "Your Name"),
         title=c.get("title", "AI/ML Engineer"),
         email=c.get("email", "you@example.com"),
         phone=c.get("phone", ""),
-        location=c.get("location", ""),
+        location=location,
         date_str=str(date.today()),
         company=company,
         role=role,
-        recipient="Madame, Monsieur,",
+        recipient="Madame, Monsieur," if lang == "fr" else "Dear Hiring Team,",
         paragraphs=[
             (
                 "Exemple de paragraphe d'accroche — à personnaliser selon "
@@ -97,6 +109,7 @@ def default_context(company: str = "Mistral AI", role: str = "AI Engineer") -> d
                 "lors d'un entretien."
             ),
         ],
+        lang=lang,
     )
 
 
@@ -114,17 +127,25 @@ if __name__ == "__main__":
         metavar="PATH",
         help=(
             "JSON file with cover letter content: "
-            "{company, role, recipient, paragraphs, date_str}"
+            "{company, role, recipient, paragraphs, date_str, lang}"
         ),
+    )
+    parser.add_argument(
+        "--lang",
+        choices=["fr", "en"],
+        default="fr",
+        help="Letter language: fr (default) or en",
     )
     args = parser.parse_args()
 
     if args.context_file:
         with open(args.context_file, "r", encoding="utf-8") as fh:
             extra = json.load(fh)
+        lang = extra.get("lang") or args.lang
         ctx = default_context(
             company=extra.get("company") or "Mistral AI",
             role=extra.get("role") or "AI Engineer",
+            lang=lang,
         )
         if "recipient" in extra:
             ctx["recipient"] = extra["recipient"]
@@ -132,8 +153,12 @@ if __name__ == "__main__":
             ctx["paragraphs"] = extra["paragraphs"]
         if "date_str" in extra:
             ctx["date_str"] = extra["date_str"]
+        if "subject" in extra:
+            ctx["subject"] = extra["subject"]
+        if "closing_line" in extra:
+            ctx["closing_line"] = extra["closing_line"]
     else:
-        ctx = default_context()
+        ctx = default_context(lang=args.lang)
 
     path = generate_pdf(ctx, offer=args.offer, output_date=args.date)
     print(f"Cover letter generated: {path}")

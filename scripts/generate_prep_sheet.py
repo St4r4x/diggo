@@ -23,6 +23,8 @@ def build_prep_sheet_context(
     company_summary: str,
     tech_stack: list[str],
     questions: list[dict],
+    section_company: str = "Entreprise",
+    section_questions: str = "Questions d'entretien",
 ) -> dict:
     return {
         "company": company,
@@ -31,7 +33,14 @@ def build_prep_sheet_context(
         "company_summary": company_summary,
         "tech_stack": tech_stack,
         "questions": questions,
+        "section_company": section_company,
+        "section_questions": section_questions,
     }
+
+
+def _normalize_for_ats(html: str) -> str:
+    """Return HTML unchanged — hook reserved for future ATS sanitisation."""
+    return html
 
 
 def render_html(context: dict) -> str:
@@ -76,6 +85,8 @@ if __name__ == "__main__":
         company_summary=data.get("company_summary", ""),
         tech_stack=data.get("tech_stack", []),
         questions=data.get("questions", []),
+        section_company=data.get("section_company", "Entreprise"),
+        section_questions=data.get("section_questions", "Questions d'entretien"),
     )
     path = generate_pdf(ctx, offer=args.offer, output_date=args.date)
     print(f"Prep sheet generated: {path}")

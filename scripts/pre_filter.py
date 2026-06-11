@@ -93,6 +93,12 @@ _RTT_RE = re.compile(r"(\d+)\s*RTTs?|\bRTTs?\b", re.IGNORECASE)
 _TR_RE = re.compile(r"titre[\s-]restaurant|ticket[\s-]restaurant|swile", re.IGNORECASE)
 _INTERESSEMENT_RE = re.compile(r"int[eé]ressement|participation", re.IGNORECASE)
 
+# Salary reconstruction constants (French employment law reference values)
+_DEFAULT_RTT_DAYS = 10  # assumed RTT days when "RTT" present without count
+_ANNUAL_WORKING_DAYS = 218  # French legal working days (basis for RTT/TR calculation)
+_MEAL_TICKET_VALUE_PER_DAY = 9.0  # average meal ticket face value (€/day)
+_INTERESSEMENT_RATE = 0.05  # assumed intéressement/participation rate (5%)
+
 
 def load_settings(path: Path = _SETTINGS_PATH) -> dict:
     """Load and return the parsed settings.yaml."""
@@ -144,14 +150,22 @@ def _score_salary(
     if rtt_match and rtt_match.group(1):
         rtt_days = int(rtt_match.group(1))
     elif rtt_match:
-        rtt_days = 10  # RTT present but no count → assume 10 days
+        rtt_days = _DEFAULT_RTT_DAYS
     else:
         rtt_days = 0
-    rtt_val = rtt_days * base_annual / 218 if rtt_days else 0.0
+    rtt_val = rtt_days * base_annual / _ANNUAL_WORKING_DAYS if rtt_days else 0.0
 
-    tr_val = 218 * 9.0 if _TR_RE.search(desc_lower) else 0.0
+    tr_val = (
+        _ANNUAL_WORKING_DAYS * _MEAL_TICKET_VALUE_PER_DAY
+        if _TR_RE.search(desc_lower)
+        else 0.0
+    )
 
-    int_val = base_annual * 0.05 if _INTERESSEMENT_RE.search(desc_lower) else 0.0
+    int_val = (
+        base_annual * _INTERESSEMENT_RATE
+        if _INTERESSEMENT_RE.search(desc_lower)
+        else 0.0
+    )
 
     total = base_annual + rtt_val + tr_val + int_val
     tag = f"salary:{int(total)}"

@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-06-11
 
+### Changed
+- `scripts/pre_filter.py` — extracted magic numbers into named constants: `_DEFAULT_RTT_DAYS` (10), `_ANNUAL_WORKING_DAYS` (218), `_MEAL_TICKET_VALUE_PER_DAY` (9.0), `_INTERESSEMENT_RATE` (0.05); improves maintainability of salary reconstruction logic
+
 ### Fixed
 - `dashboard/app.py` — added `OSError` handling to `POST /profile/experience`, `/profile/skills`, `/profile/education`, and `/profile/projects`; filesystem write failures now return a 200 error template instead of crashing with an unhandled 500
 - `tests/test_profile_routes.py` — added 4 `TestProfileSaveErrors` tests covering the new `OSError` paths for experience, skills, education, and projects routes

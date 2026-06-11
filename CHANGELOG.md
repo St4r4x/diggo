@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-06-11
 
+### Added
+- `scripts/scan_ats.py` — `_fetch_with_retry()` helper: GET with up to 3 attempts and exponential backoff (1s/2s/4s); applied to all main and detail fetches in `GreenhouseProvider`, `LeverProvider`, and `AshbyProvider`
+- `modes/rescore-offers.md` — new mode documenting when and how to run `scripts/rescore.py` after changing scoring config
+
+### Changed
+- `scripts/scan_portals.py` — `_enrich()` now wraps `_fetch_description` in `asyncio.wait_for(timeout=15.0)`; timed-out offers log a warning and get an empty description instead of hanging indefinitely
+- `dashboard/db.py` — added inline comment explaining why `check_same_thread=False` is safe for the dashboard's low write rate
+
+
+
 ### Changed
 - `scripts/pre_filter.py` — extracted magic numbers into named constants: `_DEFAULT_RTT_DAYS` (10), `_ANNUAL_WORKING_DAYS` (218), `_MEAL_TICKET_VALUE_PER_DAY` (9.0), `_INTERESSEMENT_RATE` (0.05); improves maintainability of salary reconstruction logic
 

@@ -27,6 +27,36 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_ATS_MAP = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 _TIMEOUT = 10.0
+_RETRY_ATTEMPTS = 3
+_RETRY_BACKOFF = [1.0, 2.0, 4.0]  # seconds between attempts
+
+
+async def _fetch_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    timeout: float = 20.0,
+) -> httpx.Response:
+    """GET url with up to _RETRY_ATTEMPTS retries and exponential backoff."""
+    last_exc: Exception | None = None
+    for attempt, backoff in enumerate(_RETRY_BACKOFF[:_RETRY_ATTEMPTS], start=1):
+        try:
+            resp = await client.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            last_exc = exc
+            if attempt < _RETRY_ATTEMPTS:
+                logger.warning(
+                    "Attempt %d/%d failed for %s: %s — retrying in %.1fs",
+                    attempt,
+                    _RETRY_ATTEMPTS,
+                    url,
+                    exc,
+                    backoff,
+                )
+                await asyncio.sleep(backoff)
+    raise last_exc  # type: ignore[misc]
 
 
 class GreenhouseProvider:
@@ -38,10 +68,11 @@ class GreenhouseProvider:
     ) -> list[RawOffer]:
         url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
         try:
-            resp = await client.get(url, timeout=_TIMEOUT)
-            resp.raise_for_status()
+            resp = await _fetch_with_retry(client, url)
         except Exception as exc:
-            logger.warning("[greenhouse/%s] Request failed: %s", slug, exc)
+            logger.warning(
+                "[greenhouse/%s] Request failed after retries: %s", slug, exc
+            )
             return []
         jobs = resp.json().get("jobs", [])
         offers = []
@@ -58,8 +89,7 @@ class GreenhouseProvider:
                     f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{job_id}"
                 )
                 try:
-                    detail_resp = await client.get(detail_url, timeout=_TIMEOUT)
-                    detail_resp.raise_for_status()
+                    detail_resp = await _fetch_with_retry(client, detail_url)
                     raw_content = detail_resp.json().get("content", "")
                     description = strip_html(raw_content)[:8000]
                 except Exception:
@@ -86,10 +116,9 @@ class LeverProvider:
     ) -> list[RawOffer]:
         url = f"https://api.lever.co/v0/postings/{slug}"
         try:
-            resp = await client.get(url, timeout=_TIMEOUT)
-            resp.raise_for_status()
+            resp = await _fetch_with_retry(client, url)
         except Exception as exc:
-            logger.warning("[lever/%s] Request failed: %s", slug, exc)
+            logger.warning("[lever/%s] Request failed after retries: %s", slug, exc)
             return []
         jobs = resp.json()
         if not isinstance(jobs, list):
@@ -106,8 +135,7 @@ class LeverProvider:
             if posting_id:
                 detail_url = f"https://api.lever.co/v0/postings/{slug}/{posting_id}"
                 try:
-                    detail_resp = await client.get(detail_url, timeout=_TIMEOUT)
-                    detail_resp.raise_for_status()
+                    detail_resp = await _fetch_with_retry(client, detail_url)
                     description = detail_resp.json().get("descriptionPlain", "")[:8000]
                 except Exception:
                     pass
@@ -133,10 +161,9 @@ class AshbyProvider:
     ) -> list[RawOffer]:
         url = f"https://api.ashbyhq.com/posting-api/job-board/{slug}"
         try:
-            resp = await client.get(url, timeout=_TIMEOUT)
-            resp.raise_for_status()
+            resp = await _fetch_with_retry(client, url)
         except Exception as exc:
-            logger.warning("[ashby/%s] Request failed: %s", slug, exc)
+            logger.warning("[ashby/%s] Request failed after retries: %s", slug, exc)
             return []
         jobs = resp.json().get("jobs", [])
         offers = []

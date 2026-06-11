@@ -319,9 +319,18 @@ async def scrape_portal(
                     if not offer.url:
                         return
                     async with sem:
-                        offer.description = await _fetch_description(
-                            context, offer.url, desc_selector
-                        )
+                        try:
+                            offer.description = await asyncio.wait_for(
+                                _fetch_description(context, offer.url, desc_selector),
+                                timeout=15.0,
+                            )
+                        except asyncio.TimeoutError:
+                            logger.warning(
+                                "[%s] Description fetch timed out: %s",
+                                portal_id,
+                                offer.url,
+                            )
+                            offer.description = ""
 
                 await asyncio.gather(*[_enrich(o) for o in offers])
                 logger.info(

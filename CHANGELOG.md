@@ -9,6 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-06-11
 
+### Fixed
+- `dashboard/app.py` — added `OSError` handling to `POST /profile/experience`, `/profile/skills`, `/profile/education`, and `/profile/projects`; filesystem write failures now return a 200 error template instead of crashing with an unhandled 500
+- `tests/test_profile_routes.py` — added 4 `TestProfileSaveErrors` tests covering the new `OSError` paths for experience, skills, education, and projects routes
+
 ### Added
 - `tests/test_dashboard_app.py::TestScan::test_scan_task_exception_sets_error_status` — test that verifies `_run_scan_task` correctly sets `scan_status="error"` and captures exception message when `_run_pipeline` raises
 - `scripts/generate_cover_letter.py` — bilingual support (`--lang fr|en`): auto-translated subject line, salutation, and closing; `subject` and `closing_line` overridable via context JSON

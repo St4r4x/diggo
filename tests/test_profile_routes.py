@@ -362,3 +362,62 @@ class TestProfileSaveErrors:
         r = profile_client.post("/profile/summary", data={"summary": "Test summary"})
         assert r.status_code == 200
         assert "Erreur" in r.text
+
+    def test_experience_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import json
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post("/profile/experience", data={"data": json.dumps([])})
+        assert r.status_code == 200
+        assert "Erreur" in r.text
+
+    def test_skills_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import json
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post("/profile/skills", data={"data": json.dumps({})})
+        assert r.status_code == 200
+        assert "Erreur" in r.text
+
+    def test_education_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import json
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post(
+            "/profile/education",
+            data={"data": json.dumps({"education": [], "certifications": []})},
+        )
+        assert r.status_code == 200
+        assert "Erreur" in r.text
+
+    def test_projects_save_oserror_returns_error_template(
+        self, profile_client, monkeypatch
+    ):
+        import json
+        import profile_parser
+
+        def raise_oserror(_):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(profile_parser, "save_profile", raise_oserror)
+        r = profile_client.post("/profile/projects", data={"data": json.dumps([])})
+        assert r.status_code == 200
+        assert "Erreur" in r.text

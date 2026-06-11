@@ -323,7 +323,18 @@ async def profile_save_experience(
             "partials/profile_experience.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    profile_parser.save_profile(profile_data)
+    try:
+        profile_parser.save_profile(profile_data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_experience.html",
+            {
+                "profile": profile_data,
+                "saved": False,
+                "error": "Erreur lors de la sauvegarde",
+            },
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_experience.html",
@@ -342,7 +353,18 @@ async def profile_save_skills(request: Request, data: str = Form("")):
             "partials/profile_skills.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    profile_parser.save_profile(profile_data)
+    try:
+        profile_parser.save_profile(profile_data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_skills.html",
+            {
+                "profile": profile_data,
+                "saved": False,
+                "error": "Erreur lors de la sauvegarde",
+            },
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_skills.html",
@@ -363,7 +385,18 @@ async def profile_save_education(request: Request, data: str = Form("")):
             "partials/profile_education.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    profile_parser.save_profile(profile_data)
+    try:
+        profile_parser.save_profile(profile_data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_education.html",
+            {
+                "profile": profile_data,
+                "saved": False,
+                "error": "Erreur lors de la sauvegarde",
+            },
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_education.html",
@@ -382,7 +415,18 @@ async def profile_save_projects(request: Request, data: str = Form("")):
             "partials/profile_projects.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    profile_parser.save_profile(profile_data)
+    try:
+        profile_parser.save_profile(profile_data)
+    except OSError:
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_projects.html",
+            {
+                "profile": profile_data,
+                "saved": False,
+                "error": "Erreur lors de la sauvegarde",
+            },
+        )
     return templates.TemplateResponse(
         request,
         "partials/profile_projects.html",

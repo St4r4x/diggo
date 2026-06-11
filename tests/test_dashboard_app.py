@@ -33,7 +33,14 @@ def client():
     test_db = DB(conn)
     dashboard_app.app.state.db = test_db
     dashboard_app.app.state.scan_status = "idle"
-    dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
+    dashboard_app.app.state.scan_result = {
+        "inserted": 0,
+        "skipped": 0,
+        "found": 0,
+        "scored": 0,
+        "abandoned": 0,
+        "error": "",
+    }
     return TestClient(dashboard_app.app)
 
 
@@ -437,6 +444,26 @@ class TestScan:
         r = client.get("/scan/status")
         assert r.status_code == 200
         assert "Erreur" in r.text
+
+    def test_concurrent_scan_start_spawns_only_one_task(self, client, monkeypatch):
+        import app as dashboard_app
+
+        dashboard_app.app.state.scan_status = "idle"
+        created = []
+
+        def mock_create_task(coro):
+            created.append(coro)
+            coro.close()
+            return None
+
+        monkeypatch.setattr(dashboard_app.asyncio, "create_task", mock_create_task)
+        # Two sequential requests — both would see "idle" before lock without the fix
+        r1 = client.post("/scan/start")
+        r2 = client.post("/scan/start")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        # Only ONE task should have been created (second sees "running" inside lock)
+        assert len(created) == 1
 
     def test_scan_full_flow(self, client, monkeypatch):
         import asyncio

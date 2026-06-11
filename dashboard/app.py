@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
         "skipped": 0,
         "found": 0,
         "scored": 0,
+        "abandoned": 0,
         "error": "",
     }
     yield
@@ -53,6 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+_scan_lock = asyncio.Lock()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Register color maps as Jinja2 globals so every template (including
@@ -437,20 +439,22 @@ async def _run_scan_task(app_state) -> None:
 
 @app.post("/scan/start", response_class=HTMLResponse)
 async def scan_start(request: Request):
-    if request.app.state.scan_status == "running":
-        return templates.TemplateResponse(
-            request,
-            "partials/scan_status.html",
-            {"status": "running", "result": request.app.state.scan_result},
-        )
-    request.app.state.scan_status = "running"
-    request.app.state.scan_result = {
-        "inserted": 0,
-        "skipped": 0,
-        "found": 0,
-        "scored": 0,
-        "error": "",
-    }
+    async with _scan_lock:
+        if request.app.state.scan_status == "running":
+            return templates.TemplateResponse(
+                request,
+                "partials/scan_status.html",
+                {"status": "running", "result": request.app.state.scan_result},
+            )
+        request.app.state.scan_status = "running"
+        request.app.state.scan_result = {
+            "inserted": 0,
+            "skipped": 0,
+            "found": 0,
+            "scored": 0,
+            "abandoned": 0,
+            "error": "",
+        }
     asyncio.create_task(_run_scan_task(request.app.state))
     return templates.TemplateResponse(
         request,

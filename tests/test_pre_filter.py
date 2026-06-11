@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from scripts.models import RawOffer
-from scripts.pre_filter import score_offer, pre_filter
+from scripts.pre_filter import _is_idf_compatible, pre_filter, score_offer
 
 
 MOCK_SETTINGS = {
@@ -394,3 +394,113 @@ class TestLegitimacy:
         offer = _offer_with_desc(description=desc)
         score, tags = score_offer(offer, MOCK_SETTINGS_V2)
         assert not any("legitimacy:" in t for t in tags)
+
+
+class TestIsIdfCompatible:
+    """Unit tests for _is_idf_compatible()."""
+
+    def test_empty_location_passes(self) -> None:
+        assert _is_idf_compatible("") is True
+
+    def test_none_equivalent_passes(self) -> None:
+        assert _is_idf_compatible("") is True
+
+    def test_paris_passes(self) -> None:
+        assert _is_idf_compatible("Paris") is True
+
+    def test_paris_with_arrondissement_passes(self) -> None:
+        assert _is_idf_compatible("Paris 8ème") is True
+
+    def test_la_defense_passes(self) -> None:
+        assert _is_idf_compatible("La Défense") is True
+
+    def test_issy_les_moulineaux_passes(self) -> None:
+        assert _is_idf_compatible("Issy-les-Moulineaux") is True
+
+    def test_versailles_passes(self) -> None:
+        assert _is_idf_compatible("Versailles") is True
+
+    def test_dept_code_92_passes(self) -> None:
+        assert _is_idf_compatible("92200 Neuilly-sur-Seine") is True
+
+    def test_dept_code_77_passes(self) -> None:
+        assert _is_idf_compatible("77000 Melun") is True
+
+    def test_remote_passes(self) -> None:
+        assert _is_idf_compatible("Remote") is True
+
+    def test_full_remote_passes(self) -> None:
+        assert _is_idf_compatible("Full-Remote") is True
+
+    def test_teletravail_passes(self) -> None:
+        assert _is_idf_compatible("Télétravail") is True
+
+    def test_hybride_passes(self) -> None:
+        assert _is_idf_compatible("Paris / Hybride") is True
+
+    def test_lyon_rejected(self) -> None:
+        assert _is_idf_compatible("Lyon") is False
+
+    def test_marseille_rejected(self) -> None:
+        assert _is_idf_compatible("Marseille") is False
+
+    def test_bordeaux_rejected(self) -> None:
+        assert _is_idf_compatible("Bordeaux") is False
+
+    def test_nantes_rejected(self) -> None:
+        assert _is_idf_compatible("Nantes") is False
+
+    def test_london_rejected(self) -> None:
+        assert _is_idf_compatible("London") is False
+
+    def test_us_remote_rejected(self) -> None:
+        # "Remote" alone passes, but explicit US city should not
+        assert _is_idf_compatible("New York") is False
+
+
+# threshold=2.0 so keyword(+1) + company(+1) = 2.0 passes without location bonus
+_LOCATION_SETTINGS: dict = {
+    "search": {"keywords": ["AI Engineer"], "location": "Paris"},
+    "scoring": {
+        "thresholds": {"consider": 2.0},
+        "target_salary_min": 40000,
+        "target_salary_max": 55000,
+    },
+    "target_companies": {"french_ai": ["Mistral AI"]},
+}
+
+
+class TestPreFilterLocationGate:
+    """Integration tests: location hard-reject inside pre_filter()."""
+
+    def test_lyon_offer_rejected_despite_high_score(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Lyon")]
+        result = pre_filter(offers, _LOCATION_SETTINGS)
+        assert result == []
+
+    def test_paris_offer_passes(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Paris")]
+        result = pre_filter(offers, _LOCATION_SETTINGS)
+        assert len(result) == 1
+
+    def test_remote_offer_passes(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="Remote")]
+        result = pre_filter(offers, _LOCATION_SETTINGS)
+        assert len(result) == 1
+
+    def test_empty_location_passes(self) -> None:
+        offers = [_offer("AI Engineer", company="Mistral AI", location="")]
+        result = pre_filter(offers, _LOCATION_SETTINGS)
+        assert len(result) == 1
+
+    def test_no_location_filter_in_settings_keeps_all(self) -> None:
+        settings_no_loc = {
+            **_LOCATION_SETTINGS,
+            "search": {"keywords": ["AI Engineer"]},
+        }
+        offers = [
+            _offer("AI Engineer", company="Mistral AI", location="Lyon"),
+            _offer("AI Engineer", company="Mistral AI", location="Bordeaux"),
+        ]
+        result = pre_filter(offers, settings_no_loc)
+        assert len(result) == 2

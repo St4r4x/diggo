@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-11 (2)
+
+### Added
+- `scripts/pre_filter.py` — `_is_idf_compatible()`: hard location gate rejecting offers outside Paris/IDF before scoring; passes empty location, remote/hybride/télétravail, Paris, IDF city names, and 5-digit IDF postal codes (75xxx, 77xxx, 78xxx, 91xxx–95xxx)
+- `scripts/pre_filter.py` — `pre_filter()` now drops offers with a non-IDF location before scoring when `search.location` is set in settings
+- `tests/test_pre_filter.py` — `TestIsIdfCompatible` (20 cases) and `TestPreFilterLocationGate` (5 cases) covering the new location gate
+
 ## 2026-06-11
 
 ### Added

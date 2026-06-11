@@ -79,7 +79,7 @@ Click **Scanner** to run the full pipeline. New offers appear in the list automa
 **Offer detail panel:**
 - Change status (À envoyer → Envoyée → Entretien RH → …)
 - Write notes (autosaved with 800ms debounce)
-- Copy the "Préparer candidature" command for Claude Code
+- Copy the context-sensitive action command (see below): "Préparer candidature" for apply statuses, "Préparer entretien" for interview statuses
 
 ---
 
@@ -108,17 +108,23 @@ Expired offers ("À envoyer" with a dead URL) are automatically marked **Abandon
 
 ## Generating applications with Claude Code
 
-Open the repo in Claude Code, then use the "Préparer candidature" button on any offer, or run:
+The dashboard shows context-sensitive action buttons per offer. Run the copied command in your terminal from the repo root.
 
 ```bash
 # Score a new offer (paste the job description in chat)
 claude --system-prompt "$(cat modes/score-offer.md)"
 
-# Generate tailored CV + cover letter + prep sheet for an offer
-claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id>"
+# CV only (apply statuses — button unchecked)
+claude --system-prompt "$(cat modes/generate-cv.md)" "Génère le CV pour l'offre ID <id>"
+
+# CV + cover letter (apply statuses — "Inclure lettre de motivation" checked)
+claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candidature pour l'offre ID <id> --no-prep"
+
+# Interview prep sheet only (interview statuses: Entretien RH / Entretien tech / Offre)
+claude --system-prompt "$(cat modes/prepare-entretien.md)" "Prépare l'entretien pour l'offre ID <id>"
 ```
 
-`prepare-candidature` runs 5 phases automatically:
+`prepare-candidature` phases (when run manually without `--no-prep`):
 1. Load your profile and fetch the offer description
 2. Analyse the offer (top skills, keywords, gaps, hook angle)
 3. Generate a tailored CV PDF (FR by default; EN if the offer requires it)

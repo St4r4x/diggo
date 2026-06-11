@@ -14,15 +14,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `scripts/generate_cover_letter.py` — `_normalize_for_ats` stub hook for future ATS sanitisation
 - `scripts/generate_prep_sheet.py` — `section_company` and `section_questions` i18n parameters; `_normalize_for_ats` stub
 - `templates/cv-fr/cv.html.j2` — optional `hobbies` section rendered as dot-separated inline list
+- `modes/prepare-entretien.md` — new Claude CLI mode generating interview prep sheet only (called for Entretien RH / Entretien tech / Offre statuses)
 
 ### Changed
 - `templates/cover-letter-fr/cover-letter.html.j2` — subject and closing line now resolve from `subject`/`closing_line` context variables or `lang` fallback
 - `templates/prep-sheet-fr/prep-sheet.html.j2` — section titles use `section_company` / `section_questions` Jinja2 variables with French defaults
 - `templates/partials/offer_detail.html` — action buttons now conditional on offer status: "Préparer candidature" (with optional LM checkbox) shown for apply statuses only; "Préparer entretien" shown for interview statuses only; no action button for terminal statuses
-- `modes/prepare-candidature.md` — added `--no-prep` flag to skip prep sheet generation
-
-### Added
-- `modes/prepare-entretien.md` — new Claude CLI mode generating interview prep sheet only
+- `modes/prepare-candidature.md` — added `--no-prep` flag to skip prep sheet generation; Phase 6 summary conditional on flag
 
 ## 2026-06-04
 

@@ -483,7 +483,8 @@ class TestPrepareCandidature:
         db = dashboard_app.app.state.db
         row = next(r for r in db.get_all({}) if r["status"] == "À envoyer")
         r = client_with_data.get(f"/offers/{row['id']}")
-        assert "lettre" in r.text.lower() or "lm" in r.text.lower()
+        assert "Inclure lettre de motivation" in r.text
+        assert f"lm-toggle-{row['id']}" in r.text
 
     def test_apply_status_cv_only_command_uses_generate_cv(self, client_with_data):
         import app as dashboard_app

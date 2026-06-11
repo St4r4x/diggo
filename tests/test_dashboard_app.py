@@ -492,6 +492,35 @@ class TestScan:
         assert dashboard_app.app.state.scan_status == "done"
         assert dashboard_app.app.state.scan_result["inserted"] == 7
 
+    def test_scan_task_exception_sets_error_status(self, client, monkeypatch):
+        import asyncio
+        import app as dashboard_app
+        from app import _run_scan_task
+
+        dashboard_app.app.state.scan_status = "idle"
+        dashboard_app.app.state.scan_result = {
+            "inserted": 0,
+            "skipped": 0,
+            "found": 0,
+            "scored": 0,
+            "abandoned": 0,
+            "error": "",
+        }
+
+        async def fake_run_pipeline(_settings):
+            raise RuntimeError("Connection refused")
+
+        def fake_load_settings():
+            return {}
+
+        monkeypatch.setattr("scripts.import_offers._run_pipeline", fake_run_pipeline)
+        monkeypatch.setattr("scripts.pre_filter.load_settings", fake_load_settings)
+
+        asyncio.run(_run_scan_task(dashboard_app.app.state))
+
+        assert dashboard_app.app.state.scan_status == "error"
+        assert "Connection refused" in dashboard_app.app.state.scan_result["error"]
+
 
 class TestPrepareCandidature:
     def test_apply_status_shows_prep_button(self, client_with_data):

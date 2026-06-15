@@ -9,6 +9,18 @@ from typing import Optional
 
 
 @dataclass
+class ParsedDescription:
+    """Structured fields extracted from a raw job description."""
+
+    mission: str = ""
+    profil: str = ""
+    stack: str = ""
+    avantages: str = ""
+    contrat: str = ""
+    salaire: str = ""
+
+
+@dataclass
 class RawOffer:
     """A job offer as scraped from a portal, before any scoring."""
 
@@ -21,6 +33,7 @@ class RawOffer:
     score: float = 0.0
     tags: list[str] = field(default_factory=list)
     description: str = ""
+    parsed_description: Optional[ParsedDescription] = None
 
     def dedup_key(self) -> str:
         title_norm = self.title.lower().strip()

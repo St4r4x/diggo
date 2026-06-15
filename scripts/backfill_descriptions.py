@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
 import re
@@ -14,6 +15,8 @@ from typing import Protocol
 
 import httpx
 from playwright.async_api import Page, async_playwright
+
+from scripts.description_parser import parse_description
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -253,7 +256,7 @@ def get_extractor(
 async def main() -> None:
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
-        "SELECT id, offer_url FROM applications"
+        "SELECT id, offer_url, COALESCE(portal, '') AS portal FROM applications"
         " WHERE length(description) < 50"
         " ORDER BY id"
     ).fetchall()
@@ -262,7 +265,7 @@ async def main() -> None:
     updated = 0
     skipped = 0
     browser_needed = any(
-        (e := get_extractor(url)) is not None and e.needs_browser for _, url in rows
+        (e := get_extractor(url)) is not None and e.needs_browser for _, url, _ in rows
     )
 
     async with httpx.AsyncClient(headers=_HEADERS) as http_client:
@@ -289,7 +292,7 @@ async def main() -> None:
         page = await browser_context.new_page() if browser_context else None
 
         try:
-            for offer_id, url in rows:
+            for offer_id, url, portal in rows:
                 extractor = get_extractor(url)
                 if extractor is None:
                     logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
@@ -310,13 +313,17 @@ async def main() -> None:
                     desc = ""
 
                 if len(desc) >= MIN_DESC_LENGTH:
+                    parsed = parse_description(desc, portal)
+                    description_json = json.dumps(
+                        dataclasses.asdict(parsed), ensure_ascii=False
+                    )
                     conn.execute(
                         "UPDATE applications SET description=? WHERE id=?",
-                        (desc, offer_id),
+                        (description_json, offer_id),
                     )
                     conn.commit()
                     updated += 1
-                    logger.info("  -> %d chars saved", len(desc))
+                    logger.info("  -> %d chars saved as JSON", len(description_json))
                 else:
                     logger.info(
                         "  -> too short or empty (%d chars), skipping", len(desc)

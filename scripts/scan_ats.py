@@ -21,7 +21,7 @@ from typing import Optional
 import httpx
 import yaml
 
-from scripts.models import RawOffer, strip_html
+from scripts.models import RawOffer
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class GreenhouseProvider:
                 try:
                     detail_resp = await _fetch_with_retry(client, detail_url)
                     raw_content = detail_resp.json().get("content", "")
-                    description = strip_html(raw_content)[:8000]
+                    description = raw_content[:8000]
                 except Exception:
                     pass
             offers.append(
@@ -146,7 +146,12 @@ class LeverProvider:
                 detail_url = f"https://api.lever.co/v0/postings/{slug}/{posting_id}"
                 try:
                     detail_resp = await _fetch_with_retry(client, detail_url)
-                    description = detail_resp.json().get("descriptionPlain", "")[:8000]
+                    detail = detail_resp.json()
+                    description = (
+                        detail.get("description")
+                        or detail.get("descriptionPlain")
+                        or ""
+                    )[:8000]
                 except Exception:
                     pass
             offers.append(
@@ -183,7 +188,9 @@ class AshbyProvider:
             location = (j.get("location") or "").strip() or None
             if not title:
                 continue
-            description = (j.get("descriptionPlain") or "")[:8000]
+            description = (j.get("descriptionBody") or j.get("descriptionPlain") or "")[
+                :8000
+            ]
             offers.append(
                 RawOffer(
                     title=title,

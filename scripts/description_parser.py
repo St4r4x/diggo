@@ -38,19 +38,27 @@ def _html_to_text(html: str) -> str:
 _HEADING_RE = re.compile(r"<h[234][^>]*>(.*?)</h[234]>", re.IGNORECASE | re.DOTALL)
 
 _MISSION_HEADINGS = re.compile(
-    r"about\s+the\s+role|about\s+the\s+job|the\s+role|missions?|poste|à\s+propos\s+du\s+poste",
+    r"about\s+the\s+role|about\s+the\s+job|the\s+role|missions?|poste"
+    r"|à\s+propos\s+du\s+poste|what\s+you.ll\s+do|responsibilities"
+    r"|role\s+summary|how\s+you.ll\s+make\s+an\s+impact|your\s+mission"
+    r"|what\s+you\s+will\s+do|key\s+responsibilities",
     re.IGNORECASE,
 )
 _PROFIL_HEADINGS = re.compile(
-    r"requirements?|qualifications?|profil|what\s+you.ll\s+bring|who\s+you\s+are",
+    r"requirements?|qualifications?|profil|what\s+you.ll\s+bring|who\s+you\s+are"
+    r"|about\s+you|what\s+we.re\s+looking\s+for|we.re\s+looking\s+for"
+    r"|desired\s+experience|your\s+profile|must[\s-]have|nice[\s-]to[\s-]have",
     re.IGNORECASE,
 )
 _STACK_HEADINGS = re.compile(
-    r"tech\s+stack|technologies|stack|outils|tools",
+    r"tech\s+stack|technologies|stack|outils|tools|technical\s+skills"
+    r"|what\s+you.ll\s+use|our\s+tech|environment\s+technique",
     re.IGNORECASE,
 )
 _AVANTAGES_HEADINGS = re.compile(
-    r"what\s+we\s+offer|benefits?|perks?|avantages?|we\s+offer|package|compensation",
+    r"what\s+we\s+offer|benefits?|perks?|avantages?|we\s+offer|package"
+    r"|compensation|why\s+join|why\s+us|what.s\s+in\s+it\s+for\s+you"
+    r"|life\s+at|working\s+at",
     re.IGNORECASE,
 )
 
@@ -77,7 +85,8 @@ def _parse_html_headings(raw: str) -> ParsedDescription:
             pd.avantages = (pd.avantages + " " + body).strip()
 
     if not any([pd.mission, pd.profil, pd.stack, pd.avantages]):
-        pd.mission = _html_to_text(raw).strip()
+        plain = _html_to_text(raw).strip()
+        return _parse_heuristic(plain) if plain else pd
 
     return pd
 
@@ -155,21 +164,40 @@ _HEURISTIC_SECTION_RE = re.compile(
     r"|qualifications?\s*:?"
     r"|stack\s+technique\s*:?"
     r"|tech(?:nologies|nical)?\s+stack\s*:?"
+    r"|technical\s+skills\s*:?"
     r"|outils?\s*:?"
     r"|avantages?\s*:?"
     r"|b[eé]n[eé]fices?\s*:?"
     r"|benefits?\s*:?"
     r"|what\s+we\s+offer\s*:?"
+    r"|what\s+you.ll\s+do\s*:?"
+    r"|what\s+you\s+will\s+do\s*:?"
+    r"|key\s+responsibilities\s*:?"
+    r"|role\s+summary\s*:?"
+    r"|about\s+you\s*:?"
+    r"|your\s+profile\s*:?"
+    r"|why\s+join\s*:?"
     r"|package\s*:?"
     r")\s*\n",
     re.IGNORECASE,
 )
 
-_SECTION_MISSION = re.compile(r"missions?|responsabilit[eé]s?|poste", re.IGNORECASE)
-_SECTION_PROFIL = re.compile(r"profil|requirements?|qualifications?", re.IGNORECASE)
-_SECTION_STACK = re.compile(r"stack|technologies|outils?", re.IGNORECASE)
+_SECTION_MISSION = re.compile(
+    r"missions?|responsabilit[eé]s?|poste|what\s+you.ll\s+do|what\s+you\s+will\s+do"
+    r"|key\s+responsibilities|role\s+summary",
+    re.IGNORECASE,
+)
+_SECTION_PROFIL = re.compile(
+    r"profil|requirements?|qualifications?|about\s+you|your\s+profile",
+    re.IGNORECASE,
+)
+_SECTION_STACK = re.compile(
+    r"stack|technologies|outils?|technical\s+skills",
+    re.IGNORECASE,
+)
 _SECTION_AVANTAGES = re.compile(
-    r"avantages?|b[eé]n[eé]fices?|benefits?|what\s+we\s+offer|package", re.IGNORECASE
+    r"avantages?|b[eé]n[eé]fices?|benefits?|what\s+we\s+offer|package|why\s+join",
+    re.IGNORECASE,
 )
 
 
@@ -209,17 +237,6 @@ def _parse_heuristic(raw: str) -> ParsedDescription:
 
 
 # ---------------------------------------------------------------------------
-# Generic fallback
-# ---------------------------------------------------------------------------
-
-
-def _parse_generic(raw: str) -> ParsedDescription:
-    pd = ParsedDescription()
-    pd.mission = raw.strip()
-    return pd
-
-
-# ---------------------------------------------------------------------------
 # Public dispatcher
 # ---------------------------------------------------------------------------
 
@@ -227,18 +244,30 @@ _HTML_PORTALS = frozenset({"lever", "greenhouse", "ashby"})
 _HEURISTIC_PORTALS = frozenset({"indeed", "wttj", "linkedin", "glassdoor"})
 
 
+def _is_apec_blob(raw: str) -> bool:
+    """Return True when raw text looks like an APEC plain-text blob."""
+    return bool(_APEC_DESCRIPTIF_RE.search(raw))
+
+
 def parse_description(raw: str, portal: str) -> ParsedDescription:
     """Parse a raw description string into structured fields.
 
-    Dispatches to a portal-specific parser; falls back to generic.
+    Dispatches to a portal-specific parser.  When the portal is unknown or
+    empty the dispatcher auto-detects the format:
+    - APEC blob (contains "Descriptif du poste" marker) → _parse_apec
+    - HTML with <h2>/<h3>/<h4> headings → _parse_html_headings
+    - Everything else → _parse_heuristic (never a dead-end generic dump)
     """
     if not raw:
         return ParsedDescription()
     portal_lower = portal.lower()
-    if portal_lower == "apec":
+    if portal_lower == "apec" or _is_apec_blob(raw):
         return _parse_apec(raw)
+    # Auto-detect HTML regardless of portal value
+    if _HEADING_RE.search(raw):
+        return _parse_html_headings(raw)
     if portal_lower in _HTML_PORTALS:
         return _parse_html_headings(raw)
     if portal_lower in _HEURISTIC_PORTALS:
         return _parse_heuristic(raw)
-    return _parse_generic(raw)
+    return _parse_heuristic(raw)

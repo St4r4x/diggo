@@ -10,6 +10,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-15
 
 ### Fixed
+- `scripts/description_parser.py` — dispatcher now auto-detects HTML (`<h[234]>` scan) and APEC blobs (`"Descriptif du poste"` marker) regardless of `portal` value; falls back to `_parse_heuristic` instead of dead-end `_parse_generic`; `_parse_html_headings` fallback also runs `_parse_heuristic` on extracted plain text when no headings found; heading and section regexes expanded with English patterns from Lever/Greenhouse jobs (Mistral, Dataiku, Artefact)
+- `scripts/scan_ats.py` — Greenhouse provider stores raw HTML (removed `strip_html()`) so `_parse_html_headings` can find `<h2>/<h3>` markers; Lever provider prefers HTML `description` field over `descriptionPlain`; Ashby provider prefers `descriptionBody` (HTML) over `descriptionPlain`
+- `scripts/backfill_descriptions.py` — Lever/Greenhouse/Ashby extractors return raw HTML; APEC extractor emits structured text with `"Descriptif du poste"` / `"Profil recherché"` markers instead of joining fields into one flat blob; backfill query now re-processes rows where all non-`mission` fields are empty; portal inferred and persisted for legacy empty-portal rows
+- `scripts/import_offers.py` — `infer_portal_from_url()` fills empty `portal` column at insert time using URL hostname
+
+### Fixed
 - `scripts/dedup.py` — added `normalize_offer_url()`: strips query params for APEC URLs (offer ID is in path, `page=` / `selectedIndex=` are search context and caused duplicate inserts across scans); detection uses both portal field and URL hostname so legacy rows with empty portal are covered
 - `scripts/import_offers.py` — `existing_urls()` and both import loops now use `normalize_offer_url()` so APEC offers with different query strings are correctly recognised as duplicates
 

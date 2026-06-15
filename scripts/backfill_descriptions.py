@@ -103,12 +103,12 @@ class LeverApiExtractor:
         except Exception as exc:
             logger.debug("Lever API error for %s: %s", url[:80], exc)
             return ""
-        # Prefer plain text; fall back to HTML → text
-        plain = (data.get("descriptionPlain") or "").strip()
-        if len(plain) >= MIN_DESC_LENGTH:
-            return plain
+        # Prefer HTML (keeps heading tags for _parse_html_headings); fall back to plain
         html = (data.get("description") or "").strip()
-        return _html_to_text(html) if html else ""
+        if len(html) >= MIN_DESC_LENGTH:
+            return html[:8000]
+        plain = (data.get("descriptionPlain") or "").strip()
+        return plain[:8000] if len(plain) >= MIN_DESC_LENGTH else ""
 
 
 class GreenhouseApiExtractor:
@@ -132,7 +132,7 @@ class GreenhouseApiExtractor:
             logger.debug("Greenhouse API error for %s: %s", url[:80], exc)
             return ""
         html = (data.get("content") or "").strip()
-        return _html_to_text(html) if html else ""
+        return html[:8000] if html else ""
 
 
 class ApecApiExtractor:
@@ -163,12 +163,14 @@ class ApecApiExtractor:
         except Exception as exc:
             logger.debug("APEC API error for %s: %s", url[:80], exc)
             return ""
-        parts = [
-            _html_to_text(data.get("texteHtml") or ""),
-            _html_to_text(data.get("texteHtmlProfil") or ""),
-            _html_to_text(data.get("texteHtmlEntreprise") or ""),
-        ]
-        return " ".join(p for p in parts if p).strip()
+        mission_text = _html_to_text(data.get("texteHtml") or "")
+        profil_text = _html_to_text(data.get("texteHtmlProfil") or "")
+        parts = []
+        if mission_text:
+            parts.append(f"Descriptif du poste\n{mission_text}")
+        if profil_text:
+            parts.append(f"Profil recherché\n{profil_text}")
+        return "\n\n".join(parts)
 
 
 class AshbyJsonLdExtractor:
@@ -194,7 +196,7 @@ class AshbyJsonLdExtractor:
                 continue
             if data.get("@type") == "JobPosting":
                 html = (data.get("description") or "").strip()
-                return _html_to_text(html) if html else ""
+                return html[:8000] if html else ""
         return ""
 
 
@@ -255,9 +257,16 @@ def get_extractor(
 async def main() -> None:
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
-        "SELECT id, offer_url, COALESCE(portal, '') AS portal FROM applications"
-        " WHERE length(description) < 50"
-        " ORDER BY id"
+        """SELECT id, offer_url, COALESCE(portal, '') AS portal
+           FROM applications
+           WHERE length(description) < 50
+              OR (
+                   json_valid(description)
+                   AND json_extract(description, '$.profil') = ''
+                   AND json_extract(description, '$.stack') = ''
+                   AND json_extract(description, '$.avantages') = ''
+              )
+           ORDER BY id"""
     ).fetchall()
     logger.info("%d offers to backfill", len(rows))
 
@@ -297,6 +306,15 @@ async def main() -> None:
                     logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
                     skipped += 1
                     continue
+
+                # Infer and persist portal for legacy empty-portal rows
+                inferred = infer_portal_from_url(url) if not portal else portal
+                if inferred != portal:
+                    conn.execute(
+                        "UPDATE applications SET portal=? WHERE id=?",
+                        (inferred, offer_id),
+                    )
+                    portal = inferred
 
                 logger.info(
                     "[%d] %-26s %s", offer_id, type(extractor).__name__, url[:80]

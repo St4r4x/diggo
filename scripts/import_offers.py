@@ -14,7 +14,7 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from scripts.dedup import deduplicate
+from scripts.dedup import deduplicate, normalize_offer_url
 from scripts.description_parser import parse_description
 from scripts.liveness import check_liveness
 from scripts.models import RawOffer
@@ -25,6 +25,24 @@ from scripts.scan_portals import list_portal_ids, run_scan
 logger = logging.getLogger(__name__)
 
 _DEFAULT_DB = Path(__file__).parent.parent / "dashboard" / "data" / "applications.db"
+
+_HOSTNAME_TO_PORTAL: dict[str, str] = {
+    "www.apec.fr": "apec",
+    "apec.fr": "apec",
+    "jobs.lever.co": "lever",
+    "api.lever.co": "lever",
+    "job-boards.greenhouse.io": "greenhouse",
+    "boards-api.greenhouse.io": "greenhouse",
+    "jobs.ashbyhq.com": "ashby",
+}
+
+
+def infer_portal_from_url(url: str) -> str:
+    if not url:
+        return ""
+    host = urlparse(url).hostname or ""
+    return _HOSTNAME_TO_PORTAL.get(host, "")
+
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS applications (
@@ -71,9 +89,8 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
     detection = (
         offer.date_posted.isoformat() if offer.date_posted else date.today().isoformat()
     )
-    parsed = offer.parsed_description or parse_description(
-        offer.description, offer.portal
-    )
+    portal = offer.portal or infer_portal_from_url(offer.url or "")
+    parsed = offer.parsed_description or parse_description(offer.description, portal)
     description_json = parsed.to_json()
     conn.execute(
         """INSERT INTO applications
@@ -90,7 +107,7 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
             offer.score,
             "À envoyer",
             description_json,
-            offer.portal,
+            portal,
         ),
     )
 

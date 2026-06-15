@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-15 (2)
+
+### Changed
+- `scripts/backfill_descriptions.py` — `ApecApiExtractor` now builds `ParsedDescription` directly from APEC API structured fields: `competences[]` (SAVOIR_FAIRE type) → `stack`, `salaireTexte` → `salaire`, `texteHtmlEntreprise` → `avantages`; returns pre-built JSON bypassing text re-parsing; `_save_parsed()` detects pre-built JSON and stores it directly; backfill query adds `portal='apec' AND stack=''` condition to re-enrich already-parsed APEC rows
+- Result: 196/372 APEC rows now have structured `stack` (techs from API competences), 372/431 total rows have `salaire`; 176 APEC rows without stack are expired offers (API 404, re-parsed from stored text only)
+
 ## 2026-06-15
 
 ### Fixed

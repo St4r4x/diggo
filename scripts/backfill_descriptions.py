@@ -140,7 +140,14 @@ class GreenhouseApiExtractor:
 class ApecApiExtractor:
     """APEC internal webservice — discovered via network interception, no auth required.
 
-    Combines texteHtml (mission) + texteHtmlProfil (profile) + texteHtmlEntreprise (company).
+    Builds ParsedDescription directly from structured API fields:
+      - texteHtml          → mission
+      - texteHtmlProfil    → profil
+      - competences[]      → stack  (SAVOIR_FAIRE type only)
+      - texteHtmlEntreprise → avantages
+      - salaireTexte       → salaire
+    Returns a JSON-serialised ParsedDescription (not raw text) so _save_parsed
+    can store it directly without re-parsing.
     The offer ID includes an optional uppercase letter suffix (e.g. 178734687W).
     """
 
@@ -150,6 +157,8 @@ class ApecApiExtractor:
     _API = "https://www.apec.fr/cms/webservices/offre/public?numeroOffre={}"
 
     async def extract(self, client: httpx.AsyncClient, url: str) -> str:
+        from scripts.models import ParsedDescription
+
         m = self._OFFRE_RE.search(url)
         if not m:
             return ""
@@ -165,14 +174,29 @@ class ApecApiExtractor:
         except Exception as exc:
             logger.debug("APEC API error for %s: %s", url[:80], exc)
             return ""
-        mission_text = _html_to_text(data.get("texteHtml") or "")
-        profil_text = _html_to_text(data.get("texteHtmlProfil") or "")
-        parts = []
-        if mission_text:
-            parts.append(f"Descriptif du poste\n{mission_text}")
-        if profil_text:
-            parts.append(f"Profil recherché\n{profil_text}")
-        return "\n\n".join(parts)
+
+        mission = _html_to_text(data.get("texteHtml") or "")
+        profil = _html_to_text(data.get("texteHtmlProfil") or "")
+        avantages = _html_to_text(data.get("texteHtmlEntreprise") or "")
+        salaire = (data.get("salaireTexte") or "").strip()
+
+        # Competences: keep only SAVOIR_FAIRE (tools/techs), join as comma list
+        stack_items = [
+            c["libelle"]
+            for c in (data.get("competences") or [])
+            if c.get("type") == "SAVOIR_FAIRE"
+        ]
+        stack = ", ".join(stack_items)
+
+        pd = ParsedDescription(
+            mission=mission,
+            profil=profil,
+            stack=stack,
+            avantages=avantages,
+            salaire=salaire,
+        )
+        # Return JSON so _save_parsed stores it directly (no text re-parsing needed)
+        return pd.to_json() if mission else ""
 
 
 class AshbyJsonLdExtractor:
@@ -278,6 +302,11 @@ async def main() -> None:
                    AND json_extract(description, '$.stack') = ''
                    AND json_extract(description, '$.avantages') = ''
               )
+              OR (
+                   portal = 'apec'
+                   AND json_valid(description)
+                   AND json_extract(description, '$.stack') = ''
+              )
            ORDER BY id"""
     ).fetchall()
     logger.info("%d offers to backfill", len(rows))
@@ -325,7 +354,12 @@ async def main() -> None:
 
                 def _save_parsed(desc: str) -> None:
                     nonlocal updated
-                    dj = parse_description(desc, portal).to_json()
+                    # ApecApiExtractor returns a pre-built ParsedDescription JSON —
+                    # store it directly without re-parsing.
+                    if _is_valid_json(desc):
+                        dj = desc
+                    else:
+                        dj = parse_description(desc, portal).to_json()
                     conn.execute(
                         "UPDATE applications SET description=? WHERE id=?",
                         (dj, offer_id),

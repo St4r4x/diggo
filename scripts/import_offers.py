@@ -110,9 +110,13 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
         for offer in offers:
             if offer.url and offer.url in urls:
                 if offer.description:
+                    parsed = parse_description(offer.description, offer.portal)
+                    description_json = json.dumps(
+                        dataclasses.asdict(parsed), ensure_ascii=False
+                    )
                     conn.execute(
                         "UPDATE applications SET description = ? WHERE offer_url = ? AND description = ''",
-                        (offer.description, offer.url),
+                        (description_json, offer.url),
                     )
                 skipped += 1
                 logger.debug("Skip (exists): %s @ %s", offer.title, offer.company)

@@ -10,14 +10,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-15
 
 ### Added
-- `dashboard/db.py` — `_migrate()`: adds `portal TEXT NOT NULL DEFAULT ''` column to `applications` table idempotently
-- `dashboard/db.py` — `_SELECT`: includes `portal` in all SELECT queries
-- `dashboard/db.py` — `DB.update()`: `portal` added to the allowed-fields set
-- `tests/test_dashboard_db.py` — `test_portal_column_created_by_migration`: verifies `_migrate` adds the `portal` column on a table that lacks it
+- `scripts/description_parser.py` — new module with public `parse_description(raw, portal) -> ParsedDescription`; dispatches to portal-specific heuristic parsers: APEC (French section-marker regex), Lever/Greenhouse/Ashby (HTML `<h2>`–`<h4>` headings), Indeed/WTTJ/LinkedIn/Glassdoor (keyword-line heuristics), generic fallback (everything → mission)
+- `scripts/models.py` — `ParsedDescription` dataclass with 6 fields: `mission`, `profil`, `stack`, `avantages`, `contrat`, `salaire`; added `parsed_description: ParsedDescription | None = None` to `RawOffer`
+- `dashboard/db.py` — `_migrate()`: adds `portal TEXT NOT NULL DEFAULT ''` column to `applications` table idempotently; `_SELECT` and `DB.update()` updated to include `portal`
+- `tests/test_description_parser.py` — 19 tests covering all portals and both paths (parsed + raw fallback)
+- `tests/test_dashboard_db.py` — `test_portal_column_created_by_migration`
 
-### Added
-- `scripts/description_parser.py` — `parse_description(raw, portal)`: dispatches to a portal-specific parser (APEC plain-text, HTML-heading for Lever/Greenhouse/Ashby, heuristic regex for Indeed/WTTJ/LinkedIn/Glassdoor) and returns a `ParsedDescription` with mission/profil/stack/avantages fields populated
-- `tests/test_description_parser.py` — 17 new parser tests covering generic fallback, APEC, HTML-heading, and heuristic parsers across all supported portals
+### Changed
+- `scripts/import_offers.py` — `insert_offer()` now calls `parse_description()` and writes a JSON-serialised `ParsedDescription` to the `description` column; `portal` column populated on every insert; skip-path UPDATE also serialises to JSON
+- `scripts/pre_filter.py` — `score_offer()` uses new `_desc_blob(offer)` helper: concatenates all 6 `ParsedDescription` fields when available, falls back to raw `offer.description` for legacy rows
+- `scripts/backfill_descriptions.py` — after extracting raw HTML text, calls `parse_description(desc, portal)` and saves JSON instead of plain text; DB query now reads `portal` column via `COALESCE(portal, '')`
+- `dashboard/app.py` — added `_parse_description(raw) -> dict | str` helper; all 3 routes returning `offer_detail.html` inject `parsed_desc` into the template context
+- `dashboard/templates/partials/offer_detail.html` — description block renders 6 labelled sections (Missions, Profil recherché, Stack technique, Avantages, Contrat, Salaire) when `parsed_desc` is a mapping; falls back to plain-text display for legacy rows
 
 ## 2026-06-11 (2)
 

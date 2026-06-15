@@ -106,9 +106,19 @@ async def offer_list(
     status: str = Query(""),
     grade: str = Query(""),
     q: str = Query(""),
+    sal_min: str = Query(""),
 ):
     db = request.app.state.db
-    filters = {k: v for k, v in {"status": status, "grade": grade, "q": q}.items() if v}
+    filters = {
+        k: v
+        for k, v in {
+            "status": status,
+            "grade": grade,
+            "q": q,
+            "sal_min": sal_min,
+        }.items()
+        if v
+    }
     offers = db.get_all(filters)
     return templates.TemplateResponse(
         request,

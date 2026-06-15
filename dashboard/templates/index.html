@@ -11,14 +11,14 @@
         class="w-full text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-slate-500"
         type="text" name="q" placeholder="🔍  Rechercher entreprise ou rôle..."
         hx-get="/offers" hx-trigger="keyup changed delay:300ms"
-        hx-target="#offer-list" hx-include="[name='status'],[name='grade']"
+        hx-target="#offer-list" hx-include="[name='status'],[name='grade'],[name='sal_min']"
         id="search-input">
       <div class="flex gap-2">
         <select name="status" id="status-filter"
           style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
           class="flex-1 text-sm rounded-lg px-2 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
           hx-get="/offers" hx-trigger="change"
-          hx-target="#offer-list" hx-include="[name='q'],[name='grade']">
+          hx-target="#offer-list" hx-include="[name='q'],[name='grade'],[name='sal_min']">
           <option value="">Tous statuts</option>
           {% for s in statuses %}
           <option value="{{ s }}">{{ s }}</option>
@@ -28,13 +28,25 @@
           style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
           class="flex-1 text-sm rounded-lg px-2 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
           hx-get="/offers" hx-trigger="change"
-          hx-target="#offer-list" hx-include="[name='q'],[name='status']">
+          hx-target="#offer-list" hx-include="[name='q'],[name='status'],[name='sal_min']">
           <option value="">Tous grades</option>
           {% for g in ["A","B","C","D","F"] %}
           <option value="{{ g }}">{{ g }}</option>
           {% endfor %}
         </select>
       </div>
+      <select name="sal_min" id="sal-filter"
+        style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
+        class="w-full text-sm rounded-lg px-2 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
+        hx-get="/offers" hx-trigger="change"
+        hx-target="#offer-list" hx-include="[name='q'],[name='status'],[name='grade']">
+        <option value="">Tous salaires</option>
+        <option value="40">≥ 40k€</option>
+        <option value="50">≥ 50k€</option>
+        <option value="60">≥ 60k€</option>
+        <option value="70">≥ 70k€</option>
+        <option value="80">≥ 80k€</option>
+      </select>
       {% include "partials/scan_status.html" %}
     </div>
     <!-- Offer list -->

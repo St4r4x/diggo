@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-15 (3)
+
+### Added
+- `dashboard/db.py` — `_parse_salary_min()` helper: extracts lower bound in k€ from APEC salary strings ("40 - 55 k€" → 40, "A partir de 45 k€" → 45, unparseable → None); `get_all()` filters by `sal_min` threshold in Python post-fetch; "A négocier" and missing salaries are excluded when a threshold is set
+- `dashboard/app.py` — `/offers` route accepts `sal_min` query param
+- `dashboard/templates/index.html` — salary filter select (≥ 40/50/60/70/80k€), all existing `hx-include` updated to carry `sal_min`
+
 ## 2026-06-15 (2)
 
 ### Changed

@@ -100,8 +100,7 @@ class GreenhouseProvider:
                 )
                 try:
                     detail_resp = await _fetch_with_retry(client, detail_url)
-                    raw_content = unescape(detail_resp.json().get("content", ""))
-                    description = raw_content[:8000]
+                    description = unescape(detail_resp.json().get("content", ""))[:8000]
                 except Exception:
                     pass
             offers.append(

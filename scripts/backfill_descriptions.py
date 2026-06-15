@@ -235,6 +235,14 @@ class IndeedExtractor:
 # ---------------------------------------------------------------------------
 
 
+def _is_valid_json(s: str) -> bool:
+    try:
+        json.loads(s)
+        return True
+    except (json.JSONDecodeError, ValueError):
+        return False
+
+
 def get_extractor(
     url: str,
 ) -> HttpExtractor | BrowserExtractor | None:
@@ -276,9 +284,9 @@ async def main() -> None:
 
     updated = 0
     skipped = 0
+    extractor_cache = {url: get_extractor(url) for _, url, _, _ in rows}
     browser_needed = any(
-        (e := get_extractor(url)) is not None and e.needs_browser
-        for _, url, _, _ in rows
+        e is not None and e.needs_browser for e in extractor_cache.values()
     )
 
     async with httpx.AsyncClient(headers=_HEADERS) as http_client:
@@ -315,31 +323,31 @@ async def main() -> None:
                     )
                     portal = inferred
 
+                def _save_parsed(desc: str) -> None:
+                    nonlocal updated
+                    dj = parse_description(desc, portal).to_json()
+                    conn.execute(
+                        "UPDATE applications SET description=? WHERE id=?",
+                        (dj, offer_id),
+                    )
+                    updated += 1
+                    logger.info("  -> %d chars saved as JSON", len(dj))
+
                 # If we already have a long plain-text description, re-parse it
                 # directly without hitting the network (handles expired APEC offers).
-                is_json = True
-                try:
-                    json.loads(existing_desc)
-                except (json.JSONDecodeError, ValueError):
-                    is_json = False
-                if not is_json and len(existing_desc) >= MIN_DESC_LENGTH:
+                if (
+                    not _is_valid_json(existing_desc)
+                    and len(existing_desc) >= MIN_DESC_LENGTH
+                ):
                     logger.info(
                         "[%d] re-parsing existing plain text (%d chars)",
                         offer_id,
                         len(existing_desc),
                     )
-                    description_json = parse_description(
-                        existing_desc, portal
-                    ).to_json()
-                    conn.execute(
-                        "UPDATE applications SET description=? WHERE id=?",
-                        (description_json, offer_id),
-                    )
-                    updated += 1
-                    logger.info("  -> %d chars saved as JSON", len(description_json))
+                    _save_parsed(existing_desc)
                     continue
 
-                extractor = get_extractor(url)
+                extractor = extractor_cache[url]
                 if extractor is None:
                     logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
                     skipped += 1
@@ -359,13 +367,7 @@ async def main() -> None:
                     desc = ""
 
                 if len(desc) >= MIN_DESC_LENGTH:
-                    description_json = parse_description(desc, portal).to_json()
-                    conn.execute(
-                        "UPDATE applications SET description=? WHERE id=?",
-                        (description_json, offer_id),
-                    )
-                    updated += 1
-                    logger.info("  -> %d chars saved as JSON", len(description_json))
+                    _save_parsed(desc)
                 else:
                     logger.info(
                         "  -> too short or empty (%d chars), skipping", len(desc)

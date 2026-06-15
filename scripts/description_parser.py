@@ -92,27 +92,44 @@ _APEC_AVANTAGES_RE = re.compile(
 )
 # Markers that delimit non-mission sections but are NOT mapped to avantages.
 _APEC_OTHER_RE = re.compile(r"l.entreprise|à\s+propos", re.IGNORECASE)
+# APEC prepends a metadata block before the actual description.
+_APEC_DESCRIPTIF_RE = re.compile(r"descriptif\s+du\s+poste", re.IGNORECASE)
+_APEC_SALAIRE_RE = re.compile(r"salaire\s*\n([^\n]+)", re.IGNORECASE)
+_APEC_TELETRAVAIL_RE = re.compile(r"t[eé]l[eé]travail\s*\n([^\n]+)", re.IGNORECASE)
 
 
 def _parse_apec(raw: str) -> ParsedDescription:
-    profil_m = _APEC_PROFIL_RE.search(raw)
-    avantages_m = _APEC_AVANTAGES_RE.search(raw)
-    other_m = _APEC_OTHER_RE.search(raw)
-
     pd = ParsedDescription()
+
+    # Extract salaire and télétravail from the metadata header before trimming.
+    sal_m = _APEC_SALAIRE_RE.search(raw)
+    if sal_m:
+        pd.salaire = sal_m.group(1).strip()
+    tt_m = _APEC_TELETRAVAIL_RE.search(raw)
+    if tt_m:
+        pd.contrat = tt_m.group(1).strip()
+
+    # Trim the metadata header — take only text from "Descriptif du poste" onward.
+    desc_m = _APEC_DESCRIPTIF_RE.search(raw)
+    body = raw[desc_m.end() :].strip() if desc_m else raw
+
+    profil_m = _APEC_PROFIL_RE.search(body)
+    avantages_m = _APEC_AVANTAGES_RE.search(body)
+    other_m = _APEC_OTHER_RE.search(body)
+
     # Build cut-points from all known section starters.
     markers = {m.start(): m for m in [profil_m, avantages_m, other_m] if m is not None}
     cut_points = sorted(markers.keys())
 
     if not cut_points:
-        pd.mission = raw.strip()
+        pd.mission = body.strip()
         return pd
 
-    pd.mission = raw[: cut_points[0]].strip()
+    pd.mission = body[: cut_points[0]].strip()
 
     for i, start in enumerate(cut_points):
-        end = cut_points[i + 1] if i + 1 < len(cut_points) else len(raw)
-        chunk = raw[start:end].strip()
+        end = cut_points[i + 1] if i + 1 < len(cut_points) else len(body)
+        chunk = body[start:end].strip()
         m = markers[start]
         if m is profil_m:
             pd.profil = chunk

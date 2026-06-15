@@ -6,14 +6,38 @@ identical.  Normalization:
 - Unicode accent stripping (NFD decomposition + ASCII encoding)
 - Punctuation removal (only alphanumeric and spaces kept)
 - Collapse multiple spaces to one
+
+URL normalization strips query params for portals where the offer ID is in the
+path (APEC), so the same offer scraped from different search-result pages maps
+to a single canonical URL.
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
+from urllib.parse import urlparse, urlunparse
 
 from scripts.models import RawOffer
+
+# Portals whose offer identity lives entirely in the URL path; query params
+# (page index, search context, etc.) are irrelevant for deduplication.
+_PATH_ONLY_PORTALS = frozenset({"apec"})
+
+
+def normalize_offer_url(url: str, portal: str = "") -> str:
+    """Return a canonical URL for deduplication.
+
+    For APEC (and similar portals) the offer ID is embedded in the path, so
+    query-string parameters only reflect the search context and must be dropped.
+    All other portals keep their URLs unchanged.
+    """
+    if not url:
+        return url
+    if portal.lower() in _PATH_ONLY_PORTALS:
+        parsed = urlparse(url)
+        return urlunparse(parsed._replace(query="", fragment=""))
+    return url
 
 
 def _remove_accents(text: str) -> str:

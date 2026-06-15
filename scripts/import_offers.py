@@ -62,9 +62,9 @@ def score_to_grade(score: float) -> str:
 
 def existing_urls(conn: sqlite3.Connection) -> set[str]:
     rows = conn.execute(
-        "SELECT offer_url FROM applications WHERE offer_url != ''"
+        "SELECT offer_url, portal FROM applications WHERE offer_url != ''"
     ).fetchall()
-    return {row[0] for row in rows}
+    return {normalize_offer_url(row[0], row[1]) for row in rows}
 
 
 def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
@@ -105,7 +105,8 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
         inserted = 0
         skipped = 0
         for offer in offers:
-            if offer.url and offer.url in urls:
+            canonical = normalize_offer_url(offer.url or "", offer.portal)
+            if canonical and canonical in urls:
                 if offer.description:
                     description_json = parse_description(
                         offer.description, offer.portal
@@ -118,8 +119,8 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
                 logger.debug("Skip (exists): %s @ %s", offer.title, offer.company)
             else:
                 insert_offer(conn, offer)
-                if offer.url:
-                    urls.add(offer.url)
+                if canonical:
+                    urls.add(canonical)
                 inserted += 1
         conn.commit()
     finally:
@@ -143,7 +144,8 @@ def import_offers_with_liveness(
         skipped = 0
         expired_count = 0
         for offer in offers:
-            if offer.url and offer.url in urls:
+            canonical = normalize_offer_url(offer.url or "", offer.portal)
+            if canonical and canonical in urls:
                 skipped += 1
                 continue
             if offer.url:
@@ -155,8 +157,8 @@ def import_offers_with_liveness(
                     expired_count += 1
                     continue
             insert_offer(_conn, offer)
-            if offer.url:
-                urls.add(offer.url)
+            if canonical:
+                urls.add(canonical)
             inserted += 1
         _conn.commit()
     finally:

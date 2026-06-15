@@ -16,6 +16,7 @@ import httpx
 from playwright.async_api import Page, async_playwright
 
 from scripts.description_parser import parse_description
+from scripts.import_offers import infer_portal_from_url
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -103,12 +104,13 @@ class LeverApiExtractor:
         except Exception as exc:
             logger.debug("Lever API error for %s: %s", url[:80], exc)
             return ""
-        # Prefer HTML (keeps heading tags for _parse_html_headings); fall back to plain
-        html = (data.get("description") or "").strip()
-        if len(html) >= MIN_DESC_LENGTH:
-            return html[:8000]
+        # Lever HTML uses <strong style="font-size:24px"> not <h2>/<h3>, so plain text
+        # is better for heuristic splitting.  Prefer descriptionPlain; fall back to HTML.
         plain = (data.get("descriptionPlain") or "").strip()
-        return plain[:8000] if len(plain) >= MIN_DESC_LENGTH else ""
+        if len(plain) >= MIN_DESC_LENGTH:
+            return plain[:8000]
+        html = (data.get("description") or "").strip()
+        return html[:8000] if len(html) >= MIN_DESC_LENGTH else ""
 
 
 class GreenhouseApiExtractor:
@@ -131,7 +133,7 @@ class GreenhouseApiExtractor:
         except Exception as exc:
             logger.debug("Greenhouse API error for %s: %s", url[:80], exc)
             return ""
-        html = (data.get("content") or "").strip()
+        html = unescape(data.get("content") or "").strip()
         return html[:8000] if html else ""
 
 
@@ -257,9 +259,11 @@ def get_extractor(
 async def main() -> None:
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
-        """SELECT id, offer_url, COALESCE(portal, '') AS portal
+        """SELECT id, offer_url, COALESCE(portal, '') AS portal,
+                  COALESCE(description, '') AS description
            FROM applications
            WHERE length(description) < 50
+              OR NOT json_valid(description)
               OR (
                    json_valid(description)
                    AND json_extract(description, '$.profil') = ''
@@ -273,7 +277,8 @@ async def main() -> None:
     updated = 0
     skipped = 0
     browser_needed = any(
-        (e := get_extractor(url)) is not None and e.needs_browser for _, url, _ in rows
+        (e := get_extractor(url)) is not None and e.needs_browser
+        for _, url, _, _ in rows
     )
 
     async with httpx.AsyncClient(headers=_HEADERS) as http_client:
@@ -300,13 +305,7 @@ async def main() -> None:
         page = await browser_context.new_page() if browser_context else None
 
         try:
-            for offer_id, url, portal in rows:
-                extractor = get_extractor(url)
-                if extractor is None:
-                    logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
-                    skipped += 1
-                    continue
-
+            for offer_id, url, portal, existing_desc in rows:
                 # Infer and persist portal for legacy empty-portal rows
                 inferred = infer_portal_from_url(url) if not portal else portal
                 if inferred != portal:
@@ -315,6 +314,36 @@ async def main() -> None:
                         (inferred, offer_id),
                     )
                     portal = inferred
+
+                # If we already have a long plain-text description, re-parse it
+                # directly without hitting the network (handles expired APEC offers).
+                is_json = True
+                try:
+                    json.loads(existing_desc)
+                except (json.JSONDecodeError, ValueError):
+                    is_json = False
+                if not is_json and len(existing_desc) >= MIN_DESC_LENGTH:
+                    logger.info(
+                        "[%d] re-parsing existing plain text (%d chars)",
+                        offer_id,
+                        len(existing_desc),
+                    )
+                    description_json = parse_description(
+                        existing_desc, portal
+                    ).to_json()
+                    conn.execute(
+                        "UPDATE applications SET description=? WHERE id=?",
+                        (description_json, offer_id),
+                    )
+                    updated += 1
+                    logger.info("  -> %d chars saved as JSON", len(description_json))
+                    continue
+
+                extractor = get_extractor(url)
+                if extractor is None:
+                    logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
+                    skipped += 1
+                    continue
 
                 logger.info(
                     "[%d] %-26s %s", offer_id, type(extractor).__name__, url[:80]

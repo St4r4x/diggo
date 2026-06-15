@@ -14,6 +14,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
+from urllib.parse import urlparse
+
 from scripts.dedup import deduplicate, normalize_offer_url
 from scripts.description_parser import parse_description
 from scripts.liveness import check_liveness

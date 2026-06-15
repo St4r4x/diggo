@@ -100,7 +100,7 @@ class GreenhouseProvider:
                 )
                 try:
                     detail_resp = await _fetch_with_retry(client, detail_url)
-                    raw_content = detail_resp.json().get("content", "")
+                    raw_content = unescape(detail_resp.json().get("content", ""))
                     description = raw_content[:8000]
                 except Exception:
                     pass
@@ -148,8 +148,8 @@ class LeverProvider:
                     detail_resp = await _fetch_with_retry(client, detail_url)
                     detail = detail_resp.json()
                     description = (
-                        detail.get("description")
-                        or detail.get("descriptionPlain")
+                        detail.get("descriptionPlain")
+                        or detail.get("description")
                         or ""
                     )[:8000]
                 except Exception:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Optional
 
 
 @dataclass
@@ -28,12 +27,12 @@ class RawOffer:
     company: str
     url: str
     portal: str
-    location: Optional[str] = None
-    date_posted: Optional[date] = None
+    location: str | None = None
+    date_posted: date | None = None
     score: float = 0.0
     tags: list[str] = field(default_factory=list)
     description: str = ""
-    parsed_description: Optional[ParsedDescription] = None
+    parsed_description: ParsedDescription | None = None
 
     def dedup_key(self) -> str:
         title_norm = self.title.lower().strip()

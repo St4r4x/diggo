@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-15
+
+### Added
+- `scripts/description_parser.py` — `parse_description(raw, portal)`: dispatches to a portal-specific parser (APEC plain-text, HTML-heading for Lever/Greenhouse/Ashby, heuristic regex for Indeed/WTTJ/LinkedIn/Glassdoor) and returns a `ParsedDescription` with mission/profil/stack/avantages fields populated
+- `tests/test_description_parser.py` — 17 new parser tests covering generic fallback, APEC, HTML-heading, and heuristic parsers across all supported portals
+
 ## 2026-06-11 (2)
 
 ### Added

@@ -37,6 +37,19 @@ GRADE_COLORS: dict[str, str] = {
 }
 
 
+def _parse_description(raw: str) -> dict | str:
+    """Return parsed description dict if JSON, otherwise the raw string."""
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+        return raw
+    except (json.JSONDecodeError, ValueError):
+        return raw
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = open_db(DB_PATH)
@@ -127,6 +140,7 @@ async def offer_detail(request: Request, offer_id: int):
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 
@@ -178,6 +192,7 @@ async def offer_save(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 
@@ -220,6 +235,7 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 

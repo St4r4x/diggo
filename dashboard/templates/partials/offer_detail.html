@@ -141,17 +141,35 @@
     <!-- Colonne droite — description + notes qui prennent toute la hauteur -->
     <div class="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
 
-      {% if offer.description %}
+      {% if parsed_desc %}
       <div class="shrink-0">
-        <p style="color:#8b5cf6;" class="text-sm mb-1">Description</p>
-        <details>
-          <summary class="text-sm cursor-pointer hover:text-white transition-colors" style="color:#cbd5e1;">
-            {{ offer.description[:200] }}{% if offer.description|length > 200 %}…{% endif %}
-          </summary>
-          {% if offer.description|length > 200 %}
-          <p class="text-sm mt-2 whitespace-pre-wrap rounded-lg p-3" style="color:#cbd5e1;background:#1e1535;border:1px solid #2d1f5e;">{{ offer.description }}</p>
+        {% if parsed_desc is mapping %}
+          <p class="text-sm font-semibold mb-2" style="color:#8b5cf6;">Description</p>
+          <div class="space-y-3">
+            {% set section_labels = [
+              ('mission', 'Missions'),
+              ('profil', 'Profil recherché'),
+              ('stack', 'Stack technique'),
+              ('avantages', 'Avantages'),
+              ('contrat', 'Contrat'),
+              ('salaire', 'Salaire'),
+            ] %}
+            {% for key, label in section_labels %}
+              {% if parsed_desc[key] %}
+              <div>
+                <p class="text-xs font-semibold mb-1" style="color:#8b5cf6;">{{ label }}</p>
+                <p class="whitespace-pre-wrap rounded-lg p-2 text-xs" style="color:#cbd5e1;background:#1e1535;border:1px solid #2d1f5e;">{{ parsed_desc[key] }}</p>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-sm font-semibold mb-1" style="color:#8b5cf6;">Description</p>
+          <p class="text-sm" style="color:#94a3b8;">{{ parsed_desc[:200] }}{% if parsed_desc|length > 200 %}…{% endif %}</p>
+          {% if parsed_desc|length > 200 %}
+          <p class="text-sm mt-2 whitespace-pre-wrap rounded-lg p-3" style="color:#cbd5e1;background:#1e1535;border:1px solid #2d1f5e;">{{ parsed_desc }}</p>
           {% endif %}
-        </details>
+        {% endif %}
       </div>
       {% endif %}
 

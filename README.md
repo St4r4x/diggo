@@ -174,7 +174,7 @@ docker compose exec dashboard python3 scripts/backfill_descriptions.py
 |------|---------|---------|
 | `config/contact.yaml` | ❌ gitignored | Name, email, phone, LinkedIn, GitHub |
 | `config/profile.md` | ❌ gitignored | Full profile used by LLM scoring modes |
-| `config/cv.yaml` | ❌ gitignored | CV content: experience, skills, education, hobbies |
+| `config/cv.yaml` | ❌ gitignored | CV content: experience (with stack tags), skill_categories, certifications, education, hobbies |
 | `config/settings.yaml` | ✅ | Search keywords, salary range, scoring thresholds, target companies |
 | `config/ats_map.yaml` | ✅ | Direct ATS URLs for Greenhouse / Lever / Ashby companies |
 | `portals/fr/*.yaml` | ✅ | Portal scraper configs (selectors, pagination) |

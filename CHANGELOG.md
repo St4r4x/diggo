@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `config/cv.yaml.example` — new `skill_categories` dict field (replaces `skills`), `certifications` list field, and `stack` list per experience entry
+- `templates/cv-fr/cv.html.j2`, `templates/cv-en/cv.html.j2` — categorised skills grid, optional Certifications section (after Skills), per-role stack tag row
+- `templates/cv-fr/cv.css`, `templates/cv-en/cv.css` — `.skill-category`, `.skill-category-label`, `.cert-line`, `.cert-name`, `.cert-meta`, `.stack-tags`, `.stack-tag` classes
+
 ### Changed
 - `scripts/generate_pdf.py` — `build_cv_context()` now accepts `skill_categories: dict[str, list[str]]` (replacing `skills: list[str]`) and optional `certifications: list[dict] | None`; context dict keys now include `skill_categories` and `certifications`
 - `scripts/generate_pdf.py` — `default_context()` reads `skill_categories` and `certifications` from cv.yaml config

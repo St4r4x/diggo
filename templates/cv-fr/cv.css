@@ -47,3 +47,51 @@ li { margin-bottom: 2px; font-size: 9.5pt; }
 @media print {
   body { -webkit-print-color-adjust: exact; }
 }
+
+.skill-category {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.skill-category-label {
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #444;
+  min-width: 70px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cert-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-size: 9.5pt;
+}
+
+.cert-name {
+  font-weight: 600;
+}
+
+.cert-meta {
+  font-size: 9pt;
+  color: #777;
+}
+
+.stack-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.stack-tag {
+  background: #e8f0fe;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 8pt;
+  color: #2a4ab5;
+}

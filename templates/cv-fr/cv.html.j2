@@ -37,18 +37,40 @@
       <li>{{ bullet }}</li>
       {% endfor %}
     </ul>
+    {% if job.stack %}
+    <div class="stack-tags">
+      {% for tech in job.stack %}
+      <span class="stack-tag">{{ tech }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
 
 <div class="section">
   <div class="section-title">Compétences</div>
-  <div class="skills-grid">
-    {% for skill in skills %}
+  {% for category, items in skill_categories.items() %}
+  <div class="skill-category">
+    <span class="skill-category-label">{{ category }}</span>
+    {% for skill in items %}
     <span class="skill-tag {% if skill in highlighted_skills %}highlight{% endif %}">{{ skill }}</span>
     {% endfor %}
   </div>
+  {% endfor %}
 </div>
+
+{% if certifications %}
+<div class="section">
+  <div class="section-title">Certifications</div>
+  {% for cert in certifications %}
+  <div class="cert-line">
+    <span class="cert-name">{{ cert.name }}</span>
+    <span class="cert-meta">{{ cert.issuer }} &nbsp;·&nbsp; {{ cert.year }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="section">
   <div class="section-title">Formation</div>

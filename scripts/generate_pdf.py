@@ -148,7 +148,7 @@ def default_context(lang: str = "fr") -> dict:
         education=cv.get("education", []),
         languages=cv.get("languages", []),
         hobbies=cv.get("hobbies", []),
-        certifications=cv.get("certifications", None),
+        certifications=cv.get("certifications"),
     )
 
 

@@ -54,7 +54,7 @@
   <div class="skill-category">
     <span class="skill-category-label">{{ category }}</span>
     {% for skill in items %}
-    <span class="skill-tag {% if skill in highlighted_skills %}highlight{% endif %}">{{ skill }}</span>
+    <span class="skill-tag{% if skill in highlighted_skills %} highlight{% endif %}">{{ skill }}</span>
     {% endfor %}
   </div>
   {% endfor %}

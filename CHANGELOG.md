@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-19
+
 ### Added
 - `config/cv.yaml.example` — new `skill_categories` dict field (replaces `skills`), `certifications` list field, and `stack` list per experience entry
 - `templates/cv-fr/cv.html.j2`, `templates/cv-en/cv.html.j2` — categorised skills grid, optional Certifications section (after Skills), per-role stack tag row

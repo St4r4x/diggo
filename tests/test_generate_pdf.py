@@ -1,8 +1,11 @@
 # tests/test_generate_pdf.py
+
+import pytest
+
 from scripts.generate_pdf import _normalize_for_ats, build_cv_context, render_html
 
 
-def _base_ctx(**overrides) -> dict:
+def _base_ctx(**overrides: object) -> dict:
     defaults = dict(
         name="Your Name",
         title="AI/ML Engineer",
@@ -45,32 +48,36 @@ def test_render_html_contains_name():
     assert "AI/ML Engineer" in html
 
 
-def test_render_html_skills_by_category():
+@pytest.mark.parametrize("lang", ["fr", "en"])
+def test_render_html_skills_by_category(lang: str) -> None:
     ctx = _base_ctx(
         skill_categories={"IA/ML": ["PyTorch"], "Langages": ["Python"]},
         highlighted_skills=["PyTorch"],
     )
-    html = render_html(ctx)
+    html = render_html(ctx, lang=lang)
     assert "PyTorch" in html
     assert "Python" in html
     assert "IA/ML" in html
 
 
-def test_render_html_certifications_shown():
+@pytest.mark.parametrize("lang", ["fr", "en"])
+def test_render_html_certifications_shown(lang: str) -> None:
     certs = [{"name": "AWS Dev", "issuer": "Amazon", "year": 2024}]
     ctx = _base_ctx(certifications=certs)
-    html = render_html(ctx)
+    html = render_html(ctx, lang=lang)
     assert "AWS Dev" in html
     assert "Amazon" in html
 
 
-def test_render_html_certifications_absent():
+@pytest.mark.parametrize("lang", ["fr", "en"])
+def test_render_html_certifications_absent(lang: str) -> None:
     ctx = _base_ctx(certifications=None)
-    html = render_html(ctx)
+    html = render_html(ctx, lang=lang)
     assert "Certifications" not in html
 
 
-def test_render_html_stack_tags_shown():
+@pytest.mark.parametrize("lang", ["fr", "en"])
+def test_render_html_stack_tags_shown(lang: str) -> None:
     job = {
         "title": "AI Engineer",
         "company": "Acme",
@@ -80,7 +87,7 @@ def test_render_html_stack_tags_shown():
         "stack": ["Python", "FastAPI"],
     }
     ctx = _base_ctx(experience=[job])
-    html = render_html(ctx)
+    html = render_html(ctx, lang=lang)
     assert "FastAPI" in html
 
 

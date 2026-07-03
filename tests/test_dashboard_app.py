@@ -721,3 +721,57 @@ class TestFollowupReminders:
         r = client.get("/offers")
         assert r.status_code == 200
         assert "followup-dot" in r.text
+
+
+class TestCoverLetters:
+    def test_returns_200_no_files(self, client, tmp_path, monkeypatch):
+        import app as dashboard_app
+
+        monkeypatch.setattr(dashboard_app, "CONFIG_DIR", tmp_path)
+        r = client.get("/cover-letters")
+        assert r.status_code == 200
+
+    def test_shows_company_name(self, client, tmp_path, monkeypatch):
+        import json
+        import app as dashboard_app
+
+        (tmp_path / "cover-letter-braze.json").write_text(
+            json.dumps(
+                {
+                    "company": "Braze",
+                    "role": "ML Engineer",
+                    "lang": "fr",
+                    "recipient": "RH",
+                    "subject": "Candidature ML",
+                    "paragraphs": ["Bonjour, je candidate."],
+                    "closing_line": "Cordialement,",
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(dashboard_app, "CONFIG_DIR", tmp_path)
+        r = client.get("/cover-letters")
+        assert r.status_code == 200
+        assert "Braze" in r.text
+
+    def test_shows_paragraph_content(self, client, tmp_path, monkeypatch):
+        import json
+        import app as dashboard_app
+
+        (tmp_path / "cover-letter-test.json").write_text(
+            json.dumps(
+                {
+                    "company": "TestCo",
+                    "role": "ML Engineer",
+                    "lang": "fr",
+                    "recipient": "RH",
+                    "subject": "Candidature",
+                    "paragraphs": ["Premier paragraphe unique."],
+                    "closing_line": "Cordialement,",
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(dashboard_app, "CONFIG_DIR", tmp_path)
+        r = client.get("/cover-letters")
+        assert "Premier paragraphe unique." in r.text

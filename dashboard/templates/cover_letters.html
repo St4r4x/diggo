@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-8 max-w-3xl mx-auto overflow-y-auto h-full">
+  <h1 class="text-2xl font-bold mb-8" style="color:#f1f5f9;">Lettres de motivation</h1>
+
+  {% if not letters %}
+  <p class="text-sm" style="color:#64748b;">Aucune lettre trouvée dans <code>config/cover-letter-*.json</code>.</p>
+  {% endif %}
+
+  {% for letter in letters %}
+  <div class="rounded-xl mb-6 overflow-hidden" style="background:#1e1535;border:1px solid #2d1f5e;">
+    <div class="px-5 py-3 flex items-center justify-between" style="border-bottom:1px solid #2d1f5e;">
+      <div>
+        <span class="font-semibold" style="color:#f1f5f9;">{{ letter.data.company }}</span>
+        {% if letter.data.role %}
+        <span class="ml-2 text-sm" style="color:#8b5cf6;">{{ letter.data.role }}</span>
+        {% endif %}
+      </div>
+      <span class="text-xs px-2 py-0.5 rounded" style="background:#2d1f5e;color:#94a3b8;">
+        {{ (letter.data.lang | upper) if letter.data.lang else 'FR' }}
+      </span>
+    </div>
+
+    <div class="px-5 py-4 flex flex-col gap-3">
+      {% if letter.data.subject %}
+      <div>
+        <span class="text-xs font-medium uppercase tracking-wide" style="color:#6366f1;">Objet</span>
+        <p class="text-sm mt-1" style="color:#e2e8f0;">{{ letter.data.subject }}</p>
+      </div>
+      {% endif %}
+
+      {% if letter.data.recipient %}
+      <div>
+        <span class="text-xs font-medium uppercase tracking-wide" style="color:#6366f1;">Destinataire</span>
+        <p class="text-sm mt-1" style="color:#e2e8f0;">{{ letter.data.recipient }}</p>
+      </div>
+      {% endif %}
+
+      {% for para in letter.data.paragraphs %}
+      <p class="text-sm leading-relaxed" style="color:#cbd5e1;">{{ para }}</p>
+      {% endfor %}
+
+      {% if letter.data.closing_line %}
+      <p class="text-sm" style="color:#cbd5e1;">{{ letter.data.closing_line }}</p>
+      {% endif %}
+
+      <button
+        onclick="navigator.clipboard.writeText({{ letter.data.paragraphs | join('\n\n') | tojson }}).then(() => { this.textContent = '✓ Copié'; setTimeout(() => this.textContent = 'Copier les paragraphes', 1500); })"
+        class="self-start text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+        style="background:#2d1f5e;color:#a5b4fc;border:1px solid #3d2f7e;">
+        Copier les paragraphes
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

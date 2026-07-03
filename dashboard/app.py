@@ -15,6 +15,8 @@ from db import VALID_STATUSES, open_db
 
 DB_PATH = Path(__file__).parent / "data" / "applications.db"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+CONFIG_DIR = Path(__file__).parent.parent / "config"
+REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 STATUS_COLORS: dict[str, str] = {
     "À envoyer": "bg-gray-700 text-gray-200",
@@ -470,6 +472,23 @@ async def profile_save_projects(request: Request, data: str = Form("")):
         request,
         "partials/profile_projects.html",
         {"profile": profile_data, "saved": True},
+    )
+
+
+@app.get("/cover-letters", response_class=HTMLResponse)
+async def cover_letters_page(request: Request) -> HTMLResponse:
+    letters = []
+    for p in sorted(CONFIG_DIR.glob("cover-letter-*.json")):
+        company = p.stem.replace("cover-letter-", "")
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        letters.append({"company": company, "data": data, "filename": p.name})
+    return templates.TemplateResponse(
+        request,
+        "cover_letters.html",
+        {"letters": letters},
     )
 
 

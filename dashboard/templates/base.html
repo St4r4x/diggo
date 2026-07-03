@@ -27,6 +27,7 @@
     <a href="/" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Candidatures</a>
     <a href="/stats" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/stats' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Stats</a>
     <a href="/profile" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/profile' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Profil</a>
+    <a href="/cover-letters" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/cover-letters' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Lettres</a>
   </nav>
   <main class="flex-1 overflow-hidden">
     {% block content %}{% endblock %}

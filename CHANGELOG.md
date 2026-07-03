@@ -5,35 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
-
-### Removed
-- `GET /cover-letters` route, `cover_letters.html` template, and "Lettres" nav link — feature dropped as not useful
-
-### Changed
-- `dashboard/app.py` — `_build_funnel()` now returns `max_count` as third value; exits dicts no longer carry dead `"rate": None` key
-- `dashboard/app.py` — `GET /stats` uses `max()` instead of `sorted()[0]` to pick latest report file; passes `max_count` to template
-- `dashboard/app.py` — `GET /` drops redundant `followups` list from context; only `followup_ids` set is passed
-- `dashboard/templates/index.html` — bandeau now guards on `followup_ids` instead of removed `followups` variable
-- `dashboard/templates/stats.html` — `max_count` moved from template to Python; removed `| min` no-ops from bar width expressions
-
-### Fixed
-- `dashboard/app.py` — add missing `from typing import Any` import for `_start_scan` annotation
-- `dashboard/db.py` — align `get_stats()` stale_count threshold to `>=` to match `get_followups()` cutoff behaviour
+## [0.10.0] — 2026-07-03
 
 ### Added
-- `dashboard/app.py` — `GET /stats` reads latest `reports/daily-*.md` and passes rendered HTML to template
-- `dashboard/templates/stats.html` — daily report widget: last scan report rendered as HTML
-- `dashboard/templates/base.html` — `.prose-report` CSS for Markdown-rendered report content
-- `requirements.txt` — `mistune==3.0.2`
-- `dashboard/app.py` — `_build_funnel()`: computes pipeline funnel steps and conversion rates from `by_status` dict
-- `dashboard/templates/stats.html` — funnel section: horizontal bars per step, conversion rate between adjacent steps, exits (Refusée, Abandonnée) in a separate block
-- `dashboard/app.py` — `GET /cover-letters`: lists and renders cover letter JSON files from `config/cover-letter-*.json`; adds `CONFIG_DIR` and `REPORTS_DIR` module-level constants
-- `dashboard/templates/cover_letters.html` — cover letter viewer with paragraph copy-to-clipboard
-- `dashboard/templates/base.html` — "Lettres" nav link
-- `dashboard/db.py` — `DB.get_followups()`: returns applications in status "Envoyée" or "Entretien RH" with `send_date` older than `_FOLLOW_UP_DAYS` days
-- `dashboard/app.py`, `dashboard/templates/index.html` — follow-up bandeau: amber warning bar when applications in "Envoyée" or "Entretien RH" are overdue (> 7 days since `send_date`)
+- `dashboard/db.py` — `DB.get_followups()`: returns applications in "Envoyée" or "Entretien RH" with `send_date` older than 7 days
+- `dashboard/app.py`, `dashboard/templates/index.html` — amber bandeau when applications are overdue for follow-up
 - `dashboard/templates/partials/offer_list.html` — red dot indicator on overdue offer rows
+- `dashboard/app.py` — `_build_funnel()`: computes funnel steps and conversion rates from `by_status`
+- `dashboard/templates/stats.html` — funnel section with horizontal bars, conversion rates, and exits (Refusée, Abandonnée)
+- `dashboard/templates/stats.html` — daily report widget: reads latest `reports/daily-*.md` and renders as HTML
+- `requirements.txt` — `mistune==3.0.2`
+
+### Fixed
+- `dashboard/db.py` — `get_stats()` stale_count threshold corrected to `>=` to match `get_followups()` cutoff
 
 ## 2026-07-01
 

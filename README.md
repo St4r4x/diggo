@@ -72,8 +72,8 @@ Click **Scanner** to run the full pipeline. New offers appear in the list automa
 
 | Route | Description |
 |-------|-------------|
-| `/` | Candidatures — offer list with filters, notes, status tracking, scan button |
-| `/stats` | Pipeline statistics — response rate, interview count, grade breakdown |
+| `/` | Candidatures — offer list with filters, notes, status tracking, scan button; amber bandeau when applications are overdue for follow-up (> 7 days since send) |
+| `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
 | `/profile` | Profile editor — edit `profile.md` and `contact.yaml` directly from the browser |
 
 **Offer detail panel:**

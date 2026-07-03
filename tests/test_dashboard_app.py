@@ -684,7 +684,7 @@ class TestGetFollowups:
 
 
 class TestFollowupReminders:
-    def _insert_overdue(self, db, company: str, status: str) -> None:
+    def _insert_overdue(self, db: "DB", company: str, status: str) -> None:
         db.conn.execute(
             "INSERT INTO applications (company, role, offer_url, detection_date, "
             "score_grade, score_value, status, send_date) VALUES (?,?,?,?,?,?,?,?)",

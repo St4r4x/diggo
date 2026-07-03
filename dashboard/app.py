@@ -520,7 +520,7 @@ async def _run_scan_task(app_state) -> None:
         app_state.scan_status = "error"
 
 
-def _start_scan(app_state) -> bool:
+def _start_scan(app_state: Any) -> bool:
     """Set state to running and enqueue task. Returns False if already running."""
     if app_state.scan_status == "running":
         return False

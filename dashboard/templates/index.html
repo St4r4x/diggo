@@ -2,11 +2,11 @@
 {% block content %}
 <div class="flex flex-col h-full">
 
-  {% if followups %}
+  {% if followup_ids %}
   <div class="shrink-0 px-5 py-2 text-sm font-medium flex items-center gap-2"
        style="background:#451a03;border-bottom:1px solid #92400e;color:#fcd34d;">
     <span>⏰</span>
-    <span>{{ followups|length }} offre{{ 's' if followups|length > 1 else '' }} à relancer</span>
+    <span>{{ followup_ids|length }} offre{{ 's' if followup_ids|length > 1 else '' }} à relancer</span>
     <button onclick="document.getElementById('status-filter').value='Envoyée';document.getElementById('status-filter').dispatchEvent(new Event('change'))"
             class="ml-2 underline transition-colors" style="color:#fbbf24;">
       Voir

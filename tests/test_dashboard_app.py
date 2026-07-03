@@ -803,7 +803,7 @@ class TestStatsFunnel:
             "Refusée": 1,
             "Abandonnée": 2,
         }
-        funnel, exits = _build_funnel(by_status)
+        funnel, exits, max_count = _build_funnel(by_status)
         envoyee_step = next(s for s in funnel if s["status"] == "Envoyée")
         assert envoyee_step["rate"] == 50.0
         entretien_step = next(s for s in funnel if s["status"] == "Entretien RH")

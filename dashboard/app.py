@@ -54,17 +54,17 @@ _EXIT_STEPS = ["Refusée", "Abandonnée"]
 
 def _build_funnel(
     by_status: dict[str, int],
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], int]:
     funnel: list[dict] = []
     for i, s in enumerate(_FUNNEL_STEPS):
         count = by_status.get(s, 0)
         prev_count = by_status.get(_FUNNEL_STEPS[i - 1], 0) if i > 0 else None
         rate = round(count / prev_count * 100, 1) if prev_count else None
         funnel.append({"status": s, "count": count, "rate": rate})
-    exits = [
-        {"status": s, "count": by_status.get(s, 0), "rate": None} for s in _EXIT_STEPS
-    ]
-    return funnel, exits
+    exits = [{"status": s, "count": by_status.get(s, 0)} for s in _EXIT_STEPS]
+    all_counts = [s["count"] for s in funnel] + [s["count"] for s in exits]
+    max_count = max(all_counts) if any(all_counts) else 1
+    return funnel, exits, max_count
 
 
 def _parse_description(raw: str) -> dict:
@@ -118,8 +118,7 @@ templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 async def index(request: Request):
     db = request.app.state.db
     offers = db.get_all({})
-    followups = db.get_followups()
-    followup_ids = {f["id"] for f in followups}
+    followup_ids = {f["id"] for f in db.get_followups()}
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -128,7 +127,6 @@ async def index(request: Request):
             "statuses": VALID_STATUSES,
             "status": request.app.state.scan_status,
             "result": request.app.state.scan_result,
-            "followups": followups,
             "followup_ids": followup_ids,
         },
     )
@@ -297,17 +295,14 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
 async def stats_page(request: Request):
     db = request.app.state.db
     stats = db.get_stats()
-    funnel, exits = _build_funnel(stats["by_status"])
-    report_files = (
-        sorted(REPORTS_DIR.glob("daily-*.md"), reverse=True)
-        if REPORTS_DIR.is_dir()
-        else []
-    )
+    funnel, exits, max_count = _build_funnel(stats["by_status"])
+    report_files = list(REPORTS_DIR.glob("daily-*.md")) if REPORTS_DIR.is_dir() else []
     latest_report_html: str | None = None
     latest_report_date: str | None = None
     if report_files:
-        latest_report_date = report_files[0].stem.replace("daily-", "")
-        latest_report_html = mistune.html(report_files[0].read_text(encoding="utf-8"))
+        latest = max(report_files, key=lambda p: p.name)
+        latest_report_date = latest.stem.replace("daily-", "")
+        latest_report_html = mistune.html(latest.read_text(encoding="utf-8"))
     return templates.TemplateResponse(
         request,
         "stats.html",
@@ -316,6 +311,7 @@ async def stats_page(request: Request):
             "statuses": VALID_STATUSES,
             "funnel": funnel,
             "exits": exits,
+            "max_count": max_count,
             "latest_report_html": latest_report_html,
             "latest_report_date": latest_report_date,
         },

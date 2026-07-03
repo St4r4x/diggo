@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- `dashboard/app.py` — `_build_funnel()` now returns `max_count` as third value; exits dicts no longer carry dead `"rate": None` key
+- `dashboard/app.py` — `GET /stats` uses `max()` instead of `sorted()[0]` to pick latest report file; passes `max_count` to template
+- `dashboard/app.py` — `GET /` drops redundant `followups` list from context; only `followup_ids` set is passed
+- `dashboard/templates/index.html` — bandeau now guards on `followup_ids` instead of removed `followups` variable
+- `dashboard/templates/stats.html` — `max_count` moved from template to Python; removed `| min` no-ops from bar width expressions
+
 ### Fixed
 - `dashboard/app.py` — add missing `from typing import Any` import for `_start_scan` annotation
 - `dashboard/db.py` — align `get_stats()` stale_count threshold to `>=` to match `get_followups()` cutoff behaviour

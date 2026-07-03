@@ -36,7 +36,6 @@
 
   <!-- Funnel -->
   <h2 class="text-lg font-semibold mb-4" style="color:#f1f5f9;">Funnel candidatures</h2>
-  {% set max_count = ([1] + (funnel | map(attribute='count') | list) + (exits | map(attribute='count') | list)) | max %}
   <div class="rounded-xl p-5 mb-8" style="background:#1e1535;border:1px solid #2d1f5e;">
     {% for step in funnel %}
     <div class="mb-1">
@@ -48,7 +47,7 @@
           {{ STATUS_COLORS.get(step.status, 'bg-gray-700 text-gray-200') }}">{{ step.status }}</span>
         <div class="flex-1 rounded-full h-2" style="background:#2d1f5e;">
           <div class="h-2 rounded-full"
-            style="width: {{ [step.count / max_count * 100, 100] | min | int }}%;background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
+            style="width: {{ (step.count / max_count * 100) | int }}%;background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
         </div>
         <span class="text-sm w-6 text-right shrink-0" style="color:#cbd5e1;">{{ step.count }}</span>
       </div>
@@ -63,7 +62,7 @@
           {{ STATUS_COLORS.get(exit.status, 'bg-gray-700 text-gray-200') }}">{{ exit.status }}</span>
         <div class="flex-1 rounded-full h-2" style="background:#2d1f5e;">
           <div class="h-2 rounded-full"
-            style="width: {{ [exit.count / max_count * 100, 100] | min | int }}%;background:#7f1d1d;"></div>
+            style="width: {{ (exit.count / max_count * 100) | int }}%;background:#7f1d1d;"></div>
         </div>
         <span class="text-sm w-6 text-right shrink-0" style="color:#cbd5e1;">{{ exit.count }}</span>
       </div>

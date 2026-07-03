@@ -810,3 +810,42 @@ class TestStatsFunnel:
         assert entretien_step["rate"] is None  # prev (Relance) is 0
         assert len(exits) == 2
         assert exits[0]["status"] == "Refusée"
+
+
+class TestReportWidget:
+    def test_shows_no_report_message_when_none_exist(
+        self, client, tmp_path, monkeypatch
+    ):
+        import app as dashboard_app
+
+        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
+        r = client.get("/stats")
+        assert r.status_code == 200
+        assert "Aucun rapport" in r.text
+
+    def test_shows_latest_report_content(self, client, tmp_path, monkeypatch):
+        import app as dashboard_app
+
+        report_file = tmp_path / "daily-2026-07-03.md"
+        report_file.write_text(
+            "# Daily Report\n\n**Total offers:** 5", encoding="utf-8"
+        )
+        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
+        r = client.get("/stats")
+        assert r.status_code == 200
+        assert "Total offers" in r.text
+        assert "2026-07-03" in r.text
+
+    def test_shows_most_recent_when_multiple_reports(
+        self, client, tmp_path, monkeypatch
+    ):
+        import app as dashboard_app
+
+        (tmp_path / "daily-2026-07-01.md").write_text("Old report", encoding="utf-8")
+        (tmp_path / "daily-2026-07-03.md").write_text(
+            "New report 2026-07-03", encoding="utf-8"
+        )
+        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
+        r = client.get("/stats")
+        assert "New report" in r.text
+        assert "Old report" not in r.text

@@ -88,5 +88,18 @@
     </div>
     {% endfor %}
   </div>
+
+  <!-- Daily report widget -->
+  <h2 class="text-lg font-semibold mt-8 mb-4" style="color:#f1f5f9;">Dernier rapport</h2>
+  <div class="rounded-xl p-5 mb-6" style="background:#1e1535;border:1px solid #2d1f5e;">
+    {% if latest_report_html %}
+    <p class="text-xs mb-3" style="color:#64748b;">Rapport du {{ latest_report_date }}</p>
+    <div class="prose-report text-sm leading-relaxed">
+      {{ latest_report_html | safe }}
+    </div>
+    {% else %}
+    <p class="text-sm" style="color:#64748b;">Aucun rapport disponible — lancez un scan pour en générer un.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

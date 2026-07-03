@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/app.py` — `GET /stats` reads latest `reports/daily-*.md` and passes rendered HTML to template
+- `dashboard/templates/stats.html` — daily report widget: last scan report rendered as HTML
+- `dashboard/templates/base.html` — `.prose-report` CSS for Markdown-rendered report content
+- `requirements.txt` — `mistune==3.0.2`
 - `dashboard/app.py` — `_build_funnel()`: computes pipeline funnel steps and conversion rates from `by_status` dict
 - `dashboard/templates/stats.html` — funnel section: horizontal bars per step, conversion rate between adjacent steps, exits (Refusée, Abandonnée) in a separate block
 - `dashboard/app.py` — `GET /cover-letters`: lists and renders cover letter JSON files from `config/cover-letter-*.json`; adds `CONFIG_DIR` and `REPORTS_DIR` module-level constants

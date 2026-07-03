@@ -6,11 +6,11 @@ import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import mistune
 from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+import mistune
 import profile_parser
 from db import VALID_STATUSES, open_db
 
@@ -297,7 +297,11 @@ async def stats_page(request: Request):
     db = request.app.state.db
     stats = db.get_stats()
     funnel, exits = _build_funnel(stats["by_status"])
-    report_files = sorted(REPORTS_DIR.glob("daily-*.md"), reverse=True)
+    report_files = (
+        sorted(REPORTS_DIR.glob("daily-*.md"), reverse=True)
+        if REPORTS_DIR.is_dir()
+        else []
+    )
     latest_report_html: str | None = None
     latest_report_date: str | None = None
     if report_files:

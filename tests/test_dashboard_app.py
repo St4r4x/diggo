@@ -474,7 +474,7 @@ class TestScan:
         dashboard_app.app.state.scan_status = "idle"
         dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
 
-        async def fake_run_pipeline(_settings):
+        async def fake_run_pipeline(_settings, *, skip_descriptions=False):
             return []
 
         def fake_import_offers(_offers, _path):
@@ -508,7 +508,7 @@ class TestScan:
             "error": "",
         }
 
-        async def fake_run_pipeline(_settings):
+        async def fake_run_pipeline(_settings, *, skip_descriptions=False):
             raise RuntimeError("Connection refused")
 
         def fake_load_settings():
@@ -590,3 +590,94 @@ class TestPrepareCandidature:
         r = client_with_data.get(f"/offers/{row['id']}")
         assert "copyPrepCmd" not in r.text
         assert "copyInterviewCmd" not in r.text
+
+
+class TestGetFollowups:
+    def test_returns_overdue_envoyee(self, client):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, "
+            "score_grade, score_value, status, send_date) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                "Braze",
+                "ML Engineer",
+                "https://example.com/1",
+                "2026-06-01",
+                "B",
+                3.5,
+                "Envoyée",
+                "2026-06-01",
+            ),
+        )
+        db.conn.commit()
+        result = db.get_followups()
+        assert any(r["company"] == "Braze" for r in result)
+
+    def test_excludes_recent_envoyee(self, client):
+        import app as dashboard_app
+        from datetime import date, timedelta
+
+        db = dashboard_app.app.state.db
+        recent = (date.today() - timedelta(days=2)).isoformat()
+        db.conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, "
+            "score_grade, score_value, status, send_date) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                "Recent Co",
+                "ML Eng",
+                "https://example.com/2",
+                "2026-06-01",
+                "B",
+                3.5,
+                "Envoyée",
+                recent,
+            ),
+        )
+        db.conn.commit()
+        result = db.get_followups()
+        assert not any(r["company"] == "Recent Co" for r in result)
+
+    def test_returns_overdue_entretien_rh(self, client):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, "
+            "score_grade, score_value, status, send_date) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                "Hugging Face",
+                "ML Eng",
+                "https://example.com/3",
+                "2026-06-01",
+                "A",
+                4.5,
+                "Entretien RH",
+                "2026-06-01",
+            ),
+        )
+        db.conn.commit()
+        result = db.get_followups()
+        assert any(r["company"] == "Hugging Face" for r in result)
+
+    def test_excludes_null_send_date(self, client):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, "
+            "score_grade, score_value, status) VALUES (?,?,?,?,?,?,?)",
+            (
+                "No Date Co",
+                "ML Eng",
+                "https://example.com/4",
+                "2026-06-01",
+                "B",
+                3.0,
+                "Envoyée",
+            ),
+        )
+        db.conn.commit()
+        result = db.get_followups()
+        assert not any(r["company"] == "No Date Co" for r in result)

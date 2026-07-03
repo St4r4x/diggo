@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -161,6 +161,15 @@ class DB:
             "stale_count": stale,
             "by_status": by_status,
         }
+
+    def get_followups(self) -> list[dict]:
+        cutoff = (date.today() - timedelta(days=_FOLLOW_UP_DAYS)).isoformat()
+        rows = self.conn.execute(
+            _SELECT + " WHERE status IN ('Envoyée', 'Entretien RH')"
+            " AND send_date IS NOT NULL AND send_date <= ?",
+            (cutoff,),
+        ).fetchall()
+        return [_row_to_dict(r) for r in rows]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

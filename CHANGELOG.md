@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `dashboard/db.py` — `DB.get_followups()`: returns applications in status "Envoyée" or "Entretien RH" with `send_date` older than `_FOLLOW_UP_DAYS` days
+
+## 2026-07-01
+
+### Changed
+- `scripts/scan_portals.py` — `run_scan()` now launches a single shared Chromium browser for all portals instead of one per portal; `scrape_portal()` receives the browser as a parameter and creates its own context
+- `scripts/scan_portals.py` — navigation changed from `wait_until="networkidle"` to `"domcontentloaded"` (faster page loads); `next_button`/`scroll` pagination waits reduced from `networkidle` to `load`
+- `scripts/scan_portals.py` — description fetch semaphore raised from 5 to 15 concurrent slots; `skip_descriptions` parameter added to `scrape_portal()` and `run_scan()`
+- `scripts/scan_ats.py` — Greenhouse and Lever detail fetches are now parallelised with `asyncio.gather` instead of sequential per-company loops
+- `scripts/import_offers.py` — `portal_queries` now run in parallel with `asyncio.gather` instead of sequentially; `_run_pipeline()` accepts `skip_descriptions` parameter
+- `dashboard/app.py` — added `/scan/start-quick` route (skip_descriptions=True); extracted `_start_scan()` helper to avoid duplication
+- `dashboard/templates/partials/scan_status.html` — added "⚡ Rapide" button triggering `/scan/start-quick`
+
 ## 2026-06-19
 
 ### Added

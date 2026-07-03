@@ -9,7 +9,6 @@ from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
 import mistune
 import profile_parser
 from db import VALID_STATUSES, open_db

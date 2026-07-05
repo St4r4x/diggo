@@ -133,22 +133,6 @@ def test_missing_files_return_empty(tmp_path, monkeypatch):
 # --- DB-backed load/save tests ---
 
 
-def _make_conn(profile: dict) -> MagicMock:
-    import user_data
-
-    conn = MagicMock()
-    conn.__enter__ = lambda s: s
-    conn.__exit__ = MagicMock(return_value=False)
-
-    original_get = user_data.get_profile
-
-    def fake_get(c, uid):
-        return profile
-
-    conn._fake_profile = profile
-    return conn, fake_get
-
-
 def test_load_profile_db(monkeypatch):
     import user_data
 

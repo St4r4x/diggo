@@ -462,128 +462,22 @@ async def profile_save_contact(
     )
 
 
-@app.post("/profile/summary", response_class=HTMLResponse)
-async def profile_save_summary(
+@app.post("/profile/text", response_class=HTMLResponse)
+async def profile_save_text(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    summary: str = Form(""),
+    profile_md: str = Form(""),
 ) -> HTMLResponse:
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     existing = profile_parser.load_profile(conn, user_id)
-    existing["profile_md"] = summary
+    existing["profile_md"] = profile_md
     profile_parser.save_profile(conn, user_id, existing)
     conn.commit()
     return templates.TemplateResponse(
         request,
-        "partials/profile_summary.html",
+        "partials/profile_text.html",
         {"profile": existing, "saved": True},
-    )
-
-
-@app.post("/profile/experience", response_class=HTMLResponse)
-async def profile_save_experience(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-    data: str = Form(""),
-) -> HTMLResponse:
-    conn = request.app.state.db.conn
-    user_id = current_user["sub"]
-    profile_data = profile_parser.load_profile(conn, user_id)
-    try:
-        profile_data["experience"] = json.loads(data)
-    except (json.JSONDecodeError, ValueError):
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_experience.html",
-            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
-        )
-    profile_parser.save_profile(conn, user_id, profile_data)
-    conn.commit()
-    return templates.TemplateResponse(
-        request,
-        "partials/profile_experience.html",
-        {"profile": profile_data, "saved": True},
-    )
-
-
-@app.post("/profile/skills", response_class=HTMLResponse)
-async def profile_save_skills(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-    data: str = Form(""),
-) -> HTMLResponse:
-    conn = request.app.state.db.conn
-    user_id = current_user["sub"]
-    profile_data = profile_parser.load_profile(conn, user_id)
-    try:
-        profile_data["skills"] = json.loads(data)
-    except (json.JSONDecodeError, ValueError):
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_skills.html",
-            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
-        )
-    profile_parser.save_profile(conn, user_id, profile_data)
-    conn.commit()
-    return templates.TemplateResponse(
-        request,
-        "partials/profile_skills.html",
-        {"profile": profile_data, "saved": True},
-    )
-
-
-@app.post("/profile/education", response_class=HTMLResponse)
-async def profile_save_education(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-    data: str = Form(""),
-) -> HTMLResponse:
-    conn = request.app.state.db.conn
-    user_id = current_user["sub"]
-    profile_data = profile_parser.load_profile(conn, user_id)
-    try:
-        parsed = json.loads(data)
-        profile_data["education"] = parsed.get("education", [])
-        profile_data["certifications"] = parsed.get("certifications", [])
-    except (json.JSONDecodeError, ValueError, AttributeError):
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_education.html",
-            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
-        )
-    profile_parser.save_profile(conn, user_id, profile_data)
-    conn.commit()
-    return templates.TemplateResponse(
-        request,
-        "partials/profile_education.html",
-        {"profile": profile_data, "saved": True},
-    )
-
-
-@app.post("/profile/projects", response_class=HTMLResponse)
-async def profile_save_projects(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-    data: str = Form(""),
-) -> HTMLResponse:
-    conn = request.app.state.db.conn
-    user_id = current_user["sub"]
-    profile_data = profile_parser.load_profile(conn, user_id)
-    try:
-        profile_data["projects"] = json.loads(data)
-    except (json.JSONDecodeError, ValueError):
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_projects.html",
-            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
-        )
-    profile_parser.save_profile(conn, user_id, profile_data)
-    conn.commit()
-    return templates.TemplateResponse(
-        request,
-        "partials/profile_projects.html",
-        {"profile": profile_data, "saved": True},
     )
 
 

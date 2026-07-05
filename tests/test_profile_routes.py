@@ -133,92 +133,18 @@ class TestSaveContact:
         assert "Sauvegardé" in r.text
 
 
-class TestSaveSummary:
-    def test_save_summary_returns_200(self, profile_client):
+class TestSaveText:
+    def test_save_text_returns_200(self, profile_client):
         r = profile_client.post(
-            "/profile/summary", data={"summary": "New summary text."}
+            "/profile/text", data={"profile_md": "New summary text."}
         )
         assert r.status_code == 200
 
-    def test_save_summary_response_contains_flash(self, profile_client):
+    def test_save_text_response_contains_flash(self, profile_client):
         r = profile_client.post(
-            "/profile/summary", data={"summary": "New summary text."}
+            "/profile/text", data={"profile_md": "New summary text."}
         )
         assert "Sauvegardé" in r.text
-
-
-class TestSaveExperience:
-    def test_save_experience_returns_200(self, profile_client):
-        payload = json.dumps(
-            [
-                {
-                    "title": "SWE",
-                    "company": "Acme",
-                    "type": "CDI",
-                    "period": "2024 – Present",
-                    "bullets": ["Built things"],
-                }
-            ]
-        )
-        r = profile_client.post("/profile/experience", data={"data": payload})
-        assert r.status_code == 200
-
-    def test_save_experience_response_contains_flash(self, profile_client):
-        r = profile_client.post("/profile/experience", data={"data": json.dumps([])})
-        assert "Sauvegardé" in r.text
-
-
-class TestSaveSkills:
-    def test_save_skills_returns_200(self, profile_client):
-        payload = json.dumps({"Machine Learning": ["PyTorch", "Scikit-learn"]})
-        r = profile_client.post("/profile/skills", data={"data": payload})
-        assert r.status_code == 200
-
-    def test_save_skills_response_contains_flash(self, profile_client):
-        r = profile_client.post("/profile/skills", data={"data": json.dumps({})})
-        assert "Sauvegardé" in r.text
-
-
-class TestSaveEducation:
-    def test_save_education_returns_200(self, profile_client):
-        payload = json.dumps(
-            {
-                "education": [
-                    {"degree": "MSc", "school": "School", "period": "2022–2024"}
-                ],
-                "certifications": ["AWS ML"],
-            }
-        )
-        r = profile_client.post("/profile/education", data={"data": payload})
-        assert r.status_code == 200
-
-    def test_save_education_response_contains_flash(self, profile_client):
-        r = profile_client.post(
-            "/profile/education",
-            data={"data": json.dumps({"education": [], "certifications": []})},
-        )
-        assert "Sauvegardé" in r.text
-
-    def test_save_education_invalid_json_returns_error(self, profile_client):
-        r = profile_client.post("/profile/education", data={"data": "not-json"})
-        assert r.status_code == 200
-        assert "invalide" in r.text
-
-
-class TestSaveProjects:
-    def test_save_projects_returns_200(self, profile_client):
-        payload = json.dumps([{"name": "my-proj", "description": "A project"}])
-        r = profile_client.post("/profile/projects", data={"data": payload})
-        assert r.status_code == 200
-
-    def test_save_projects_response_contains_flash(self, profile_client):
-        r = profile_client.post("/profile/projects", data={"data": json.dumps([])})
-        assert "Sauvegardé" in r.text
-
-    def test_save_projects_invalid_json_returns_error(self, profile_client):
-        r = profile_client.post("/profile/projects", data={"data": "not-json"})
-        assert r.status_code == 200
-        assert "invalide" in r.text
 
 
 class TestCvRoutes:

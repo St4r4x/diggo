@@ -459,8 +459,11 @@ def delete_experience(
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
-            "DELETE FROM user_experience_bullets WHERE experience_id = %s",
-            (exp_id,),
+            "DELETE FROM user_experience_bullets"
+            " WHERE experience_id IN ("
+            "   SELECT id FROM user_experience WHERE id = %s AND user_id = %s"
+            ")",
+            (exp_id, user_id),
         )
         cur.execute(
             "DELETE FROM user_experience WHERE id = %s AND user_id = %s",

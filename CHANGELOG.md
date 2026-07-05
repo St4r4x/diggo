@@ -9,6 +9,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Fixed
+- `dashboard/user_data.py` — `delete_experience`: bullet delete now scoped to owned experiences via subquery, preventing cross-user data deletion
+- `dashboard/app.py` — renamed `/profile/summary` route to `/profile/text` (`profile_save_text`), form field from `summary` to `profile_md`
+- `dashboard/app.py` — removed four legacy silent-dead-write routes: `POST /profile/experience`, `/profile/skills`, `/profile/education`, `/profile/projects`
+- `tests/test_profile_routes.py` — updated `TestSaveSummary` → `TestSaveText` for renamed route; removed tests for deleted legacy routes
+- `tests/test_profile_parser.py` — removed unused `_make_conn` helper
+
+### Added
+- `dashboard/templates/partials/profile_text.html` — partial for `POST /profile/text` route
+
+---
+
+## 2026-07-05
+
 ### Added
 - `dashboard/user_data.py` — `delete_experience(conn, user_id, exp_id)` to delete a single CV experience row and its bullets
 - `dashboard/profile_parser.py` — `load_profile(conn, user_id)` and `save_profile(conn, user_id, data)` now delegate to `user_data`; file-based helpers (`_parse_contact`, `_parse_profile_md`, `_serialize_profile_md`, etc.) kept in place for `user_data` migration path

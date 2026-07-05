@@ -1,3 +1,67 @@
 {% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
 {% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
-<p class="pf-label text-xs mb-2">{{ cv.experience | length }} poste(s) — lang: {{ lang }}</p>
+<form hx-post="/profile/cv/experience" hx-target="#section-cv-experience-{{ lang }}" hx-swap="innerHTML"
+      onsubmit="syncExpData('{{ lang }}')">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <input type="hidden" name="data" id="exp-data-{{ lang }}" value="">
+  <div id="exp-list-{{ lang }}" class="space-y-3 mb-3">
+    {% for exp in cv.experience %}
+    <div class="pf-card">
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          <label class="pf-label">Titre</label>
+          <input class="pf-input" data-exp="{{ loop.index0 }}" data-field="title" value="{{ exp.title }}">
+        </div>
+        <div>
+          <label class="pf-label">Entreprise</label>
+          <input class="pf-input" data-exp="{{ loop.index0 }}" data-field="company" value="{{ exp.company }}">
+        </div>
+        <div>
+          <label class="pf-label">Type</label>
+          <input class="pf-input" data-exp="{{ loop.index0 }}" data-field="type" value="{{ exp.type }}">
+        </div>
+        <div>
+          <label class="pf-label">Période</label>
+          <input class="pf-input" data-exp="{{ loop.index0 }}" data-field="period" value="{{ exp.period }}">
+        </div>
+      </div>
+      <label class="pf-label">Bullets (un par ligne)</label>
+      <textarea class="pf-input" data-exp="{{ loop.index0 }}" data-field="bullets" rows="3"
+                style="resize:vertical;font-family:monospace">{{ exp.bullets | map(attribute='text') | join('\n') }}</textarea>
+    </div>
+    {% else %}
+    <p class="pf-label">Aucune expérience.</p>
+    {% endfor %}
+  </div>
+  <div class="flex justify-end">
+    <button type="submit" class="pf-save-btn">Sauvegarder</button>
+  </div>
+</form>
+<script>
+(function() {
+  var _raw = {{ cv.experience | tojson }};
+  // normalize: bullets from DB are [{id,text,sort_order}], save expects plain strings
+  var _exp = _raw.map(function(e) {
+    return Object.assign({}, e, {
+      bullets: (e.bullets || []).map(function(b) { return typeof b === 'string' ? b : b.text; })
+    });
+  });
+  window['_exp_{{ lang }}'] = _exp;
+
+  function syncExpData(lang) {
+    var exp = window['_exp_' + lang];
+    var form = document.getElementById('exp-list-' + lang).closest('form');
+    form.querySelectorAll('[data-exp]').forEach(function(el) {
+      var i = parseInt(el.dataset.exp);
+      var field = el.dataset.field;
+      if (field === 'bullets') {
+        exp[i].bullets = el.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+      } else {
+        exp[i][field] = el.value;
+      }
+    });
+    document.getElementById('exp-data-' + lang).value = JSON.stringify(exp);
+  }
+  window.syncExpData = syncExpData;
+})();
+</script>

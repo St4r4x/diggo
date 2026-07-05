@@ -10,6 +10,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-07-05
 
 ### Added
+- `dashboard/templates/profile.html` — replaced file-based shim sections with DB-backed CV sections; added FR/EN language tab switcher; removed Projets personnels section (no DB table)
+- `dashboard/templates/partials/profile_text.html` — updated to use `#section-text` HTMX target and 8-row monospace textarea
+- `dashboard/templates/partials/profile_cv_meta.html` — summary textarea form posting to `/profile/cv/meta` with per-lang HTMX target
+- `dashboard/templates/partials/profile_cv_experience.html` — inline-editable experience cards with bullet normalization (DB `{id,text}` → plain string for save); JS `syncExpData` serializes to hidden `data` field on submit
+- `dashboard/templates/partials/profile_cv_skills.html` — category-grouped skill inputs; JS `syncSkillsData` serializes on submit
+- `dashboard/templates/partials/profile_cv_certifications.html` — certification rows (name, issuer, year); JS `syncCertsData` serializes on submit
+- `dashboard/templates/partials/profile_cv_education.html` — education rows (degree, school, year); JS `syncEduData` serializes on submit
 - `dashboard/app.py` — four new routes: `GET /settings`, `POST /settings/search`, `POST /settings/ats`, `DELETE /settings/ats/{target_id}`
 - `dashboard/templates/settings.html` — full settings page with search prefs and ATS targets sections
 - `dashboard/templates/partials/settings_search.html` — HTMX partial for search preferences form

@@ -1,3 +1,39 @@
 {% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
 {% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
-<p class="pf-label text-xs mb-2">{{ cv.education | length }} diplôme(s) — lang: {{ lang }}</p>
+<form hx-post="/profile/cv/education" hx-target="#section-cv-education-{{ lang }}" hx-swap="innerHTML"
+      onsubmit="syncEduData('{{ lang }}')">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <input type="hidden" name="data" id="edu-data-{{ lang }}" value="">
+  <div class="space-y-2 mb-3">
+    {% for edu in cv.education %}
+    <div class="grid grid-cols-3 gap-2">
+      <input class="pf-input" data-edu="{{ loop.index0 }}" data-field="degree"
+             value="{{ edu.degree }}" placeholder="Diplôme">
+      <input class="pf-input" data-edu="{{ loop.index0 }}" data-field="school"
+             value="{{ edu.school }}" placeholder="École">
+      <input class="pf-input" data-edu="{{ loop.index0 }}" data-field="year" type="number"
+             value="{{ edu.year or '' }}" placeholder="Année">
+    </div>
+    {% else %}
+    <p class="pf-label">Aucune formation.</p>
+    {% endfor %}
+  </div>
+  <div class="flex justify-end">
+    <button type="submit" class="pf-save-btn">Sauvegarder</button>
+  </div>
+</form>
+<script>
+(function() {
+  var _edu = {{ cv.education | tojson }};
+  function syncEduData(lang) {
+    var form = document.getElementById('edu-data-' + lang).closest('form');
+    form.querySelectorAll('[data-edu]').forEach(function(el) {
+      var i = parseInt(el.dataset.edu);
+      var field = el.dataset.field;
+      _edu[i][field] = field === 'year' ? (parseInt(el.value) || null) : el.value;
+    });
+    document.getElementById('edu-data-' + lang).value = JSON.stringify(_edu);
+  }
+  window.syncEduData = syncEduData;
+})();
+</script>

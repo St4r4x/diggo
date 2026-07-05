@@ -29,48 +29,101 @@
       <button class="acc-btn acc-open" onclick="toggleAcc(this)">
         <span>Résumé</span><svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
       </button>
-      <div id="section-summary" class="acc-body acc-open">
-        {% include "partials/profile_summary.html" %}
+      <div id="section-text" class="acc-body acc-open">
+        {% include "partials/profile_text.html" %}
       </div>
     </div>
 
+    <!-- CV with FR/EN tabs -->
     <div>
       <button class="acc-btn" onclick="toggleAcc(this)">
-        <span>Expériences <span class="text-slate-500 font-normal text-xs">({{ profile.experience | length }} postes)</span></span>
-        <svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        <span>CV</span><svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
       </button>
-      <div id="section-experience" class="acc-body">
-        {% include "partials/profile_experience.html" %}
-      </div>
-    </div>
+      <div id="section-cv" class="acc-body">
 
-    <div>
-      <button class="acc-btn" onclick="toggleAcc(this)">
-        <span>Compétences <span class="text-slate-500 font-normal text-xs">({{ profile.skills | length }} catégories)</span></span>
-        <svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div id="section-skills" class="acc-body">
-        {% include "partials/profile_skills.html" %}
-      </div>
-    </div>
+        <!-- Lang tabs -->
+        <div class="flex gap-2 mb-4">
+          <button type="button" onclick="setCvLang('fr')" id="tab-fr"
+                  class="px-3 py-1 rounded text-sm" style="background:#6366f1;color:white">FR</button>
+          <button type="button" onclick="setCvLang('en')" id="tab-en"
+                  class="px-3 py-1 rounded text-sm" style="background:#1e1535;color:#8b5cf6;border:1px solid #2d1f5e">EN</button>
+        </div>
 
-    <div>
-      <button class="acc-btn" onclick="toggleAcc(this)">
-        <span>Formation &amp; Certifications <span class="text-slate-500 font-normal text-xs">({{ profile.education | length }} diplômes · {{ profile.certifications | length }} certifs)</span></span>
-        <svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div id="section-education" class="acc-body">
-        {% include "partials/profile_education.html" %}
-      </div>
-    </div>
+        <!-- FR CV -->
+        <div id="cv-fr" class="space-y-4">
+          {% set lang = "fr" %}
+          {% set cv = cv %}
 
-    <div>
-      <button class="acc-btn" onclick="toggleAcc(this)">
-        <span>Projets personnels <span class="text-slate-500 font-normal text-xs">({{ profile.projects | length }} projets)</span></span>
-        <svg class="chv w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div id="section-projects" class="acc-body">
-        {% include "partials/profile_projects.html" %}
+          <div>
+            <p class="pf-label mb-1">Résumé</p>
+            <div id="section-cv-meta-fr">
+              {% include "partials/profile_cv_meta.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Expériences</p>
+            <div id="section-cv-experience-fr">
+              {% include "partials/profile_cv_experience.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Compétences</p>
+            <div id="section-cv-skills-fr">
+              {% include "partials/profile_cv_skills.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Formation</p>
+            <div id="section-cv-education-fr">
+              {% include "partials/profile_cv_education.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Certifications</p>
+            <div id="section-cv-certifications">
+              {% include "partials/profile_cv_certifications.html" %}
+            </div>
+          </div>
+        </div>
+
+        <!-- EN CV -->
+        <div id="cv-en" class="space-y-4" style="display:none">
+          {% set lang = "en" %}
+          {% set cv = cv_en %}
+
+          <div>
+            <p class="pf-label mb-1">Summary</p>
+            <div id="section-cv-meta-en">
+              {% include "partials/profile_cv_meta.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Experience</p>
+            <div id="section-cv-experience-en">
+              {% include "partials/profile_cv_experience.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Skills</p>
+            <div id="section-cv-skills-en">
+              {% include "partials/profile_cv_skills.html" %}
+            </div>
+          </div>
+
+          <div>
+            <p class="pf-label mb-1">Education</p>
+            <div id="section-cv-education-en">
+              {% include "partials/profile_cv_education.html" %}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -133,6 +186,14 @@
 function toggleAcc(btn) {
   btn.classList.toggle('acc-open');
   btn.nextElementSibling.classList.toggle('acc-open');
+}
+function setCvLang(lang) {
+  document.getElementById('cv-fr').style.display = lang === 'fr' ? '' : 'none';
+  document.getElementById('cv-en').style.display = lang === 'en' ? '' : 'none';
+  document.getElementById('tab-fr').style.background = lang === 'fr' ? '#6366f1' : '#1e1535';
+  document.getElementById('tab-fr').style.color = lang === 'fr' ? 'white' : '#8b5cf6';
+  document.getElementById('tab-en').style.background = lang === 'en' ? '#6366f1' : '#1e1535';
+  document.getElementById('tab-en').style.color = lang === 'en' ? 'white' : '#8b5cf6';
 }
 </script>
 {% endblock %}

@@ -1,8 +1,8 @@
 {% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
 {% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
 <form hx-post="/profile/text" hx-target="#section-text" hx-swap="innerHTML">
-  <textarea class="pf-input mb-2" name="profile_md" rows="4"
-    style="resize:vertical">{{ profile.profile_md }}</textarea>
+  <textarea class="pf-input mb-2" name="profile_md" rows="8"
+    style="resize:vertical;font-family:monospace">{{ profile.profile_md }}</textarea>
   <div class="flex justify-end">
     <button type="submit" class="pf-save-btn">Sauvegarder</button>
   </div>

@@ -131,10 +131,33 @@ def _desc_blob(offer: RawOffer) -> str:
     return offer.description or ""
 
 
-def load_settings(path: Path = _SETTINGS_PATH) -> dict:
-    """Load and return the parsed settings.yaml."""
+def load_settings(path: Path = _SETTINGS_PATH, user_id: str | None = None) -> dict:
+    """Load settings from DB (if user_id given) or fall back to settings.yaml."""
+    if user_id is not None:
+        try:
+            import os
+            import sys
+
+            import psycopg2
+
+            sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
+            import user_data as _ud
+
+            db_url = os.getenv(
+                "DATABASE_URL",
+                "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+            )
+            conn = psycopg2.connect(db_url)
+            try:
+                return _ud.get_settings(conn, user_id)
+            finally:
+                conn.close()
+        except Exception:
+            pass
+    if not path.exists():
+        return {}
     with path.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+        return yaml.safe_load(fh) or {}
 
 
 def _normalize_company(name: str) -> str:

@@ -734,7 +734,7 @@ async def _run_scan_task(app_state: Any, user_id: str) -> None:
         )
         from scripts.pre_filter import load_settings
 
-        settings = load_settings()
+        settings = load_settings(user_id=user_id)
         app_state.scan_result = {
             "inserted": 0,
             "skipped": 0,
@@ -744,7 +744,7 @@ async def _run_scan_task(app_state: Any, user_id: str) -> None:
             "error": "",
         }
 
-        offers = await _run_pipeline(settings)
+        offers = await _run_pipeline(settings, user_id=user_id)
         app_state.scan_result["found"] = len(offers)
         app_state.scan_result["scored"] = len(offers)
 

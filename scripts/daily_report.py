@@ -134,10 +134,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate daily job offers report")
     parser.add_argument("--date", metavar="YYYY-MM-DD", default=None)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--user-id",
+        default=None,
+        metavar="UUID",
+        help="Load settings from DB for this user",
+    )
     args = parser.parse_args()
 
     report_date = date.fromisoformat(args.date) if args.date else date.today()
-    settings = load_settings()
+    settings = load_settings(user_id=args.user_id)
 
     offers = asyncio.run(_run_pipeline(settings))
     report_md = render_report(offers, report_date=report_date)

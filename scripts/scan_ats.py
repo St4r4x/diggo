@@ -247,14 +247,38 @@ async def scan_ats(
     *,
     company_filter: Optional[str] = None,
     keywords: Optional[list[str]] = None,
+    user_id: Optional[str] = None,
 ) -> list[RawOffer]:
     """Scan all companies in ats_map.yaml and return RawOffer list.
 
     company_filter: if set, only scan that company (case-insensitive match on name).
     keywords: if set, keep only offers whose title contains at least one keyword
               (case-insensitive substring match).
+    user_id: if set, load ATS targets from DB instead of the YAML file.
     """
-    entries = _load_ats_map(ats_map_path)
+    if user_id is not None:
+        try:
+            import os
+            import sys
+
+            import psycopg2
+
+            sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
+            import user_data as _ud
+
+            db_url = os.getenv(
+                "DATABASE_URL",
+                "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+            )
+            conn = psycopg2.connect(db_url)
+            try:
+                entries = _ud.get_ats_targets(conn, user_id)
+            finally:
+                conn.close()
+        except Exception:
+            entries = _load_ats_map(ats_map_path)
+    else:
+        entries = _load_ats_map(ats_map_path)
     if company_filter:
         entries = [
             e for e in entries if e.get("name", "").lower() == company_filter.lower()

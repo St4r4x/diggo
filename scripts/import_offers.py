@@ -208,7 +208,7 @@ def expire_stale_offers(user_id: str) -> int:
 
 
 async def _run_pipeline(
-    settings: dict, *, skip_descriptions: bool = False
+    settings: dict, *, skip_descriptions: bool = False, user_id: str | None = None
 ) -> list[RawOffer]:
     search_cfg: dict = settings.get("search", {})
     keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])
@@ -235,7 +235,7 @@ async def _run_pipeline(
             logger.info("Query '%s': %d raw offers", query, len(batch))
             portal_raw.extend(batch)
     logger.info("Scraped %d raw offers from portals (before dedup)", len(portal_raw))
-    ats_raw = await scan_ats(keywords=keyword_list)
+    ats_raw = await scan_ats(keywords=keyword_list, user_id=user_id)
     logger.info("Scraped %d raw offers from ATS", len(ats_raw))
     raw = portal_raw + ats_raw
     deduped = deduplicate(raw)
@@ -270,8 +270,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    settings = load_settings()
-    offers = asyncio.run(_run_pipeline(settings))
+    settings = load_settings(user_id=args.user_id)
+    offers = asyncio.run(_run_pipeline(settings, user_id=args.user_id))
     logger.info("Pipeline produced %d offers", len(offers))
 
     if args.dry_run:

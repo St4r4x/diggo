@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Changed
+- `scripts/pre_filter.py` — `load_settings()` accepts optional `user_id`; loads from DB via `user_data.get_settings` when provided, falls back to `settings.yaml`
+- `scripts/scan_ats.py` — `scan_ats()` accepts optional `user_id`; loads ATS targets from DB via `user_data.get_ats_targets` when provided, falls back to `ats_map.yaml`
+- `scripts/import_offers.py` — `_run_pipeline()` accepts `user_id` and forwards it to `scan_ats()`; `main()` passes `args.user_id` to both `load_settings()` and `_run_pipeline()`
+- `scripts/rescore.py` — `rescore()` accepts `user_id` and forwards to `load_settings()`; `main()` adds `--user-id` argparse arg
+- `scripts/daily_report.py` — `main()` adds `--user-id` argparse arg and passes it to `load_settings()`
+- `dashboard/app.py` — `_run_scan_task()` passes `user_id` to both `load_settings()` and `_run_pipeline()` so web-triggered scans use per-user settings and ATS targets
+
+
+
 ### Added
 - `dashboard/templates/profile.html` — replaced file-based shim sections with DB-backed CV sections; added FR/EN language tab switcher; removed Projets personnels section (no DB table)
 - `dashboard/templates/partials/profile_text.html` — updated to use `#section-text` HTMX target and 8-row monospace textarea

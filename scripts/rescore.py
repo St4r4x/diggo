@@ -31,8 +31,10 @@ def _infer_portal(url: str) -> str:
     return "unknown"
 
 
-def rescore(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
-    settings = load_settings()
+def rescore(
+    conn: sqlite3.Connection, dry_run: bool = False, user_id: str | None = None
+) -> dict:
+    settings = load_settings(user_id=user_id)
     rows = conn.execute(
         "SELECT id, company, role, offer_url, score_grade, score_value, description "
         "FROM applications"
@@ -88,13 +90,19 @@ def main() -> None:
         "--dry-run", action="store_true", help="Print changes without writing"
     )
     parser.add_argument("--db", default=str(_DEFAULT_DB), metavar="PATH")
+    parser.add_argument(
+        "--user-id",
+        default=None,
+        metavar="UUID",
+        help="Load settings from DB for this user",
+    )
     args = parser.parse_args()
 
     conn = sqlite3.connect(args.db)
     prefix = "[DRY RUN] " if args.dry_run else ""
     logger.info("%sRescoring offers in %s", prefix, args.db)
 
-    stats = rescore(conn, dry_run=args.dry_run)
+    stats = rescore(conn, dry_run=args.dry_run, user_id=args.user_id)
     conn.close()
 
     action = "Would update" if args.dry_run else "Updated"

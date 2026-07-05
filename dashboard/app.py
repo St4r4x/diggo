@@ -29,6 +29,7 @@ _DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
 )
 _SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:54321")
+_SUPABASE_PUBLIC_URL = os.getenv("SUPABASE_PUBLIC_URL", _SUPABASE_URL)
 _SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
@@ -122,7 +123,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
-templates.env.globals["supabase_url"] = _SUPABASE_URL
+templates.env.globals["supabase_url"] = _SUPABASE_PUBLIC_URL
 templates.env.globals["supabase_anon_key"] = _SUPABASE_ANON_KEY
 
 

@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Fixed
+- `dashboard/app.py` / `docker-compose.yml` — split `SUPABASE_URL` (container→Supabase for JWKS) from `SUPABASE_PUBLIC_URL` (browser→Supabase for auth JS); fixes "Failed to fetch" on login/signup when running in Docker
+
 ### Changed
 - `dashboard/auth.py` — cache JWKS client with `_jwks_unavailable` flag to skip repeated failed fetches; collapse redundant `ExpiredSignatureError` branch into `InvalidTokenError`; replace per-call `os.getenv("DEV_AUTO_LOGIN")` with module-level constant
 - `dashboard/app.py` — move `supabase_url`/`supabase_anon_key` to `templates.env.globals`; drop per-route context injection

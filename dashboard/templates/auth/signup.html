@@ -1,7 +1,59 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Créer un compte — career-ops-fr</title></head>
-<body>
-  <h1>signup</h1>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer un compte — career-ops-fr</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.js" integrity="sha384-3wY11tldQ5+yWqAvmTN4XtQvnjoTva0cV15O/O/O5NTtp0ivVopSzLOzsVXWZse9" crossorigin="anonymous"></script>
+  <style>body { background: #0f0a1e; color: #e2e8f0; }</style>
+</head>
+<body class="min-h-screen flex items-center justify-center" style="background: linear-gradient(135deg, #0f0a1e 0%, #1a0f30 100%);">
+  <div class="w-full max-w-sm p-8 rounded-xl" style="background:#1e1535;border:1px solid #2d1f5e;">
+    <h1 class="text-xl font-bold mb-6 text-center" style="background:linear-gradient(135deg,#a5b4fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">career-ops-fr</h1>
+    <p id="error" class="text-red-400 text-sm mb-4 hidden"></p>
+    <form id="signup-form" class="flex flex-col gap-4">
+      <input id="email" type="email" placeholder="Email" required
+        class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-sm focus:outline-none focus:border-indigo-400" />
+      <input id="password" type="password" placeholder="Mot de passe (min. 6 caractères)" required minlength="6"
+        class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-sm focus:outline-none focus:border-indigo-400" />
+      <input id="confirm" type="password" placeholder="Confirmer le mot de passe" required
+        class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-sm focus:outline-none focus:border-indigo-400" />
+      <button type="submit"
+        class="py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+        Créer mon compte
+      </button>
+    </form>
+    <p class="text-sm text-slate-400 mt-4 text-center">
+      Déjà un compte ? <a href="/login" class="text-indigo-400 hover:text-indigo-300">Se connecter</a>
+    </p>
+  </div>
+  <script>
+    const supabase = window.supabase.createClient('{{ supabase_url }}', '{{ supabase_anon_key }}');
+
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm').value;
+      const errEl = document.getElementById('error');
+      errEl.classList.add('hidden');
+
+      if (password !== confirm) {
+        errEl.textContent = 'Les mots de passe ne correspondent pas.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        errEl.textContent = error.message;
+        errEl.classList.remove('hidden');
+        return;
+      }
+      window.location.href = '/auth/confirm';
+    });
+  </script>
 </body>
 </html>

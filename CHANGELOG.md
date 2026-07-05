@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/templates/auth/login.html` — full styled login page: email/password form, Supabase signInWithPassword, POST /auth/session on success, password-reset link trigger
+- `dashboard/templates/auth/signup.html` — full styled signup page: email/password/confirm form, Supabase signUp, redirects to /auth/confirm
+- `dashboard/templates/auth/confirm.html` — static "check your email" page with Inbucket link for local dev
+- `dashboard/templates/auth/reset-password.html` — new password form using Supabase updateUser after PASSWORD_RECOVERY event
+
+### Changed
+- `dashboard/app.py` — auth routes now pass `supabase_url` and `supabase_anon_key` context vars to login/signup/reset-password templates; added `_SUPABASE_URL` / `_SUPABASE_ANON_KEY` module-level constants from env
+
+---
+
+### Added (Task 3)
 - `dashboard/app.py` — public routes `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` (no auth dependency)
 - `dashboard/app.py` — `POST /auth/session`: accepts `access_token`/`refresh_token` JSON body, sets httpOnly cookies, returns `{"ok": true}`
 - `dashboard/app.py` — `DELETE /auth/session`: clears auth cookies, redirects 302 to `/login`

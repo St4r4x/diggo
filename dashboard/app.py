@@ -22,6 +22,8 @@ load_env()
 _DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
 )
+_SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:54321")
+_SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
@@ -121,12 +123,26 @@ templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/login.html", {})
+    return templates.TemplateResponse(
+        request,
+        "auth/login.html",
+        {
+            "supabase_url": _SUPABASE_URL,
+            "supabase_anon_key": _SUPABASE_ANON_KEY,
+        },
+    )
 
 
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/signup.html", {})
+    return templates.TemplateResponse(
+        request,
+        "auth/signup.html",
+        {
+            "supabase_url": _SUPABASE_URL,
+            "supabase_anon_key": _SUPABASE_ANON_KEY,
+        },
+    )
 
 
 @app.get("/auth/confirm", response_class=HTMLResponse)
@@ -136,7 +152,14 @@ async def auth_confirm_page(request: Request) -> HTMLResponse:
 
 @app.get("/auth/reset-password", response_class=HTMLResponse)
 async def auth_reset_password_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/reset-password.html", {})
+    return templates.TemplateResponse(
+        request,
+        "auth/reset-password.html",
+        {
+            "supabase_url": _SUPABASE_URL,
+            "supabase_anon_key": _SUPABASE_ANON_KEY,
+        },
+    )
 
 
 @app.post("/auth/session")

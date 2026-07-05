@@ -38,6 +38,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_dashboard_app.py` — `test_session_post_sets_cookies` now mints a valid JWT instead of sending a dummy string
 
 ### Added
+- `dashboard/user_data.py` — profile and settings module with `get_profile()`, `save_profile()`, `get_settings()`, `save_settings()` functions; file-based auto-migration fallback reads from `config/contact.yaml`, `config/profile.md`, `config/settings.yaml`
+- `tests/test_user_data.py` — test suite for profile and settings (5 tests: empty defaults, save/get roundtrip, per-user isolation, array handling)
 - `dashboard/templates/base.html` — user email and logout button in nav; `DELETE /auth/session` then redirect to `/login`
 - `dashboard/app.py` — pass `current_user` to index, stats, and profile template contexts so nav can display the email
 

@@ -454,6 +454,20 @@ def save_certifications(
             )
 
 
+def delete_experience(
+    conn: psycopg2.extensions.connection, user_id: str, exp_id: int
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_experience_bullets WHERE experience_id = %s",
+            (exp_id,),
+        )
+        cur.execute(
+            "DELETE FROM user_experience WHERE id = %s AND user_id = %s",
+            (exp_id, user_id),
+        )
+
+
 def save_education(
     conn: psycopg2.extensions.connection,
     user_id: str,

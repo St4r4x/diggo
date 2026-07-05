@@ -1,0 +1,10 @@
+{% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
+{% if error %}<p class="text-red-400 text-xs mb-2">{{ error }}</p>{% endif %}
+<form hx-post="/profile/cv/meta" hx-target="#section-cv-meta" hx-swap="innerHTML">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <textarea class="pf-input mb-2" name="summary" rows="4"
+    style="resize:vertical">{{ cv.meta.summary }}</textarea>
+  <div class="flex justify-end">
+    <button type="submit" class="pf-save-btn">Sauvegarder</button>
+  </div>
+</form>

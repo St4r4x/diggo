@@ -4,7 +4,10 @@ import re
 from pathlib import Path
 from typing import Any
 
+import psycopg2.extensions
 import yaml
+
+import user_data
 
 _PROFILE_MD = Path(__file__).parent.parent / "config" / "profile.md"
 _CONTACT_YAML = Path(__file__).parent.parent / "config" / "contact.yaml"
@@ -140,7 +143,7 @@ def _parse_profile_md(path: Path) -> dict[str, Any]:
     }
 
 
-def load_profile() -> dict[str, Any]:
+def _load_profile_from_files() -> dict[str, Any]:
     contact = _parse_contact(_CONTACT_YAML)
     md_data = _parse_profile_md(_PROFILE_MD)
     return {"contact": contact, **md_data}
@@ -151,7 +154,6 @@ def _serialize_profile_md(data: dict[str, Any]) -> str:
     lines: list[str] = [
         f"# Profile — {c.get('name', '')}",
         "",
-        # Contact block is informational only; authoritative source is contact.yaml
         "## Contact",
         f"- Email: {c.get('email', '')}",
         f"- Phone: {c.get('phone', '')}",
@@ -198,7 +200,7 @@ def _serialize_profile_md(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def save_profile(data: dict[str, Any]) -> None:
+def _save_profile_to_files(data: dict[str, Any]) -> None:
     c = data.get("contact", {})
     contact_data = {
         k: c.get(k, "")
@@ -211,3 +213,49 @@ def save_profile(data: dict[str, Any]) -> None:
     _PROFILE_MD.parent.mkdir(parents=True, exist_ok=True)
     with _PROFILE_MD.open("w", encoding="utf-8") as f:
         f.write(md_content)
+
+
+def load_profile(conn: psycopg2.extensions.connection, user_id: str) -> dict[str, Any]:
+    profile = user_data.get_profile(conn, user_id)
+    return {
+        "contact": {
+            k: profile[k]
+            for k in (
+                "name",
+                "title",
+                "email",
+                "phone",
+                "location",
+                "linkedin",
+                "github",
+            )
+        },
+        "profile_md": profile["profile_md"],
+        # ponytail: compat shim — profile.html partials still use these; cleared in Task 7
+        "summary": "",
+        "experience": [],
+        "skills": {},
+        "education": [],
+        "certifications": [],
+        "projects": [],
+    }
+
+
+def save_profile(
+    conn: psycopg2.extensions.connection, user_id: str, data: dict[str, Any]
+) -> None:
+    contact = data.get("contact", {})
+    user_data.save_profile(
+        conn,
+        user_id,
+        {
+            "name": contact.get("name", ""),
+            "title": contact.get("title", ""),
+            "email": contact.get("email", ""),
+            "phone": contact.get("phone", ""),
+            "location": contact.get("location", ""),
+            "linkedin": contact.get("linkedin", ""),
+            "github": contact.get("github", ""),
+            "profile_md": data.get("profile_md", ""),
+        },
+    )

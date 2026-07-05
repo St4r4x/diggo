@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 import mistune
 
 import profile_parser
+import user_data
 from auth import (
     CurrentUser,
     clear_auth_cookies,
@@ -416,16 +417,15 @@ async def profile_page(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> HTMLResponse:
-    profile = profile_parser.load_profile()
-    profile_exists = profile_parser._PROFILE_MD.exists()
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile = profile_parser.load_profile(conn, user_id)
+    cv = user_data.get_cv(conn, user_id, lang="fr")
+    cv_en = user_data.get_cv(conn, user_id, lang="en")
     return templates.TemplateResponse(
         request,
         "profile.html",
-        {
-            "profile": profile,
-            "profile_exists": profile_exists,
-            "current_user": current_user,
-        },
+        {"profile": profile, "cv": cv, "cv_en": cv_en, "current_user": current_user},
     )
 
 
@@ -441,8 +441,10 @@ async def profile_save_contact(
     linkedin: str = Form(""),
     github: str = Form(""),
 ) -> HTMLResponse:
-    data = profile_parser.load_profile()
-    data["contact"] = {
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    existing = profile_parser.load_profile(conn, user_id)
+    existing["contact"] = {
         "name": name,
         "title": title,
         "email": email,
@@ -451,18 +453,12 @@ async def profile_save_contact(
         "linkedin": linkedin,
         "github": github,
     }
-    try:
-        profile_parser.save_profile(data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_contact.html",
-            {"profile": data, "saved": False, "error": "Erreur lors de la sauvegarde"},
-        )
+    profile_parser.save_profile(conn, user_id, existing)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_contact.html",
-        {"profile": data, "saved": True},
+        {"profile": existing, "saved": True},
     )
 
 
@@ -472,20 +468,16 @@ async def profile_save_summary(
     current_user: CurrentUser = Depends(get_current_user),
     summary: str = Form(""),
 ) -> HTMLResponse:
-    data = profile_parser.load_profile()
-    data["summary"] = summary
-    try:
-        profile_parser.save_profile(data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_summary.html",
-            {"profile": data, "saved": False, "error": "Erreur lors de la sauvegarde"},
-        )
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    existing = profile_parser.load_profile(conn, user_id)
+    existing["profile_md"] = summary
+    profile_parser.save_profile(conn, user_id, existing)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_summary.html",
-        {"profile": data, "saved": True},
+        {"profile": existing, "saved": True},
     )
 
 
@@ -495,7 +487,9 @@ async def profile_save_experience(
     current_user: CurrentUser = Depends(get_current_user),
     data: str = Form(""),
 ) -> HTMLResponse:
-    profile_data = profile_parser.load_profile()
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile_data = profile_parser.load_profile(conn, user_id)
     try:
         profile_data["experience"] = json.loads(data)
     except (json.JSONDecodeError, ValueError):
@@ -504,18 +498,8 @@ async def profile_save_experience(
             "partials/profile_experience.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    try:
-        profile_parser.save_profile(profile_data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_experience.html",
-            {
-                "profile": profile_data,
-                "saved": False,
-                "error": "Erreur lors de la sauvegarde",
-            },
-        )
+    profile_parser.save_profile(conn, user_id, profile_data)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_experience.html",
@@ -529,7 +513,9 @@ async def profile_save_skills(
     current_user: CurrentUser = Depends(get_current_user),
     data: str = Form(""),
 ) -> HTMLResponse:
-    profile_data = profile_parser.load_profile()
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile_data = profile_parser.load_profile(conn, user_id)
     try:
         profile_data["skills"] = json.loads(data)
     except (json.JSONDecodeError, ValueError):
@@ -538,18 +524,8 @@ async def profile_save_skills(
             "partials/profile_skills.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    try:
-        profile_parser.save_profile(profile_data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_skills.html",
-            {
-                "profile": profile_data,
-                "saved": False,
-                "error": "Erreur lors de la sauvegarde",
-            },
-        )
+    profile_parser.save_profile(conn, user_id, profile_data)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_skills.html",
@@ -563,7 +539,9 @@ async def profile_save_education(
     current_user: CurrentUser = Depends(get_current_user),
     data: str = Form(""),
 ) -> HTMLResponse:
-    profile_data = profile_parser.load_profile()
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile_data = profile_parser.load_profile(conn, user_id)
     try:
         parsed = json.loads(data)
         profile_data["education"] = parsed.get("education", [])
@@ -574,18 +552,8 @@ async def profile_save_education(
             "partials/profile_education.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    try:
-        profile_parser.save_profile(profile_data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_education.html",
-            {
-                "profile": profile_data,
-                "saved": False,
-                "error": "Erreur lors de la sauvegarde",
-            },
-        )
+    profile_parser.save_profile(conn, user_id, profile_data)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_education.html",
@@ -599,7 +567,9 @@ async def profile_save_projects(
     current_user: CurrentUser = Depends(get_current_user),
     data: str = Form(""),
 ) -> HTMLResponse:
-    profile_data = profile_parser.load_profile()
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile_data = profile_parser.load_profile(conn, user_id)
     try:
         profile_data["projects"] = json.loads(data)
     except (json.JSONDecodeError, ValueError):
@@ -608,22 +578,161 @@ async def profile_save_projects(
             "partials/profile_projects.html",
             {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
         )
-    try:
-        profile_parser.save_profile(profile_data)
-    except OSError:
-        return templates.TemplateResponse(
-            request,
-            "partials/profile_projects.html",
-            {
-                "profile": profile_data,
-                "saved": False,
-                "error": "Erreur lors de la sauvegarde",
-            },
-        )
+    profile_parser.save_profile(conn, user_id, profile_data)
+    conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/profile_projects.html",
         {"profile": profile_data, "saved": True},
+    )
+
+
+@app.post("/profile/cv/meta", response_class=HTMLResponse)
+async def profile_save_cv_meta(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    lang: str = Form("fr"),
+    summary: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_cv_meta(conn, user_id, lang, summary)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id, lang=lang)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_meta.html",
+        {"cv": cv, "lang": lang, "saved": True},
+    )
+
+
+@app.post("/profile/cv/experience", response_class=HTMLResponse)
+async def profile_save_cv_experience(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    lang: str = Form("fr"),
+    data: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    try:
+        entries = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        cv = user_data.get_cv(conn, user_id, lang=lang)
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_cv_experience.html",
+            {"cv": cv, "lang": lang, "saved": False, "error": "Format JSON invalide"},
+        )
+    user_data.save_experience(conn, user_id, lang, entries)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id, lang=lang)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_experience.html",
+        {"cv": cv, "lang": lang, "saved": True},
+    )
+
+
+@app.delete("/profile/cv/experience/{exp_id}", response_class=HTMLResponse)
+async def profile_delete_cv_experience(
+    request: Request,
+    exp_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    lang: str = Query("fr"),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_experience(conn, user_id, exp_id)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id, lang=lang)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_experience.html",
+        {"cv": cv, "lang": lang, "saved": True},
+    )
+
+
+@app.post("/profile/cv/skills", response_class=HTMLResponse)
+async def profile_save_cv_skills(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    lang: str = Form("fr"),
+    data: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    try:
+        entries = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        cv = user_data.get_cv(conn, user_id, lang=lang)
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_cv_skills.html",
+            {"cv": cv, "lang": lang, "saved": False, "error": "Format JSON invalide"},
+        )
+    user_data.save_skills(conn, user_id, lang, entries)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id, lang=lang)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_skills.html",
+        {"cv": cv, "lang": lang, "saved": True},
+    )
+
+
+@app.post("/profile/cv/certifications", response_class=HTMLResponse)
+async def profile_save_cv_certifications(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    data: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    try:
+        entries = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        cv = user_data.get_cv(conn, user_id)
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_cv_certifications.html",
+            {"cv": cv, "saved": False, "error": "Format JSON invalide"},
+        )
+    user_data.save_certifications(conn, user_id, entries)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_certifications.html",
+        {"cv": cv, "saved": True},
+    )
+
+
+@app.post("/profile/cv/education", response_class=HTMLResponse)
+async def profile_save_cv_education(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    lang: str = Form("fr"),
+    data: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    try:
+        entries = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        cv = user_data.get_cv(conn, user_id, lang=lang)
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_cv_education.html",
+            {"cv": cv, "lang": lang, "saved": False, "error": "Format JSON invalide"},
+        )
+    user_data.save_education(conn, user_id, lang, entries)
+    conn.commit()
+    cv = user_data.get_cv(conn, user_id, lang=lang)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_cv_education.html",
+        {"cv": cv, "lang": lang, "saved": True},
     )
 
 

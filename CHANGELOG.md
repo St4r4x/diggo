@@ -7,7 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-05
+
 ### Added
+- `dashboard/user_data.py` — `delete_experience(conn, user_id, exp_id)` to delete a single CV experience row and its bullets
+- `dashboard/profile_parser.py` — `load_profile(conn, user_id)` and `save_profile(conn, user_id, data)` now delegate to `user_data`; file-based helpers (`_parse_contact`, `_parse_profile_md`, `_serialize_profile_md`, etc.) kept in place for `user_data` migration path
+- `dashboard/app.py` — new CV routes: `POST /profile/cv/meta`, `POST /profile/cv/experience`, `DELETE /profile/cv/experience/{exp_id}`, `POST /profile/cv/skills`, `POST /profile/cv/certifications`, `POST /profile/cv/education`
+- `dashboard/templates/partials/profile_cv_meta.html`, `profile_cv_experience.html`, `profile_cv_skills.html`, `profile_cv_certifications.html`, `profile_cv_education.html` — stub partials for CV routes (full UI in Task 7)
+- `tests/test_profile_routes.py` — `TestCvRoutes` covering all 6 new CV endpoints
+- `tests/test_profile_parser.py` — `test_load_profile_db`, `test_save_profile_db` covering DB-backed load/save
+
+### Changed
+- `dashboard/app.py` — all profile routes (`GET /profile`, `POST /profile/contact`, `POST /profile/summary`, `POST /profile/experience`, `POST /profile/skills`, `POST /profile/education`, `POST /profile/projects`) now use `request.app.state.db.conn` and `current_user["sub"]`; `OSError` try/except removed (no longer writing files); `GET /profile` now fetches `cv` and `cv_en` from DB
+- `dashboard/templates/profile.html` — removed stale `profile_exists` warning banner (file-based check no longer relevant)
+- `tests/test_profile_routes.py` — fixture replaced: uses `MagicMock` conn instead of real psycopg2 connection; monkeypatches `profile_parser.load_profile`/`save_profile` and `user_data.*` functions instead of file path attributes
+
+### Added
+
 - `dashboard/user_data.py` — `get_cv()`, `save_cv_meta()`, `save_experience()`, `save_skills()`, `save_certifications()`, `save_education()` for CV data access with per-user/per-lang isolation and `cv.yaml` file migration
 - `dashboard/user_data.py` — `_migrate_cv_from_files()` helper reads `config/cv.yaml` and seeds DB on first access
 - `tests/test_user_data.py` — 7 tests covering CV (empty state, meta save/get, experience with bullets, replace existing, skills, certifications, education)

@@ -2,12 +2,6 @@
 {% block content %}
 <div class="p-6 max-w-3xl mx-auto overflow-y-auto h-full">
 
-  {% if not profile_exists %}
-  <div class="rounded-lg p-3 mb-4 text-sm" style="background:rgba(120,53,15,0.3);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;">
-    Fichier profile.md introuvable — créez <code>config/profile.md</code> à partir de <code>config/profile.md.example</code>
-  </div>
-  {% endif %}
-
   <!-- Header -->
   <div id="profile-header" class="flex justify-between items-start mb-6">
     <div>

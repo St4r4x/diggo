@@ -1,6 +1,7 @@
 import sys
 import textwrap
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -69,20 +70,23 @@ def tmp_config(tmp_path: Path, monkeypatch):
     return tmp_path
 
 
-def test_load_contact_from_yaml(tmp_config):
-    data = parser_mod.load_profile()
-    assert data["contact"]["name"] == "Test User"
-    assert data["contact"]["email"] == "test@example.com"
-    assert data["contact"]["github"] == "github.com/testuser"
+# --- file-based helper tests (used by user_data migration path) ---
 
 
-def test_load_summary(tmp_config):
-    data = parser_mod.load_profile()
+def test_parse_contact_from_yaml(tmp_config):
+    data = parser_mod._parse_contact(parser_mod._CONTACT_YAML)
+    assert data["name"] == "Test User"
+    assert data["email"] == "test@example.com"
+    assert data["github"] == "github.com/testuser"
+
+
+def test_parse_profile_md_summary(tmp_config):
+    data = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
     assert "experienced engineer" in data["summary"]
 
 
-def test_load_experience_entries(tmp_config):
-    data = parser_mod.load_profile()
+def test_parse_profile_md_experience(tmp_config):
+    data = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
     assert len(data["experience"]) == 1
     exp = data["experience"][0]
     assert exp["title"] == "ML Engineer"
@@ -92,47 +96,105 @@ def test_load_experience_entries(tmp_config):
     assert len(exp["bullets"]) == 2
 
 
-def test_load_skills_categories(tmp_config):
-    data = parser_mod.load_profile()
+def test_parse_profile_md_skills(tmp_config):
+    data = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
     assert "Machine Learning" in data["skills"]
     assert "PyTorch" in data["skills"]["Machine Learning"]
     assert "MLOps" in data["skills"]
     assert "Docker" in data["skills"]["MLOps"]
 
 
-def test_load_education_and_certs(tmp_config):
-    data = parser_mod.load_profile()
+def test_parse_profile_md_education_and_certs(tmp_config):
+    data = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
     assert len(data["education"]) == 1
     assert data["education"][0]["degree"] == "Master of Science"
     assert data["education"][0]["school"] == "Great School"
     assert "AWS Certified ML Specialty" in data["certifications"]
 
 
-def test_load_projects(tmp_config):
-    data = parser_mod.load_profile()
+def test_parse_profile_md_projects(tmp_config):
+    data = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
     assert len(data["projects"]) == 1
     assert data["projects"][0]["name"] == "cool-project"
     assert "very cool" in data["projects"][0]["description"]
 
 
-def test_roundtrip(tmp_config):
-    original = parser_mod.load_profile()
-    parser_mod.save_profile(original)
-    reloaded = parser_mod.load_profile()
-    assert reloaded["contact"] == original["contact"]
-    assert reloaded["summary"] == original["summary"]
-    assert reloaded["experience"] == original["experience"]
-    assert reloaded["skills"] == original["skills"]
-    assert reloaded["education"] == original["education"]
-    assert reloaded["certifications"] == original["certifications"]
-    assert reloaded["projects"] == original["projects"]
-
-
-def test_missing_files_returns_empty(tmp_path, monkeypatch):
+def test_missing_files_return_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(parser_mod, "_CONTACT_YAML", tmp_path / "contact.yaml")
     monkeypatch.setattr(parser_mod, "_PROFILE_MD", tmp_path / "profile.md")
-    data = parser_mod.load_profile()
-    assert data["contact"]["name"] == ""
-    assert data["summary"] == ""
-    assert data["experience"] == []
-    assert data["skills"] == {}
+    contact = parser_mod._parse_contact(parser_mod._CONTACT_YAML)
+    md = parser_mod._parse_profile_md(parser_mod._PROFILE_MD)
+    assert contact["name"] == ""
+    assert md["summary"] == ""
+    assert md["experience"] == []
+    assert md["skills"] == {}
+
+
+# --- DB-backed load/save tests ---
+
+
+def _make_conn(profile: dict) -> MagicMock:
+    import user_data
+
+    conn = MagicMock()
+    conn.__enter__ = lambda s: s
+    conn.__exit__ = MagicMock(return_value=False)
+
+    original_get = user_data.get_profile
+
+    def fake_get(c, uid):
+        return profile
+
+    conn._fake_profile = profile
+    return conn, fake_get
+
+
+def test_load_profile_db(monkeypatch):
+    import user_data
+
+    fake_profile = {
+        "name": "DB User",
+        "title": "Dev",
+        "email": "db@test.com",
+        "phone": "",
+        "location": "",
+        "linkedin": "",
+        "github": "",
+        "profile_md": "some md",
+    }
+    monkeypatch.setattr(user_data, "get_profile", lambda conn, uid: fake_profile)
+    conn = MagicMock()
+    result = parser_mod.load_profile(conn, "uid-1")
+    assert result["contact"]["name"] == "DB User"
+    assert result["profile_md"] == "some md"
+    assert result["experience"] == []  # compat shim
+
+
+def test_save_profile_db(monkeypatch):
+    import user_data
+
+    saved = {}
+
+    def fake_save(conn, uid, data):
+        saved.update(data)
+
+    monkeypatch.setattr(user_data, "save_profile", fake_save)
+    conn = MagicMock()
+    parser_mod.save_profile(
+        conn,
+        "uid-1",
+        {
+            "contact": {
+                "name": "Updated",
+                "title": "",
+                "email": "",
+                "phone": "",
+                "location": "",
+                "linkedin": "",
+                "github": "",
+            },
+            "profile_md": "md",
+        },
+    )
+    assert saved["name"] == "Updated"
+    assert saved["profile_md"] == "md"

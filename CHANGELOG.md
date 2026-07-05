@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- `dashboard/auth.py` — `SUPABASE_JWT_SECRET` now read lazily inside `get_current_user` instead of at module load time; prevents silent bypass (empty-string secret) when `.env` is loaded after import; raises 500 if secret is unconfigured
+
 ### Added
 - `dashboard/auth.py` — Supabase JWT verification dependency (`get_current_user`); raises 401 on missing/expired/invalid token
 - `tests/test_auth.py` — 4 tests covering valid token, missing token, expired token, wrong secret

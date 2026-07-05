@@ -1,7 +1,7 @@
-"""Import pipeline offers into the application tracker SQLite DB.
+"""Import pipeline offers into the application tracker PostgreSQL DB.
 
 Runs the full scan→dedup→pre_filter pipeline and inserts new offers
-into dashboard/data/applications.db as 'À envoyer' applications.
+into the applications table as 'À envoyer' applications.
 Offers already present (matched by non-empty offer_url) are skipped.
 """
 
@@ -10,12 +10,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import sqlite3
+import os
 from datetime import date
 from pathlib import Path
-
 from urllib.parse import urlparse
 
+import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env", override=False)
@@ -30,7 +30,9 @@ from scripts.scan_portals import list_portal_ids, run_scan
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DB = Path(__file__).parent.parent / "dashboard" / "data" / "applications.db"
+_DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
+)
 
 _HOSTNAME_TO_PORTAL: dict[str, str] = {
     "www.apec.fr": "apec",
@@ -50,28 +52,6 @@ def infer_portal_from_url(url: str) -> str:
     return _HOSTNAME_TO_PORTAL.get(host, "")
 
 
-_CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS applications (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    company            TEXT    NOT NULL,
-    role               TEXT    NOT NULL,
-    offer_url          TEXT    NOT NULL DEFAULT '',
-    detection_date     TEXT    NOT NULL,
-    score_grade        TEXT    NOT NULL DEFAULT '',
-    score_value        REAL    NOT NULL DEFAULT 0.0,
-    status             TEXT    NOT NULL DEFAULT 'À envoyer',
-    send_date          TEXT,
-    contacts           TEXT    NOT NULL DEFAULT '',
-    notes              TEXT    NOT NULL DEFAULT '',
-    cv_path            TEXT    NOT NULL DEFAULT '',
-    cover_letter_path  TEXT    NOT NULL DEFAULT '',
-    follow_up_date     TEXT,
-    description        TEXT    NOT NULL DEFAULT '',
-    portal             TEXT    NOT NULL DEFAULT ''
-)
-"""
-
-
 def score_to_grade(score: float) -> str:
     if score >= 4.0:
         return "A"
@@ -84,47 +64,54 @@ def score_to_grade(score: float) -> str:
     return "F"
 
 
-def existing_urls(conn: sqlite3.Connection) -> set[str]:
-    rows = conn.execute(
-        "SELECT offer_url, portal FROM applications WHERE offer_url != ''"
-    ).fetchall()
+def existing_urls(conn: psycopg2.extensions.connection, user_id: str) -> set[str]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT offer_url, portal FROM applications"
+            " WHERE offer_url != '' AND user_id = %s",
+            (user_id,),
+        )
+        rows = cur.fetchall()
     return {normalize_offer_url(row[0], row[1]) for row in rows}
 
 
-def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
+def insert_offer(
+    conn: psycopg2.extensions.connection, offer: RawOffer, user_id: str
+) -> None:
     detection = (
         offer.date_posted.isoformat() if offer.date_posted else date.today().isoformat()
     )
     portal = offer.portal or infer_portal_from_url(offer.url or "")
     parsed = offer.parsed_description or parse_description(offer.description, portal)
     description_json = parsed.to_json()
-    conn.execute(
-        """INSERT INTO applications
-           (company, role, offer_url, detection_date, score_grade, score_value,
-            status, send_date, contacts, notes, cv_path, cover_letter_path,
-            follow_up_date, description, portal)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '', '', '', '', NULL, ?, ?)""",
-        (
-            offer.company,
-            offer.title,
-            offer.url,
-            detection,
-            score_to_grade(offer.score),
-            offer.score,
-            "À envoyer",
-            description_json,
-            portal,
-        ),
-    )
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO applications"
+            " (user_id, company, role, offer_url, detection_date, score_grade,"
+            "  score_value, status, send_date, contacts, notes, cv_path,"
+            "  cover_letter_path, follow_up_date, description, portal)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NULL, '', '', '', '', NULL, %s, %s)",
+            (
+                user_id,
+                offer.company,
+                offer.title,
+                offer.url,
+                detection,
+                score_to_grade(offer.score),
+                offer.score,
+                "À envoyer",
+                description_json,
+                portal,
+            ),
+        )
 
 
-def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
-    """Insert new offers into DB. Returns (inserted, skipped)."""
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+def import_offers(offers: list[RawOffer], user_id: str) -> tuple[int, int]:
+    """Insert new offers for user_id. Returns (inserted, skipped)."""
+    conn = psycopg2.connect(_DATABASE_URL)
     try:
-        conn.execute(_CREATE_TABLE_SQL)
-        urls = existing_urls(conn)
+        conn.autocommit = False
+        urls = existing_urls(conn, user_id)
         inserted = 0
         skipped = 0
         for offer in offers:
@@ -134,14 +121,16 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
                     description_json = parse_description(
                         offer.description, offer.portal
                     ).to_json()
-                    conn.execute(
-                        "UPDATE applications SET description = ? WHERE offer_url = ? AND description = ''",
-                        (description_json, offer.url),
-                    )
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "UPDATE applications SET description = %s"
+                            " WHERE offer_url = %s AND description = '' AND user_id = %s",
+                            (description_json, offer.url, user_id),
+                        )
                 skipped += 1
                 logger.debug("Skip (exists): %s @ %s", offer.title, offer.company)
             else:
-                insert_offer(conn, offer)
+                insert_offer(conn, offer, user_id)
                 if canonical:
                     urls.add(canonical)
                 inserted += 1
@@ -153,16 +142,13 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
 
 def import_offers_with_liveness(
     offers: list[RawOffer],
-    db_path: Path,
-    *,
-    conn: sqlite3.Connection | None = None,
+    user_id: str,
 ) -> tuple[int, int, int]:
-    """Insert new offers, skipping expired ones. Returns (inserted, skipped, expired)."""
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    _conn = conn or sqlite3.connect(str(db_path))
+    """Insert new offers for user_id, skipping expired ones. Returns (inserted, skipped, expired)."""
+    conn = psycopg2.connect(_DATABASE_URL)
     try:
-        _conn.execute(_CREATE_TABLE_SQL)
-        urls = existing_urls(_conn)
+        conn.autocommit = False
+        urls = existing_urls(conn, user_id)
         inserted = 0
         skipped = 0
         expired_count = 0
@@ -179,35 +165,40 @@ def import_offers_with_liveness(
                     )
                     expired_count += 1
                     continue
-            insert_offer(_conn, offer)
+            insert_offer(conn, offer, user_id)
             if canonical:
                 urls.add(canonical)
             inserted += 1
-        _conn.commit()
+        conn.commit()
     finally:
-        if conn is None:
-            _conn.close()
+        conn.close()
     return inserted, skipped, expired_count
 
 
-def expire_stale_offers(db_path: Path) -> int:
-    """Check liveness of all 'À envoyer' offers and mark expired ones as 'Abandonnée'.
+def expire_stale_offers(user_id: str) -> int:
+    """Check liveness of all 'À envoyer' offers for user_id and mark expired ones as 'Abandonnée'.
 
     Returns the number of offers marked as abandoned.
     """
-    conn = sqlite3.connect(str(db_path))
+    conn = psycopg2.connect(_DATABASE_URL)
     try:
-        rows = conn.execute(
-            "SELECT id, offer_url FROM applications WHERE status = 'À envoyer' AND offer_url != ''"
-        ).fetchall()
+        conn.autocommit = False
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, offer_url FROM applications"
+                " WHERE status = 'À envoyer' AND offer_url != '' AND user_id = %s",
+                (user_id,),
+            )
+            rows = cur.fetchall()
         abandoned = 0
         for row_id, url in rows:
             status, reason = check_liveness(url)
             if status == "expired":
-                conn.execute(
-                    "UPDATE applications SET status = 'Abandonnée' WHERE id = ?",
-                    (row_id,),
-                )
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE applications SET status = 'Abandonnée' WHERE id = %s AND user_id = %s",
+                        (row_id, user_id),
+                    )
                 logger.info("Expired (liveness %s): id=%d url=%s", reason, row_id, url)
                 abandoned += 1
         conn.commit()
@@ -216,7 +207,9 @@ def expire_stale_offers(db_path: Path) -> int:
     return abandoned
 
 
-async def _run_pipeline(settings: dict) -> list[RawOffer]:
+async def _run_pipeline(
+    settings: dict, *, skip_descriptions: bool = False
+) -> list[RawOffer]:
     search_cfg: dict = settings.get("search", {})
     keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])
     portal_queries: list[str] = search_cfg.get(
@@ -260,7 +253,10 @@ def main() -> None:
         description="Import pipeline offers into the application tracker DB"
     )
     parser.add_argument(
-        "--db", default=str(_DEFAULT_DB), metavar="PATH", help="Path to SQLite DB"
+        "--user-id",
+        required=True,
+        metavar="UUID",
+        help="Supabase user UUID to scope inserted offers",
     )
     parser.add_argument(
         "--dry-run",
@@ -286,13 +282,13 @@ def main() -> None:
         return
 
     if args.check_liveness:
-        inserted, skipped, expired = import_offers_with_liveness(offers, Path(args.db))
+        inserted, skipped, expired = import_offers_with_liveness(offers, args.user_id)
         print(
             f"Imported {inserted} new offers, skipped {skipped} existing, "
             f"{expired} expired"
         )
     else:
-        inserted, skipped = import_offers(offers, Path(args.db))
+        inserted, skipped = import_offers(offers, args.user_id)
         print(f"Imported {inserted} new offers, skipped {skipped} already present")
 
 

@@ -15,9 +15,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/templates/partials/settings_search.html` — HTMX partial for search preferences form
 - `dashboard/templates/partials/settings_ats.html` — HTMX partial for ATS targets table
 - `dashboard/templates/base.html` — added Paramètres nav link
+- `dashboard/templates/partials/profile_text.html` — partial for `POST /profile/text` route
 - `tests/test_dashboard_app.py` — `TestSettings` class with 5 tests covering auth, page load, search save, ATS add/delete
-
-## 2026-07-05
 
 ### Fixed
 - `dashboard/user_data.py` — `delete_experience`: bullet delete now scoped to owned experiences via subquery, preventing cross-user data deletion
@@ -25,9 +24,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/app.py` — removed four legacy silent-dead-write routes: `POST /profile/experience`, `/profile/skills`, `/profile/education`, `/profile/projects`
 - `tests/test_profile_routes.py` — updated `TestSaveSummary` → `TestSaveText` for renamed route; removed tests for deleted legacy routes
 - `tests/test_profile_parser.py` — removed unused `_make_conn` helper
-
-### Added
-- `dashboard/templates/partials/profile_text.html` — partial for `POST /profile/text` route
 
 ---
 

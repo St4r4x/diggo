@@ -160,6 +160,7 @@ def test_add_and_get_ats_target(conn_with_ats):
     new_id = user_data.add_ats_target(
         conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
     )
+    conn_with_ats.commit()
     assert isinstance(new_id, int)
     targets = user_data.get_ats_targets(conn_with_ats, USER_A)
     assert len(targets) == 1
@@ -171,7 +172,9 @@ def test_delete_ats_target(conn_with_ats):
     new_id = user_data.add_ats_target(
         conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
     )
+    conn_with_ats.commit()
     user_data.delete_ats_target(conn_with_ats, USER_A, new_id)
+    conn_with_ats.commit()
     assert user_data.get_ats_targets(conn_with_ats, USER_A) == []
 
 
@@ -179,7 +182,9 @@ def test_delete_ats_target_wrong_user(conn_with_ats):
     new_id = user_data.add_ats_target(
         conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
     )
+    conn_with_ats.commit()
     user_data.delete_ats_target(conn_with_ats, USER_B, new_id)
+    conn_with_ats.commit()
     # Should NOT delete — wrong user_id
     assert len(user_data.get_ats_targets(conn_with_ats, USER_A)) == 1
 
@@ -188,4 +193,5 @@ def test_ats_targets_isolated_per_user(conn_with_ats):
     user_data.add_ats_target(
         conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
     )
+    conn_with_ats.commit()
     assert user_data.get_ats_targets(conn_with_ats, USER_B) == []

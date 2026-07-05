@@ -202,6 +202,7 @@ def get_ats_targets(
     if migrated:
         for entry in migrated:
             add_ats_target(conn, user_id, entry["name"], entry["careers_url"])
+        conn.commit()
         return get_ats_targets(conn, user_id)
     return []
 
@@ -215,7 +216,6 @@ def add_ats_target(
             (user_id, name, careers_url),
         )
         new_id: int = cur.fetchone()[0]
-    conn.commit()
     return new_id
 
 
@@ -227,4 +227,3 @@ def delete_ats_target(
             "DELETE FROM user_ats_targets WHERE id = %s AND user_id = %s",
             (target_id, user_id),
         )
-    conn.commit()

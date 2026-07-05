@@ -1,24 +1,27 @@
-# dashboard/app.py
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import mistune
 
 import profile_parser
+from auth import CurrentUser, get_current_user
 from db import VALID_STATUSES, open_db
 from env import load_env
 
 load_env()
 
-DB_PATH = Path(__file__).parent / "data" / "applications.db"
+_DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
+)
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
@@ -91,7 +94,7 @@ def _parse_description(raw: str) -> dict:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db = open_db(DB_PATH)
+    app.state.db = open_db(_DATABASE_URL)
     app.state.scan_status = "idle"
     app.state.scan_result: dict = {
         "inserted": 0,
@@ -102,25 +105,26 @@ async def lifespan(app: FastAPI):
         "error": "",
     }
     yield
-    app.state.db.conn.close()
+    app.state.db.close()
 
 
 app = FastAPI(lifespan=lifespan)
 _scan_lock = asyncio.Lock()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Register color maps as Jinja2 globals so every template (including
-# {% include %} partials) can access them without repeating them in
-# every TemplateResponse call.
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     db = request.app.state.db
-    offers = db.get_all({})
-    followup_ids = {f["id"] for f in db.get_followups()}
+    user_id = current_user["sub"]
+    offers = db.get_all({}, user_id=user_id)
+    followup_ids = {f["id"] for f in db.get_followups(user_id=user_id)}
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -137,12 +141,14 @@ async def index(request: Request):
 @app.get("/offers", response_class=HTMLResponse)
 async def offer_list(
     request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     status: str = Query(""),
     grade: str = Query(""),
     q: str = Query(""),
     sal_min: str = Query(""),
-):
+) -> HTMLResponse:
     db = request.app.state.db
+    user_id = current_user["sub"]
     filters = {
         k: v
         for k, v in {
@@ -153,8 +159,8 @@ async def offer_list(
         }.items()
         if v
     }
-    offers = db.get_all(filters)
-    followup_ids = {f["id"] for f in db.get_followups()}
+    offers = db.get_all(filters, user_id=user_id)
+    followup_ids = {f["id"] for f in db.get_followups(user_id=user_id)}
     return templates.TemplateResponse(
         request,
         "partials/offer_list.html",
@@ -166,9 +172,14 @@ async def offer_list(
 
 
 @app.get("/offers/{offer_id}/edit", response_class=HTMLResponse)
-async def offer_edit_form(request: Request, offer_id: int):
+async def offer_edit_form(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     db = request.app.state.db
-    offer = db.get_by_id(offer_id)
+    user_id = current_user["sub"]
+    offer = db.get_by_id(offer_id, user_id=user_id)
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
     return templates.TemplateResponse(
@@ -182,9 +193,14 @@ async def offer_edit_form(request: Request, offer_id: int):
 
 
 @app.get("/offers/{offer_id}", response_class=HTMLResponse)
-async def offer_detail(request: Request, offer_id: int):
+async def offer_detail(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     db = request.app.state.db
-    offer = db.get_by_id(offer_id)
+    user_id = current_user["sub"]
+    offer = db.get_by_id(offer_id, user_id=user_id)
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
     return templates.TemplateResponse(
@@ -202,6 +218,7 @@ async def offer_detail(request: Request, offer_id: int):
 async def offer_save(
     request: Request,
     offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
     company: str = Form(""),
     role: str = Form(""),
     offer_url: str = Form(""),
@@ -215,9 +232,10 @@ async def offer_save(
     notes: str = Form(""),
     cv_path: str = Form(""),
     cover_letter_path: str = Form(""),
-):
+) -> HTMLResponse:
     db = request.app.state.db
-    if db.get_by_id(offer_id) is None:
+    user_id = current_user["sub"]
+    if db.get_by_id(offer_id, user_id=user_id) is None:
         raise HTTPException(status_code=404, detail="Offer not found")
     try:
         sv = float(score_value)
@@ -238,7 +256,7 @@ async def offer_save(
         "cv_path": cv_path,
         "cover_letter_path": cover_letter_path,
     }
-    offer = db.update(offer_id, fields)
+    offer = db.update(offer_id, fields, user_id=user_id)
     return templates.TemplateResponse(
         request,
         "partials/offer_detail.html",
@@ -251,24 +269,29 @@ async def offer_save(
 
 
 @app.delete("/offers/{offer_id}", response_class=HTMLResponse)
-async def offer_delete(request: Request, offer_id: int):
+async def offer_delete(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     db = request.app.state.db
-    db.delete(offer_id)
-    return templates.TemplateResponse(
-        request,
-        "partials/offer_empty.html",
-        {},
-    )
+    user_id = current_user["sub"]
+    db.delete(offer_id, user_id=user_id)
+    return templates.TemplateResponse(request, "partials/offer_empty.html", {})
 
 
 @app.post("/offers/{offer_id}/notes", response_class=HTMLResponse)
 async def offer_notes(
-    request: Request, offer_id: int, notes: str = Form("")
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    notes: str = Form(""),
 ) -> HTMLResponse:
     db = request.app.state.db
-    if db.get_by_id(offer_id) is None:
+    user_id = current_user["sub"]
+    if db.get_by_id(offer_id, user_id=user_id) is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    offer = db.update(offer_id, {"notes": notes})
+    offer = db.update(offer_id, {"notes": notes}, user_id=user_id)
     return templates.TemplateResponse(
         request,
         "partials/offer_notes.html",
@@ -277,11 +300,17 @@ async def offer_notes(
 
 
 @app.post("/offers/{offer_id}/status", response_class=HTMLResponse)
-async def offer_status(request: Request, offer_id: int, status: str = Form(...)):
+async def offer_status(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    status: str = Form(...),
+) -> HTMLResponse:
     if status not in VALID_STATUSES:
         raise HTTPException(status_code=422, detail=f"Invalid status: {status}")
     db = request.app.state.db
-    offer = db.update_status(offer_id, status)
+    user_id = current_user["sub"]
+    offer = db.update_status(offer_id, status, user_id=user_id)
     return templates.TemplateResponse(
         request,
         "partials/offer_detail.html",
@@ -294,9 +323,13 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
 
 
 @app.get("/stats", response_class=HTMLResponse)
-async def stats_page(request: Request):
+async def stats_page(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     db = request.app.state.db
-    stats = db.get_stats()
+    user_id = current_user["sub"]
+    stats = db.get_stats(user_id=user_id)
     funnel, exits, max_count = _build_funnel(stats["by_status"])
     report_files = list(REPORTS_DIR.glob("daily-*.md")) if REPORTS_DIR.is_dir() else []
     latest_report_html: str | None = None
@@ -321,8 +354,10 @@ async def stats_page(request: Request):
 
 
 @app.get("/profile", response_class=HTMLResponse)
-async def profile_page(request: Request):
-
+async def profile_page(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     profile = profile_parser.load_profile()
     profile_exists = profile_parser._PROFILE_MD.exists()
     return templates.TemplateResponse(
@@ -335,6 +370,7 @@ async def profile_page(request: Request):
 @app.post("/profile/contact", response_class=HTMLResponse)
 async def profile_save_contact(
     request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     name: str = Form(""),
     title: str = Form(""),
     email: str = Form(""),
@@ -343,7 +379,6 @@ async def profile_save_contact(
     linkedin: str = Form(""),
     github: str = Form(""),
 ) -> HTMLResponse:
-
     data = profile_parser.load_profile()
     data["contact"] = {
         "name": name,
@@ -372,9 +407,9 @@ async def profile_save_contact(
 @app.post("/profile/summary", response_class=HTMLResponse)
 async def profile_save_summary(
     request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     summary: str = Form(""),
 ) -> HTMLResponse:
-
     data = profile_parser.load_profile()
     data["summary"] = summary
     try:
@@ -394,7 +429,9 @@ async def profile_save_summary(
 
 @app.post("/profile/experience", response_class=HTMLResponse)
 async def profile_save_experience(
-    request: Request, data: str = Form("")
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    data: str = Form(""),
 ) -> HTMLResponse:
     profile_data = profile_parser.load_profile()
     try:
@@ -425,7 +462,11 @@ async def profile_save_experience(
 
 
 @app.post("/profile/skills", response_class=HTMLResponse)
-async def profile_save_skills(request: Request, data: str = Form("")):
+async def profile_save_skills(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    data: str = Form(""),
+) -> HTMLResponse:
     profile_data = profile_parser.load_profile()
     try:
         profile_data["skills"] = json.loads(data)
@@ -455,7 +496,11 @@ async def profile_save_skills(request: Request, data: str = Form("")):
 
 
 @app.post("/profile/education", response_class=HTMLResponse)
-async def profile_save_education(request: Request, data: str = Form("")):
+async def profile_save_education(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    data: str = Form(""),
+) -> HTMLResponse:
     profile_data = profile_parser.load_profile()
     try:
         parsed = json.loads(data)
@@ -487,7 +532,11 @@ async def profile_save_education(request: Request, data: str = Form("")):
 
 
 @app.post("/profile/projects", response_class=HTMLResponse)
-async def profile_save_projects(request: Request, data: str = Form("")):
+async def profile_save_projects(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    data: str = Form(""),
+) -> HTMLResponse:
     profile_data = profile_parser.load_profile()
     try:
         profile_data["projects"] = json.loads(data)
@@ -516,7 +565,7 @@ async def profile_save_projects(request: Request, data: str = Form("")):
     )
 
 
-async def _run_scan_task(app_state) -> None:
+async def _run_scan_task(app_state: Any, user_id: str) -> None:
     try:
         from scripts.import_offers import (
             _run_pipeline,
@@ -539,8 +588,8 @@ async def _run_scan_task(app_state) -> None:
         app_state.scan_result["found"] = len(offers)
         app_state.scan_result["scored"] = len(offers)
 
-        inserted, skipped = import_offers(offers, DB_PATH)
-        abandoned = expire_stale_offers(DB_PATH)
+        inserted, skipped = import_offers(offers, user_id=user_id)
+        abandoned = expire_stale_offers(user_id=user_id)
 
         app_state.scan_result = {
             "inserted": inserted,
@@ -563,7 +612,7 @@ async def _run_scan_task(app_state) -> None:
         app_state.scan_status = "error"
 
 
-def _start_scan(app_state: Any) -> bool:
+def _start_scan(app_state: Any, user_id: str) -> bool:
     """Set state to running and enqueue task. Returns False if already running."""
     if app_state.scan_status == "running":
         return False
@@ -576,14 +625,17 @@ def _start_scan(app_state: Any) -> bool:
         "abandoned": 0,
         "error": "",
     }
-    asyncio.create_task(_run_scan_task(app_state))
+    asyncio.create_task(_run_scan_task(app_state, user_id))
     return True
 
 
 @app.post("/scan/start", response_class=HTMLResponse)
-async def scan_start(request: Request):
+async def scan_start(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     async with _scan_lock:
-        started = _start_scan(request.app.state)
+        started = _start_scan(request.app.state, user_id=current_user["sub"])
         if not started:
             return templates.TemplateResponse(
                 request,
@@ -598,7 +650,10 @@ async def scan_start(request: Request):
 
 
 @app.get("/scan/status", response_class=HTMLResponse)
-async def scan_status(request: Request):
+async def scan_status(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "partials/scan_status.html",

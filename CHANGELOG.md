@@ -22,6 +22,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)
 
 ### Changed
+- `dashboard/app.py` — rewritten to use PostgreSQL via `open_db(DATABASE_URL)`; every route now has `Depends(get_current_user)` and passes `user_id` to all DB calls; `_run_scan_task` and `_start_scan` accept explicit `user_id`
+- `tests/test_dashboard_app.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; auth dependency mocked via `dependency_overrides[get_current_user]`; all DB calls updated with `user_id`
+- `tests/test_profile_routes.py` — fixture migrated from SQLite to PostgreSQL temp table; auth dependency mocked
 - `docker-compose.yml` — add postgres:16 service with healthcheck; dashboard/pipeline now depend on it; remove SQLite data volume
 - `scripts/import_offers.py` — call load_dotenv() at startup so CLI usage picks up .env
 - `tests/test_env.py` — fix stdlib import order (os → pathlib → sys) and add type hints to test signature

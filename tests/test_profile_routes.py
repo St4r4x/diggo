@@ -63,29 +63,55 @@ def profile_files(tmp_path):
 
 @pytest.fixture
 def profile_client(profile_files, monkeypatch):
+    import os
+
+    import psycopg2
     import profile_parser as parser_mod
-    import sqlite3
+
     import app as dashboard_app
+    from auth import get_current_user
     from db import DB
 
     contact_file, profile_file = profile_files
     monkeypatch.setattr(parser_mod, "_CONTACT_YAML", contact_file)
     monkeypatch.setattr(parser_mod, "_PROFILE_MD", profile_file)
 
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
-    conn.execute("""CREATE TABLE IF NOT EXISTS applications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL,
-        role TEXT NOT NULL, offer_url TEXT NOT NULL DEFAULT '',
-        detection_date TEXT NOT NULL, score_grade TEXT NOT NULL DEFAULT '',
-        score_value REAL NOT NULL DEFAULT 0.0,
-        status TEXT NOT NULL DEFAULT 'À envoyer',
-        send_date TEXT, contacts TEXT NOT NULL DEFAULT '',
-        notes TEXT NOT NULL DEFAULT '', cv_path TEXT NOT NULL DEFAULT '',
-        cover_letter_path TEXT NOT NULL DEFAULT '', follow_up_date TEXT,
-        description TEXT NOT NULL DEFAULT '')""")
+    pg_url = os.getenv(
+        "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
+    )
+    conn = psycopg2.connect(pg_url)
+    conn.autocommit = False
+    with conn.cursor() as cur:
+        cur.execute(
+            """CREATE TEMP TABLE applications (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(36) NOT NULL DEFAULT 'test-user',
+                company TEXT NOT NULL,
+                role TEXT NOT NULL,
+                offer_url TEXT NOT NULL DEFAULT '',
+                detection_date TEXT NOT NULL,
+                score_grade TEXT NOT NULL DEFAULT '',
+                score_value FLOAT NOT NULL DEFAULT 0.0,
+                status TEXT NOT NULL DEFAULT 'À envoyer',
+                send_date TEXT,
+                contacts TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                cv_path TEXT NOT NULL DEFAULT '',
+                cover_letter_path TEXT NOT NULL DEFAULT '',
+                follow_up_date TEXT,
+                description TEXT NOT NULL DEFAULT '',
+                portal TEXT NOT NULL DEFAULT ''
+            )"""
+        )
     conn.commit()
     dashboard_app.app.state.db = DB(conn)
-    return TestClient(dashboard_app.app)
+    dashboard_app.app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "test-user",
+        "email": "test@example.com",
+    }
+    yield TestClient(dashboard_app.app)
+    dashboard_app.app.dependency_overrides.clear()
+    conn.close()
 
 
 class TestProfilePage:

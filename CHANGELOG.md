@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `alembic/` — Alembic migration setup; `alembic upgrade head` creates the `applications` table with `user_id VARCHAR(36) NOT NULL` and composite index on `(user_id, status)`
+- `alembic/versions/0001_initial_schema.py` — initial migration: full `applications` schema matching the existing SQLite columns plus `user_id`
 - `dashboard/env.py` — `load_env()` helper using python-dotenv; loads `.env` in dev, no-op in prod
 - `.env.example` — template for all required env vars (DATABASE_URL, Supabase, Groq)
 - `tests/test_env.py` — test for env var loading from a temp file

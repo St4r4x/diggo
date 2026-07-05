@@ -1,9 +1,13 @@
 import os
-import sys
 from pathlib import Path
+import sys
+
+import pytest
 
 
-def test_app_loads_database_url(monkeypatch, tmp_path):
+def test_app_loads_database_url(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text("DATABASE_URL=postgresql://test:test@localhost/test\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)

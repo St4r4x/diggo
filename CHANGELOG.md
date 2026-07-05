@@ -16,7 +16,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)
 
 ### Changed
+- `docker-compose.yml` — add postgres:16 service with healthcheck; dashboard/pipeline now depend on it; remove SQLite data volume
 - `scripts/import_offers.py` — call load_dotenv() at startup so CLI usage picks up .env
+- `tests/test_env.py` — fix stdlib import order (os → pathlib → sys) and add type hints to test signature
 - `.gitignore` — untrack personal config files: `config/settings.yaml`, `config/ats_map.yaml`, `config/cover-letter-*.json`
 - `README.md` — add `settings.yaml` and `ats_map.yaml` to quick start setup steps
 

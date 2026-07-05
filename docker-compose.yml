@@ -1,23 +1,48 @@
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: career
+      POSTGRES_PASSWORD: career
+      POSTGRES_DB: career
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U career"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   dashboard:
     build: .
     command: ["dashboard"]
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - ./dashboard/data:/app/dashboard/data
       - ./reports:/app/reports
       - ./output:/app/output
       - ./config:/app/config:ro
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   pipeline:
     build: .
     command: ["pipeline"]
     volumes:
-      - ./dashboard/data:/app/dashboard/data
       - ./reports:/app/reports
       - ./output:/app/output
       - ./config:/app/config:ro
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     profiles:
       - manual
+
+volumes:
+  postgres_data:

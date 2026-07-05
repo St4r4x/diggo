@@ -9,6 +9,7 @@ import yaml
 _CONTACT_YAML = Path(__file__).parent.parent / "config" / "contact.yaml"
 _PROFILE_MD = Path(__file__).parent.parent / "config" / "profile.md"
 _SETTINGS_YAML = Path(__file__).parent.parent / "config" / "settings.yaml"
+_ATS_MAP_YAML = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 
 _PROFILE_KEYS = (
     "name",
@@ -173,3 +174,57 @@ def save_settings(
             f" ON CONFLICT (user_id) DO UPDATE SET {updates}",
             (user_id, *values),
         )
+
+
+def _migrate_ats_from_files() -> list[dict[str, str]] | None:
+    if not _ATS_MAP_YAML.exists():
+        return None
+    with _ATS_MAP_YAML.open(encoding="utf-8") as f:
+        entries = yaml.safe_load(f) or []
+    return [
+        {"name": str(e.get("name", "")), "careers_url": str(e.get("careers_url", ""))}
+        for e in entries
+    ]
+
+
+def get_ats_targets(
+    conn: psycopg2.extensions.connection, user_id: str
+) -> list[dict[str, Any]]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, name, careers_url FROM user_ats_targets WHERE user_id = %s ORDER BY id",
+            (user_id,),
+        )
+        rows = cur.fetchall()
+    if rows:
+        return [{"id": r[0], "name": r[1], "careers_url": r[2]} for r in rows]
+    migrated = _migrate_ats_from_files()
+    if migrated:
+        for entry in migrated:
+            add_ats_target(conn, user_id, entry["name"], entry["careers_url"])
+        return get_ats_targets(conn, user_id)
+    return []
+
+
+def add_ats_target(
+    conn: psycopg2.extensions.connection, user_id: str, name: str, careers_url: str
+) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO user_ats_targets (user_id, name, careers_url) VALUES (%s, %s, %s) RETURNING id",
+            (user_id, name, careers_url),
+        )
+        new_id: int = cur.fetchone()[0]
+    conn.commit()
+    return new_id
+
+
+def delete_ats_target(
+    conn: psycopg2.extensions.connection, user_id: str, target_id: int
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_ats_targets WHERE id = %s AND user_id = %s",
+            (target_id, user_id),
+        )
+    conn.commit()

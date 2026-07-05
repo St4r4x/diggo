@@ -127,3 +127,65 @@ def test_save_and_get_settings(conn):
     result = user_data.get_settings(conn, USER_A)
     assert result["keywords"] == ["AI Engineer", "ML Engineer"]
     assert result["salary_min"] == 40000
+
+
+_CREATE_ATS_TARGETS = """
+CREATE TEMP TABLE user_ats_targets (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    careers_url TEXT NOT NULL
+)
+"""
+
+
+@pytest.fixture
+def conn_with_ats(monkeypatch):
+    c = psycopg2.connect(PG_URL)
+    c.autocommit = False
+    with c.cursor() as cur:
+        cur.execute(_CREATE_ATS_TARGETS)
+    c.commit()
+    monkeypatch.setattr(user_data, "_migrate_ats_from_files", lambda: None)
+    yield c
+    c.close()
+
+
+def test_ats_targets_empty(conn_with_ats):
+    result = user_data.get_ats_targets(conn_with_ats, USER_A)
+    assert result == []
+
+
+def test_add_and_get_ats_target(conn_with_ats):
+    new_id = user_data.add_ats_target(
+        conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
+    )
+    assert isinstance(new_id, int)
+    targets = user_data.get_ats_targets(conn_with_ats, USER_A)
+    assert len(targets) == 1
+    assert targets[0]["name"] == "Mistral AI"
+    assert targets[0]["id"] == new_id
+
+
+def test_delete_ats_target(conn_with_ats):
+    new_id = user_data.add_ats_target(
+        conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
+    )
+    user_data.delete_ats_target(conn_with_ats, USER_A, new_id)
+    assert user_data.get_ats_targets(conn_with_ats, USER_A) == []
+
+
+def test_delete_ats_target_wrong_user(conn_with_ats):
+    new_id = user_data.add_ats_target(
+        conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
+    )
+    user_data.delete_ats_target(conn_with_ats, USER_B, new_id)
+    # Should NOT delete — wrong user_id
+    assert len(user_data.get_ats_targets(conn_with_ats, USER_A)) == 1
+
+
+def test_ats_targets_isolated_per_user(conn_with_ats):
+    user_data.add_ats_target(
+        conn_with_ats, USER_A, "Mistral AI", "https://jobs.lever.co/mistral"
+    )
+    assert user_data.get_ats_targets(conn_with_ats, USER_B) == []

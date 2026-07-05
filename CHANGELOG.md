@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/user_data.py` — `get_cv()`, `save_cv_meta()`, `save_experience()`, `save_skills()`, `save_certifications()`, `save_education()` for CV data access with per-user/per-lang isolation and `cv.yaml` file migration
+- `dashboard/user_data.py` — `_migrate_cv_from_files()` helper reads `config/cv.yaml` and seeds DB on first access
+- `tests/test_user_data.py` — 7 tests covering CV (empty state, meta save/get, experience with bullets, replace existing, skills, certifications, education)
 - `dashboard/user_data.py` — `get_ats_targets()`, `add_ats_target()`, `delete_ats_target()` functions for ATS target CRUD with per-user isolation and `ats_map.yaml` file migration
 - `tests/test_user_data.py` — 5 tests covering ATS targets (empty list, add/get, delete, wrong user, per-user isolation)
 

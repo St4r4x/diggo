@@ -195,3 +195,162 @@ def test_ats_targets_isolated_per_user(conn_with_ats):
     )
     conn_with_ats.commit()
     assert user_data.get_ats_targets(conn_with_ats, USER_B) == []
+
+
+_CREATE_CV_TABLES = """
+CREATE TEMP TABLE user_cv_meta (
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (user_id, lang)
+);
+CREATE TEMP TABLE user_experience (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    company TEXT NOT NULL DEFAULT '',
+    type TEXT NOT NULL DEFAULT '',
+    period TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TEMP TABLE user_experience_bullets (
+    id SERIAL PRIMARY KEY,
+    experience_id INT NOT NULL,
+    text TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TEMP TABLE user_skills (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    category TEXT NOT NULL,
+    skill TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TEMP TABLE user_certifications (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    issuer TEXT NOT NULL DEFAULT '',
+    year INT
+);
+CREATE TEMP TABLE user_education (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    degree TEXT NOT NULL DEFAULT '',
+    school TEXT NOT NULL DEFAULT '',
+    year INT
+)
+"""
+
+
+@pytest.fixture
+def conn_with_cv(monkeypatch):
+    c = psycopg2.connect(PG_URL)
+    c.autocommit = False
+    with c.cursor() as cur:
+        for stmt in _CREATE_CV_TABLES.split(";"):
+            if stmt.strip():
+                cur.execute(stmt)
+    c.commit()
+    monkeypatch.setattr(user_data, "_migrate_cv_from_files", lambda lang="fr": None)
+    yield c
+    c.close()
+
+
+def test_get_cv_empty(conn_with_cv):
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["meta"]["summary"] == ""
+    assert cv["experience"] == []
+    assert cv["skills"] == []
+    assert cv["certifications"] == []
+    assert cv["education"] == []
+
+
+def test_save_and_get_cv_meta(conn_with_cv):
+    user_data.save_cv_meta(
+        conn_with_cv, USER_A, "fr", "AI Engineer with 3 years experience"
+    )
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["meta"]["summary"] == "AI Engineer with 3 years experience"
+
+
+def test_save_experience_with_bullets(conn_with_cv):
+    entries = [
+        {
+            "title": "ML Engineer",
+            "company": "Missia",
+            "type": "Alternance",
+            "period": "2024-2026",
+            "sort_order": 0,
+            "bullets": ["Built CV pipeline", "Deployed on edge"],
+        }
+    ]
+    user_data.save_experience(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert len(cv["experience"]) == 1
+    assert cv["experience"][0]["title"] == "ML Engineer"
+    assert cv["experience"][0]["bullets"] == ["Built CV pipeline", "Deployed on edge"]
+
+
+def test_save_experience_replaces_existing(conn_with_cv):
+    user_data.save_experience(
+        conn_with_cv,
+        USER_A,
+        "fr",
+        [
+            {
+                "title": "Old",
+                "company": "",
+                "type": "",
+                "period": "",
+                "sort_order": 0,
+                "bullets": [],
+            }
+        ],
+    )
+    user_data.save_experience(
+        conn_with_cv,
+        USER_A,
+        "fr",
+        [
+            {
+                "title": "New",
+                "company": "",
+                "type": "",
+                "period": "",
+                "sort_order": 0,
+                "bullets": [],
+            }
+        ],
+    )
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert len(cv["experience"]) == 1
+    assert cv["experience"][0]["title"] == "New"
+
+
+def test_save_skills(conn_with_cv):
+    entries = [
+        {"category": "IA/ML", "skill": "PyTorch", "sort_order": 0},
+        {"category": "IA/ML", "skill": "HuggingFace", "sort_order": 1},
+    ]
+    user_data.save_skills(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert len(cv["skills"]) == 2
+    assert cv["skills"][0]["skill"] == "PyTorch"
+
+
+def test_save_certifications(conn_with_cv):
+    entries = [{"name": "GCP ML Engineer", "issuer": "Google", "year": 2025}]
+    user_data.save_certifications(conn_with_cv, USER_A, entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["certifications"][0]["name"] == "GCP ML Engineer"
+
+
+def test_save_education(conn_with_cv):
+    entries = [{"degree": "MSc AI", "school": "EPITA", "year": 2026}]
+    user_data.save_education(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["education"][0]["degree"] == "MSc AI"

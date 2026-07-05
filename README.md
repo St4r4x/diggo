@@ -1,6 +1,29 @@
-# career-ops-fr
+# career-ops-fr · v0.2
 
 Automated AI/ML job search pipeline for the French market — scraping, scoring, dashboard, and Claude Code-assisted application generation (CV PDF, cover letter, interview prep sheet).
+
+## Run the app (daily use)
+
+> **Prerequisites (first time only):** see [Quick start](#quick-start) below.
+
+```bash
+# 1. Start the local auth + DB stack (must be running before the dashboard)
+supabase start
+
+# 2. Start the dashboard
+docker compose up dashboard
+
+# → http://localhost:8000  (log in with your Supabase account)
+```
+
+To stop everything:
+
+```bash
+docker compose down
+supabase stop
+```
+
+---
 
 ## How it works
 

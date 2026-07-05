@@ -10,7 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-07-05
 
 ### Changed
-- `README.md` — full rewrite: Supabase CLI setup, auth section (routes, Inbucket, DEV_AUTO_LOGIN), updated env vars table, Docker note about host.docker.internal, updated project structure (auth.py, supabase/, PostgreSQL db.py)
+- `README.md` — add v0.2 badge, "Run the app" quick-launch section at top (supabase start → docker compose up → stop sequence); full rewrite: Supabase CLI setup, auth section (routes, Inbucket, DEV_AUTO_LOGIN), updated env vars table, Docker note about host.docker.internal, updated project structure (auth.py, supabase/, PostgreSQL db.py)
 
 ### Fixed
 - `dashboard/app.py` / `docker-compose.yml` — split `SUPABASE_URL` (container→Supabase for JWKS) from `SUPABASE_PUBLIC_URL` (browser→Supabase for auth JS); fixes "Failed to fetch" on login/signup when running in Docker

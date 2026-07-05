@@ -275,7 +275,8 @@ async def scan_ats(
                 entries = _ud.get_ats_targets(conn, user_id)
             finally:
                 conn.close()
-        except Exception:
+        except Exception as e:
+            logger.warning("DB ATS targets load failed, falling back to file: %s", e)
             entries = _load_ats_map(ats_map_path)
     else:
         entries = _load_ats_map(ats_map_path)

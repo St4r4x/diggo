@@ -152,8 +152,8 @@ def load_settings(path: Path = _SETTINGS_PATH, user_id: str | None = None) -> di
                 return _ud.get_settings(conn, user_id)
             finally:
                 conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("DB settings load failed, falling back to file: %s", e)
     if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as fh:

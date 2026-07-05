@@ -630,6 +630,101 @@ async def profile_save_cv_education(
     )
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    settings = user_data.get_settings(conn, user_id)
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "settings": settings,
+            "ats_targets": ats_targets,
+            "current_user": current_user,
+        },
+    )
+
+
+@app.post("/settings/search", response_class=HTMLResponse)
+async def settings_save_search(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    keywords: str = Form(""),
+    portal_queries: str = Form(""),
+    location: str = Form(""),
+    contract: str = Form("CDI"),
+    experience_max_years: int = Form(3),
+    salary_min: int = Form(0),
+    salary_max: int = Form(0),
+    target_companies: str = Form(""),
+    follow_up_days: int = Form(7),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    data = {
+        "keywords": [k.strip() for k in keywords.splitlines() if k.strip()],
+        "portal_queries": [k.strip() for k in portal_queries.splitlines() if k.strip()],
+        "location": location,
+        "contract": contract,
+        "experience_max_years": experience_max_years,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "target_companies": [
+            c.strip() for c in target_companies.splitlines() if c.strip()
+        ],
+        "follow_up_days": follow_up_days,
+    }
+    user_data.save_settings(conn, user_id, data)
+    conn.commit()
+    return templates.TemplateResponse(
+        request,
+        "partials/settings_search.html",
+        {"settings": data, "saved": True},
+    )
+
+
+@app.post("/settings/ats", response_class=HTMLResponse)
+async def settings_ats_add(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    name: str = Form(""),
+    careers_url: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.add_ats_target(conn, user_id, name, careers_url)
+    conn.commit()
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/settings_ats.html",
+        {"ats_targets": ats_targets},
+    )
+
+
+@app.delete("/settings/ats/{target_id}", response_class=HTMLResponse)
+async def settings_ats_delete(
+    request: Request,
+    target_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_ats_target(conn, user_id, target_id)
+    conn.commit()
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/settings_ats.html",
+        {"ats_targets": ats_targets},
+    )
+
+
 async def _run_scan_task(app_state: Any, user_id: str) -> None:
     try:
         from scripts.import_offers import (

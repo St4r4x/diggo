@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Added
+- `dashboard/app.py` — four new routes: `GET /settings`, `POST /settings/search`, `POST /settings/ats`, `DELETE /settings/ats/{target_id}`
+- `dashboard/templates/settings.html` — full settings page with search prefs and ATS targets sections
+- `dashboard/templates/partials/settings_search.html` — HTMX partial for search preferences form
+- `dashboard/templates/partials/settings_ats.html` — HTMX partial for ATS targets table
+- `dashboard/templates/base.html` — added Paramètres nav link
+- `tests/test_dashboard_app.py` — `TestSettings` class with 5 tests covering auth, page load, search save, ATS add/delete
+
+## 2026-07-05
+
 ### Fixed
 - `dashboard/user_data.py` — `delete_experience`: bullet delete now scoped to owned experiences via subquery, preventing cross-user data deletion
 - `dashboard/app.py` — renamed `/profile/summary` route to `/profile/text` (`profile_save_text`), form field from `summary` to `profile_md`

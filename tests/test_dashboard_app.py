@@ -882,6 +882,112 @@ class TestAuthRoutes:
         assert r.headers["location"] == "/login"
 
 
+_DEFAULT_SETTINGS = {
+    "keywords": [],
+    "portal_queries": [],
+    "location": "Paris",
+    "contract": "CDI",
+    "experience_max_years": 3,
+    "salary_min": 0,
+    "salary_max": 0,
+    "target_companies": [],
+    "follow_up_days": 7,
+}
+
+_ATS_STORE: list[dict] = []
+
+
+@pytest.fixture
+def authed_client(client: TestClient, monkeypatch) -> TestClient:
+    import user_data
+
+    monkeypatch.setattr(
+        user_data, "get_settings", lambda conn, uid: dict(_DEFAULT_SETTINGS)
+    )
+    monkeypatch.setattr(user_data, "save_settings", lambda conn, uid, data: None)
+
+    def _get_ats(conn, uid):
+        return list(_ATS_STORE)
+
+    def _add_ats(conn, uid, name, careers_url):
+        new_id = len(_ATS_STORE) + 1
+        _ATS_STORE.append({"id": new_id, "name": name, "careers_url": careers_url})
+        return new_id
+
+    def _del_ats(conn, uid, target_id):
+        _ATS_STORE[:] = [t for t in _ATS_STORE if t["id"] != target_id]
+
+    monkeypatch.setattr(user_data, "get_ats_targets", _get_ats)
+    monkeypatch.setattr(user_data, "add_ats_target", _add_ats)
+    monkeypatch.setattr(user_data, "delete_ats_target", _del_ats)
+    _ATS_STORE.clear()
+    return client
+
+
+class TestSettings:
+    def test_settings_page_requires_auth(self) -> None:
+        import app as dashboard_app
+        from auth import get_current_user
+
+        dashboard_app.app.dependency_overrides.pop(get_current_user, None)
+        c = TestClient(
+            dashboard_app.app, raise_server_exceptions=False, follow_redirects=False
+        )
+        r = c.get("/settings")
+        assert r.status_code == 302
+
+    def test_settings_page_ok(self, authed_client: TestClient) -> None:
+        r = authed_client.get("/settings")
+        assert r.status_code == 200
+        assert "Recherche" in r.text
+
+    def test_settings_search_post(self, authed_client: TestClient) -> None:
+        r = authed_client.post(
+            "/settings/search",
+            data={
+                "keywords": "AI Engineer\nML Engineer",
+                "portal_queries": "AI Engineer",
+                "location": "Paris",
+                "contract": "CDI",
+                "experience_max_years": "3",
+                "salary_min": "40000",
+                "salary_max": "60000",
+                "target_companies": "Mistral AI\nHugging Face",
+                "follow_up_days": "7",
+            },
+        )
+        assert r.status_code == 200
+
+    def test_settings_ats_add(self, authed_client: TestClient) -> None:
+        r = authed_client.post(
+            "/settings/ats",
+            data={
+                "name": "Mistral AI",
+                "careers_url": "https://jobs.lever.co/mistral",
+            },
+        )
+        assert r.status_code == 200
+        assert "Mistral AI" in r.text
+
+    def test_settings_ats_delete(self, authed_client: TestClient) -> None:
+        import re
+
+        add_resp = authed_client.post(
+            "/settings/ats",
+            data={
+                "name": "Mistral AI",
+                "careers_url": "https://jobs.lever.co/mistral",
+            },
+        )
+        assert add_resp.status_code == 200
+        m = re.search(r"/settings/ats/(\d+)", add_resp.text)
+        assert m, "No ATS target id found in response"
+        target_id = m.group(1)
+        del_resp = authed_client.delete(f"/settings/ats/{target_id}")
+        assert del_resp.status_code == 200
+        assert "Mistral AI" not in del_resp.text
+
+
 class TestReportWidget:
     def test_shows_no_report_message_when_none_exist(
         self, client: TestClient, tmp_path, monkeypatch

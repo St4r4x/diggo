@@ -16,6 +16,10 @@ from pathlib import Path
 
 from urllib.parse import urlparse
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+
 from scripts.dedup import deduplicate, normalize_offer_url
 from scripts.description_parser import parse_description
 from scripts.liveness import check_liveness

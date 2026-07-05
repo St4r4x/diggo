@@ -122,6 +122,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
+templates.env.globals["supabase_url"] = _SUPABASE_URL
+templates.env.globals["supabase_anon_key"] = _SUPABASE_ANON_KEY
 
 
 # ── Public auth routes ────────────────────────────────────────────────────────
@@ -129,43 +131,22 @@ templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "auth/login.html",
-        {
-            "supabase_url": _SUPABASE_URL,
-            "supabase_anon_key": _SUPABASE_ANON_KEY,
-        },
-    )
+    return templates.TemplateResponse(request, "auth/login.html")
 
 
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "auth/signup.html",
-        {
-            "supabase_url": _SUPABASE_URL,
-            "supabase_anon_key": _SUPABASE_ANON_KEY,
-        },
-    )
+    return templates.TemplateResponse(request, "auth/signup.html")
 
 
 @app.get("/auth/confirm", response_class=HTMLResponse)
 async def auth_confirm_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/confirm.html", {})
+    return templates.TemplateResponse(request, "auth/confirm.html")
 
 
 @app.get("/auth/reset-password", response_class=HTMLResponse)
 async def auth_reset_password_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "auth/reset-password.html",
-        {
-            "supabase_url": _SUPABASE_URL,
-            "supabase_anon_key": _SUPABASE_ANON_KEY,
-        },
-    )
+    return templates.TemplateResponse(request, "auth/reset-password.html")
 
 
 @app.post("/auth/session")

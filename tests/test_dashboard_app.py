@@ -848,14 +848,13 @@ class TestAuthRoutes:
         assert "login" in r.text.lower()
 
     def test_session_post_sets_cookies(self) -> None:
-        import app as dashboard_app
-
         import time
 
-        import jwt as _jwt
+        import app as dashboard_app
+        import jwt
 
         secret = os.environ["SUPABASE_JWT_SECRET"]
-        access_token = _jwt.encode(
+        access_token = jwt.encode(
             {
                 "sub": "u1",
                 "email": "t@t.com",

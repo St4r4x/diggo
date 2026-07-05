@@ -9,6 +9,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Changed
+- `dashboard/auth.py` — cache JWKS client with `_jwks_unavailable` flag to skip repeated failed fetches; collapse redundant `ExpiredSignatureError` branch into `InvalidTokenError`; replace per-call `os.getenv("DEV_AUTO_LOGIN")` with module-level constant
+- `dashboard/app.py` — move `supabase_url`/`supabase_anon_key` to `templates.env.globals`; drop per-route context injection
+- `tests/test_auth.py` — fix `test_get_current_user_expired_token` and `test_get_current_user_wrong_secret` to use cookie requests; remove duplicate `test_get_current_user_valid_cookie`
+
 ### Fixed
 - `dashboard/auth.py` — switched JWT validation to JWKS (ES256) via `PyJWKClient`; Supabase CLI recent versions sign tokens with ES256 not HS256; HS256 fallback kept for tests
 - `dashboard/auth.py` — removed `_ALGORITHM`/`_AUDIENCE` module constants; validation now dynamic via `_decode_token()`

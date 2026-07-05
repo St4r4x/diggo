@@ -13,18 +13,23 @@ _COOKIE_MAX_AGE_REFRESH = 604800
 CurrentUser = dict
 
 _DEV_USER: CurrentUser = {"sub": "dev-user-local", "email": "arnaud@local"}
+_DEV_AUTO_LOGIN: bool = os.getenv("DEV_AUTO_LOGIN") == "true"
 
 # Cached JWKS client — created lazily so tests can set env vars first.
 _jwks_client: jwt.PyJWKClient | None = None
+_jwks_unavailable: bool = False
 
 
 def _get_jwks_client() -> jwt.PyJWKClient | None:
-    global _jwks_client
+    global _jwks_client, _jwks_unavailable
+    if _jwks_unavailable:
+        return None
+    if _jwks_client is not None:
+        return _jwks_client
     supabase_url = os.getenv("SUPABASE_URL", "")
     if not supabase_url:
         return None
-    if _jwks_client is None:
-        _jwks_client = jwt.PyJWKClient(f"{supabase_url}/auth/v1/.well-known/jwks.json")
+    _jwks_client = jwt.PyJWKClient(f"{supabase_url}/auth/v1/.well-known/jwks.json")
     return _jwks_client
 
 
@@ -41,7 +46,7 @@ def _decode_token(token: str) -> dict:
                 audience="authenticated",
             )
         except jwt.PyJWKClientError:
-            pass  # JWKS unavailable — fall through to HS256
+            _jwks_unavailable = True  # skip future JWKS attempts until restart
 
     # HS256 fallback (used in tests where SUPABASE_URL is not set)
     secret = os.getenv("SUPABASE_JWT_SECRET", "")
@@ -60,15 +65,13 @@ def validate_access_token(token: str) -> CurrentUser:
 
 
 def get_current_user(request: Request) -> CurrentUser:
-    if os.getenv("DEV_AUTO_LOGIN") == "true":
+    if _DEV_AUTO_LOGIN:
         return _DEV_USER
     token = request.cookies.get(_COOKIE_SESSION)
     if not token:
         raise HTTPException(status_code=302, headers={"location": "/login"})
     try:
         payload = _decode_token(token)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=302, headers={"location": "/login"})
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=302, headers={"location": "/login"})
     return {"sub": payload["sub"], "email": payload.get("email", "")}

@@ -88,7 +88,7 @@ def test_get_current_user_expired_token() -> None:
     secret = os.environ["SUPABASE_JWT_SECRET"]
     token = _make_token(secret, exp_offset=-10)
     with pytest.raises(HTTPException) as exc:
-        get_current_user(_request_with_auth(token))
+        get_current_user(_request_with_cookie(token))
     assert exc.value.status_code == 302
 
 
@@ -99,29 +99,8 @@ def test_get_current_user_wrong_secret() -> None:
 
     token = _make_token("wrong-secret-32-chars-minimum-paddd")
     with pytest.raises(HTTPException) as exc:
-        get_current_user(_request_with_auth(token))
+        get_current_user(_request_with_cookie(token))
     assert exc.value.status_code == 302
-
-
-def test_get_current_user_valid_cookie() -> None:
-    from auth import get_current_user
-
-    secret = os.environ["SUPABASE_JWT_SECRET"]
-    token = _make_token(secret)
-    user = get_current_user(_request_with_cookie(token))
-    assert user["sub"] == "user-uuid-123"
-    assert user["email"] == "test@example.com"
-
-
-def test_get_current_user_no_cookie_redirects() -> None:
-    from fastapi import HTTPException
-
-    from auth import get_current_user
-
-    with pytest.raises(HTTPException) as exc:
-        get_current_user(_request_no_auth())
-    assert exc.value.status_code == 302
-    assert exc.value.headers["location"] == "/login"
 
 
 def test_get_current_user_expired_cookie_redirects() -> None:

@@ -22,6 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)
 
 ### Changed
+- `docker-compose.yml` — override `DATABASE_URL` to `postgres:5432` in dashboard and pipeline services (env_file uses localhost, which is wrong inside Docker)
 - `scripts/import_offers.py` — replace sqlite3 with psycopg2; `import_offers`, `import_offers_with_liveness`, and `expire_stale_offers` now accept `user_id: str` instead of `db_path: Path`; CLI requires `--user-id UUID`; `_DATABASE_URL` read from env
 - `tests/test_import_offers.py` — migrated to PostgreSQL temp table fixture; `mock_pg_connect` fixture redirects `psycopg2.connect` to the test connection; added user-scoping test
 - `dashboard/app.py` — rewritten to use PostgreSQL via `open_db(DATABASE_URL)`; every route now has `Depends(get_current_user)` and passes `user_id` to all DB calls; `_run_scan_task` and `_start_scan` accept explicit `user_id`

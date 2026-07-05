@@ -25,6 +25,8 @@ services:
       - ./output:/app/output
       - ./config:/app/config:ro
     env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://career:career@postgres:5432/career
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +40,8 @@ services:
       - ./output:/app/output
       - ./config:/app/config:ro
     env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://career:career@postgres:5432/career
     depends_on:
       postgres:
         condition: service_healthy

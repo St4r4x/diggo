@@ -1224,3 +1224,24 @@ class TestOfferPrepare:
         assert "Échec de la préparation IA" in r.text
         offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
         assert offer["cv_path"] == ""
+
+    def test_prepare_pdf_rendering_failure_shows_error_and_writes_nothing(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+        self._patch_phases(monkeypatch, dashboard_app)
+
+        def _fail_render(ctx: dict, **kw: object) -> None:
+            raise RuntimeError("weasyprint boom")
+
+        monkeypatch.setattr("scripts.generate_pdf.generate_pdf", _fail_render)
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        assert "Échec de la génération des PDF" in r.text
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == ""

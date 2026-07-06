@@ -443,57 +443,65 @@ async def offer_prepare(
 
     today = str(_date.today())
 
-    cv_context = build_cv_context(
-        name=profile["name"],
-        title=profile["title"],
-        email=profile["email"],
-        phone=profile["phone"],
-        location=profile["location"],
-        summary=cv_rewrite.summary,
-        experience=cv["experience"],
-        skill_categories=_group_skills_by_category(cv["skills"]),
-        highlighted_skills=cv_rewrite.highlighted_skills,
-        education=cv["education"],
-        languages=[],
-        linkedin=profile["linkedin"],
-        github=profile["github"],
-        certifications=cv["certifications"],
-    )
-    cv_path = generate_cv_pdf(
-        cv_context, offer=offer["company"], output_date=today, lang=cv_lang
-    )
+    try:
+        cv_context = build_cv_context(
+            name=profile["name"],
+            title=profile["title"],
+            email=profile["email"],
+            phone=profile["phone"],
+            location=profile["location"],
+            summary=cv_rewrite.summary,
+            experience=cv["experience"],
+            skill_categories=_group_skills_by_category(cv["skills"]),
+            highlighted_skills=cv_rewrite.highlighted_skills,
+            education=cv["education"],
+            languages=[],
+            linkedin=profile["linkedin"],
+            github=profile["github"],
+            certifications=cv["certifications"],
+        )
+        cv_path = generate_cv_pdf(
+            cv_context, offer=offer["company"], output_date=today, lang=cv_lang
+        )
 
-    recipient = (
-        "Madame, Monsieur," if analysis.offer_language == "fr" else "Dear Hiring Team,"
-    )
-    cl_context = build_cover_letter_context(
-        name=profile["name"],
-        title=profile["title"],
-        email=profile["email"],
-        phone=profile["phone"],
-        location=profile["location"],
-        date_str=today,
-        company=offer["company"],
-        role=offer["role"],
-        recipient=recipient,
-        paragraphs=cover_letter_draft.paragraphs,
-        lang=analysis.offer_language,
-    )
-    cl_path = generate_cl_pdf(cl_context, offer=offer["company"], output_date=today)
-
-    prep_path = None
-    if prep_draft is not None:
-        prep_context = build_prep_sheet_context(
+        recipient = (
+            "Madame, Monsieur,"
+            if analysis.offer_language == "fr"
+            else "Dear Hiring Team,"
+        )
+        cl_context = build_cover_letter_context(
+            name=profile["name"],
+            title=profile["title"],
+            email=profile["email"],
+            phone=profile["phone"],
+            location=profile["location"],
+            date_str=today,
             company=offer["company"],
             role=offer["role"],
-            date_str=today,
-            company_summary=prep_draft.company_summary,
-            tech_stack=prep_draft.tech_stack,
-            questions=prep_draft.questions,
+            recipient=recipient,
+            paragraphs=cover_letter_draft.paragraphs,
+            lang=analysis.offer_language,
         )
-        prep_path = generate_prep_pdf(
-            prep_context, offer=offer["company"], output_date=today
-        )
+        cl_path = generate_cl_pdf(cl_context, offer=offer["company"], output_date=today)
+
+        prep_path = None
+        if prep_draft is not None:
+            prep_context = build_prep_sheet_context(
+                company=offer["company"],
+                role=offer["role"],
+                date_str=today,
+                company_summary=prep_draft.company_summary,
+                tech_stack=prep_draft.tech_stack,
+                questions=prep_draft.questions,
+            )
+            prep_path = generate_prep_pdf(
+                prep_context, offer=offer["company"], output_date=today
+            )
+    except Exception as exc:
+        # PDF rendering (WeasyPrint/Jinja2) can fail in ways we can't enumerate up
+        # front; the design spec requires any rendering failure to surface as a
+        # clear error, not a 500 - see docs/superpowers/specs/2026-07-06-llm-migration-design.md.
+        return _error(f"Échec de la génération des PDF : {exc}")
 
     offer = db.update(
         offer_id,

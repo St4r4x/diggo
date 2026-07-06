@@ -33,6 +33,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_rescore.py` — rewritten to use a PostgreSQL temp-table fixture and pass `user_id` to `rescore()`, matching the psycopg2 migration in `scripts/rescore.py`
 - `tests/test_dashboard_app.py` — `TestScan` fake `load_settings`/`_run_pipeline` fixtures updated to accept `user_id` kwarg, matching the real `_run_scan_task` call signatures
 - `scripts/pre_filter.py` — `score_offer()`/`pre_filter()` read `settings["search"]`/`settings["scoring"]`, the nested shape used only by `settings.yaml`; DB-backed settings are flat (`keywords`, `location`, `salary_min`/`salary_max` at top level), so `search_cfg`/`scoring_cfg` were always empty for any DB user, silently dropping the keyword-match and location-match score bonuses and sinking every real offer below the 3.0 threshold — this is why the scanner returned zero offers; now falls back to the settings dict itself when the nested key is absent
+- `dashboard/app.py` — `POST /offers/{offer_id}/prepare` now catches PDF-rendering failures (WeasyPrint/Jinja2) and surfaces them via the `prep_error` banner instead of an unhandled 500, per the design spec's "any failure (LLM/grounding/rendering)" requirement
 
 ## 2026-07-05
 

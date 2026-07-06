@@ -12,7 +12,8 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from openai import OpenAI, OpenAIError
 
 logger = logging.getLogger(__name__)
@@ -49,14 +50,14 @@ def _call_groq(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    generation_config = {"response_mime_type": "application/json"} if json_mode else {}
-    model = genai.GenerativeModel(
-        _GEMINI_MODEL,
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    config = types.GenerateContentConfig(
         system_instruction=system_prompt,
-        generation_config=generation_config,
+        response_mime_type="application/json" if json_mode else None,
     )
-    response = model.generate_content(user_prompt)
+    response = client.models.generate_content(
+        model=_GEMINI_MODEL, contents=user_prompt, config=config
+    )
     return response.text or ""
 
 

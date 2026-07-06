@@ -20,6 +20,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_llm.py` — tests for `rewrite_cv_summary()` verifying known skills are kept and unknown skills are silently dropped
 - `tests/test_llm.py` — tests for `write_cover_letter()` covering valid citations accepted immediately, invalid-then-valid (retry succeeds), and invalid-twice (raises `GroundingError`)
 
+### Changed
+- `dashboard/llm.py` — migrate `_call_gemini` from the deprecated `google-generativeai` package to `google-genai` (`genai.Client`/`client.models.generate_content`); `google-generativeai` has ended all support upstream
+
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly
 - `scripts/pre_filter.py` — `_all_target_companies()` assumed `target_companies` is always a dict of categories (`settings.yaml` shape); DB-backed settings store it as a flat list, causing `AttributeError` in `rescore()`/`score_offer()` for any user without a `settings.yaml` file; now handles both shapes

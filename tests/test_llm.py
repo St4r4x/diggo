@@ -91,3 +91,64 @@ def test_analyze_offer_parses_llm_response(monkeypatch: pytest.MonkeyPatch) -> N
     assert analysis.offer_language == "en"
     assert analysis.requires_english_cv is True
     assert analysis.gaps == ["Kubernetes"]
+
+
+_SAMPLE_CV = {
+    "meta": {"summary": "AI engineer with a background in sales."},
+    "experience": [
+        {
+            "id": 1,
+            "title": "AI Engineer",
+            "company": "Missia",
+            "bullets": ["Built RAG pipelines"],
+        }
+    ],
+    "skills": [
+        {"id": 1, "category": "ML", "skill": "PyTorch", "sort_order": 0},
+        {"id": 2, "category": "ML", "skill": "scikit-learn", "sort_order": 1},
+    ],
+    "certifications": [],
+    "education": [],
+}
+
+
+def test_rewrite_cv_summary_keeps_known_skills(monkeypatch: pytest.MonkeyPatch) -> None:
+    canned = {"highlighted_skills": ["PyTorch"], "summary": "Tailored summary."}
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
+    analysis = llm.OfferAnalysis(
+        top_skills=["PyTorch"],
+        keywords=[],
+        company_context="",
+        gaps=[],
+        hook_angle="",
+        offer_language="fr",
+        requires_english_cv=False,
+    )
+
+    result = llm.rewrite_cv_summary({}, _SAMPLE_CV, analysis)
+
+    assert result.highlighted_skills == ["PyTorch"]
+    assert result.summary == "Tailored summary."
+
+
+def test_rewrite_cv_summary_drops_unknown_skill(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canned = {
+        "highlighted_skills": ["PyTorch", "Kubernetes"],
+        "summary": "Tailored summary.",
+    }
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
+    analysis = llm.OfferAnalysis(
+        top_skills=["PyTorch", "Kubernetes"],
+        keywords=[],
+        company_context="",
+        gaps=["Kubernetes"],
+        hook_angle="",
+        offer_language="fr",
+        requires_english_cv=False,
+    )
+
+    result = llm.rewrite_cv_summary({}, _SAMPLE_CV, analysis)
+
+    assert result.highlighted_skills == ["PyTorch"]

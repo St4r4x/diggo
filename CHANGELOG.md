@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-06 (continued)
+
+### Added
+- `dashboard/llm.py` — `CvRewrite` dataclass and `rewrite_cv_summary(profile, cv, analysis)` function (Phase 2), rewriting the candidate's CV summary to match a specific offer while filtering LLM-suggested skills against the candidate's known skill list
+- `tests/test_llm.py` — tests for `rewrite_cv_summary()` verifying known skills are kept and unknown skills are silently dropped
+
+### Changed
+
+### Fixed
+
 ## 2026-07-06
 
 ### Added

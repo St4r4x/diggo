@@ -138,3 +138,43 @@ def analyze_offer(offer: dict[str, Any]) -> OfferAnalysis:
         offer_language=str(data["offer_language"]),
         requires_english_cv=bool(data["requires_english_cv"]),
     )
+
+
+@dataclass
+class CvRewrite:
+    highlighted_skills: list[str]
+    summary: str
+
+
+_REWRITE_CV_SUMMARY_SCHEMA = {"highlighted_skills": ["string"], "summary": "string"}
+
+_REWRITE_CV_SUMMARY_SYSTEM_PROMPT = (
+    "You rewrite a candidate's CV summary to mirror a specific job posting. "
+    "Never invent skills the candidate doesn't have."
+)
+
+
+def rewrite_cv_summary(
+    profile: dict[str, Any], cv: dict[str, Any], analysis: OfferAnalysis
+) -> CvRewrite:
+    known_skills = [s["skill"] for s in cv.get("skills", [])]
+    lang = "English" if analysis.requires_english_cv else "French"
+    user_prompt = (
+        f"Candidate's known skills: {known_skills}\n"
+        f"Candidate's current CV summary: {cv.get('meta', {}).get('summary', '')}\n"
+        f"Target offer top_skills: {analysis.top_skills}\n"
+        f"Target offer keywords: {analysis.keywords}\n\n"
+        "Pick highlighted_skills: a subset of the candidate's known skills above "
+        "that match the offer's top_skills (never invent a skill not in the known "
+        f"list). Write a 2-sentence summary in {lang} mirroring the offer's role "
+        "and domain."
+    )
+    raw = call_llm(
+        _REWRITE_CV_SUMMARY_SYSTEM_PROMPT,
+        user_prompt,
+        json_schema=_REWRITE_CV_SUMMARY_SCHEMA,
+    )
+    data = json.loads(raw)
+    valid_skills = set(known_skills)
+    highlighted = [s for s in data["highlighted_skills"] if s in valid_skills]
+    return CvRewrite(highlighted_skills=highlighted, summary=str(data["summary"]))

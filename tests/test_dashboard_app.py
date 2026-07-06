@@ -32,6 +32,7 @@ CREATE TEMP TABLE applications (
     notes TEXT NOT NULL DEFAULT '',
     cv_path TEXT NOT NULL DEFAULT '',
     cover_letter_path TEXT NOT NULL DEFAULT '',
+    prep_sheet_path TEXT NOT NULL DEFAULT '',
     follow_up_date TEXT,
     description TEXT NOT NULL DEFAULT '',
     portal TEXT NOT NULL DEFAULT ''
@@ -252,6 +253,22 @@ class TestOfferDetail:
         r = client_with_data.get(f"/offers/{row['id']}")
         assert r.status_code == 200
         assert "This is a long job description" in r.text
+
+    def test_offer_detail_includes_prep_sheet_path(
+        self, client_with_data: TestClient
+    ) -> None:
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        db.update(
+            1,
+            {"prep_sheet_path": "output/acme-2026-07-06/prep-sheet.pdf"},
+            user_id=TEST_USER_ID,
+        )
+        r = client_with_data.get("/offers/1")
+        assert r.status_code == 200
+        offer = db.get_by_id(1, user_id=TEST_USER_ID)
+        assert offer["prep_sheet_path"] == "output/acme-2026-07-06/prep-sheet.pdf"
 
 
 class TestOfferEdit:

@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-06
 
+### Added
+- `alembic/versions/0003_prep_sheet_path.py` — adds `applications.prep_sheet_path` column, needed for the upcoming server-side candidature-prep pipeline (Group 1 of the deployment roadmap)
+
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly
 - `scripts/pre_filter.py` — `_all_target_companies()` assumed `target_companies` is always a dict of categories (`settings.yaml` shape); DB-backed settings store it as a flat list, causing `AttributeError` in `rescore()`/`score_offer()` for any user without a `settings.yaml` file; now handles both shapes

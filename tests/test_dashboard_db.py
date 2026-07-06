@@ -29,6 +29,7 @@ CREATE TEMP TABLE applications (
     notes TEXT NOT NULL DEFAULT '',
     cv_path TEXT NOT NULL DEFAULT '',
     cover_letter_path TEXT NOT NULL DEFAULT '',
+    prep_sheet_path TEXT NOT NULL DEFAULT '',
     follow_up_date TEXT,
     description TEXT NOT NULL DEFAULT '',
     portal TEXT NOT NULL DEFAULT ''

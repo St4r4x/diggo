@@ -27,6 +27,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `requirements.txt` — add `openai` and `google-genai` for the server-side LLM pipeline
 - `.env.example` — add `GEMINI_API_KEY` (Gemini fallback for the LLM pipeline)
 - `dashboard/llm.py` — migrate `_call_gemini` from the deprecated `google-generativeai` package to `google-genai` (`genai.Client`/`client.models.generate_content`); `google-generativeai` has ended all support upstream
+- `dashboard/llm.py` — swap primary LLM provider from Groq direct API to Hugging Face's OpenAI-compatible Inference Providers router (`openai/gpt-oss-120b`), avoiding an outage on Groq's own signup flow; also fix `_GEMINI_MODEL` from the deprecated `gemini-2.0-flash` to `gemini-2.5-flash`
+- `.env.example` — replace `GROQ_API_KEY` with `HF_TOKEN`
 - `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
 - `README.md` — add `POST /offers/{offer_id}/prepare` to the Dashboard routes table
 

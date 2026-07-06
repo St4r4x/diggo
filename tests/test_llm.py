@@ -11,25 +11,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 import llm
 
 
-def test_call_llm_uses_groq_when_it_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm, "_call_groq", lambda *a, **k: "groq answer")
+def test_call_llm_uses_hf_when_it_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm, "_call_hf", lambda *a, **k: "hf answer")
 
     def _fail_gemini(*a: object, **k: object) -> str:
-        raise AssertionError("gemini should not be called when groq succeeds")
+        raise AssertionError("gemini should not be called when hf succeeds")
 
     monkeypatch.setattr(llm, "_call_gemini", _fail_gemini)
 
     result = llm.call_llm("system", "user")
-    assert result == "groq answer"
+    assert result == "hf answer"
 
 
-def test_call_llm_falls_back_to_gemini_on_groq_failure(
+def test_call_llm_falls_back_to_gemini_on_hf_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _fail_groq(*a: object, **k: object) -> str:
-        raise llm.OpenAIError("groq is down")
+    def _fail_hf(*a: object, **k: object) -> str:
+        raise llm.OpenAIError("hf is down")
 
-    monkeypatch.setattr(llm, "_call_groq", _fail_groq)
+    monkeypatch.setattr(llm, "_call_hf", _fail_hf)
     monkeypatch.setattr(llm, "_call_gemini", lambda *a, **k: "gemini answer")
 
     result = llm.call_llm("system", "user")
@@ -39,13 +39,13 @@ def test_call_llm_falls_back_to_gemini_on_groq_failure(
 def test_call_llm_raises_llm_error_when_both_providers_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _fail_groq(*a: object, **k: object) -> str:
-        raise llm.OpenAIError("groq is down")
+    def _fail_hf(*a: object, **k: object) -> str:
+        raise llm.OpenAIError("hf is down")
 
     def _fail_gemini(*a: object, **k: object) -> str:
         raise RuntimeError("gemini is down")
 
-    monkeypatch.setattr(llm, "_call_groq", _fail_groq)
+    monkeypatch.setattr(llm, "_call_hf", _fail_hf)
     monkeypatch.setattr(llm, "_call_gemini", _fail_gemini)
 
     with pytest.raises(llm.LLMError):
@@ -61,7 +61,7 @@ def test_call_llm_appends_json_schema_hint_to_user_prompt(
         seen_prompts.append(user_prompt)
         return "{}"
 
-    monkeypatch.setattr(llm, "_call_groq", _capture)
+    monkeypatch.setattr(llm, "_call_hf", _capture)
     llm.call_llm("system", "user", json_schema={"foo": "bar"})
     assert '"foo": "bar"' in seen_prompts[0]
 

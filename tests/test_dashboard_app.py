@@ -540,7 +540,9 @@ class TestScan:
         dashboard_app.app.state.scan_status = "idle"
         dashboard_app.app.state.scan_result = {"inserted": 0, "skipped": 0, "error": ""}
 
-        async def fake_run_pipeline(_settings, *, skip_descriptions=False):
+        async def fake_run_pipeline(
+            _settings, *, skip_descriptions=False, user_id=None
+        ):
             return []
 
         def fake_import_offers(_offers, user_id):
@@ -549,7 +551,7 @@ class TestScan:
         def fake_expire_stale(_url=None, user_id=None):
             return 0
 
-        def fake_load_settings():
+        def fake_load_settings(user_id=None):
             return {}
 
         monkeypatch.setattr("scripts.import_offers._run_pipeline", fake_run_pipeline)
@@ -580,10 +582,12 @@ class TestScan:
             "error": "",
         }
 
-        async def fake_run_pipeline(_settings, *, skip_descriptions=False):
+        async def fake_run_pipeline(
+            _settings, *, skip_descriptions=False, user_id=None
+        ):
             raise RuntimeError("Connection refused")
 
-        def fake_load_settings():
+        def fake_load_settings(user_id=None):
             return {}
 
         monkeypatch.setattr("scripts.import_offers._run_pipeline", fake_run_pipeline)

@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-import sqlite3
+import os
 
+import psycopg2
+import pytest
 
-_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS applications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+PG_URL = os.getenv("DATABASE_URL", "postgresql://career:career@localhost:5432/career")
+TEST_USER_ID = "test-rescore-user"
+
+_CREATE_TEMP = """
+CREATE TEMP TABLE applications (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL DEFAULT 'test-user',
     company TEXT NOT NULL,
     role TEXT NOT NULL,
     offer_url TEXT NOT NULL DEFAULT '',
     detection_date TEXT NOT NULL DEFAULT '2026-01-01',
     score_grade TEXT NOT NULL DEFAULT 'F',
-    score_value REAL NOT NULL DEFAULT 1.0,
+    score_value FLOAT NOT NULL DEFAULT 1.0,
     status TEXT NOT NULL DEFAULT 'À envoyer',
     send_date TEXT,
     contacts TEXT NOT NULL DEFAULT '',
@@ -26,24 +32,34 @@ CREATE TABLE IF NOT EXISTS applications (
 """
 
 
-def _make_db(offers: list[dict]) -> sqlite3.Connection:
-    conn = sqlite3.connect(":memory:")
-    conn.execute(_CREATE_SQL)
-    for o in offers:
-        conn.execute(
-            "INSERT INTO applications (company, role, offer_url, score_grade, score_value, description) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                o.get("company", "Corp"),
-                o.get("role", "Dev"),
-                o.get("offer_url", "https://example.com"),
-                o.get("score_grade", "F"),
-                o.get("score_value", 1.0),
-                o.get("description", ""),
-            ),
-        )
+@pytest.fixture
+def pg_conn():
+    conn = psycopg2.connect(PG_URL)
+    conn.autocommit = False
+    with conn.cursor() as cur:
+        cur.execute(_CREATE_TEMP)
     conn.commit()
-    return conn
+    yield conn
+    conn.close()
+
+
+def _seed(conn, offers: list[dict]) -> None:
+    with conn.cursor() as cur:
+        for o in offers:
+            cur.execute(
+                "INSERT INTO applications (user_id, company, role, offer_url, score_grade, score_value, description) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (
+                    TEST_USER_ID,
+                    o.get("company", "Corp"),
+                    o.get("role", "Dev"),
+                    o.get("offer_url", "https://example.com"),
+                    o.get("score_grade", "F"),
+                    o.get("score_value", 1.0),
+                    o.get("description", ""),
+                ),
+            )
+    conn.commit()
 
 
 class TestInferPortal:
@@ -76,10 +92,11 @@ class TestInferPortal:
 
 
 class TestRescore:
-    def test_dry_run_no_db_changes(self) -> None:
+    def test_dry_run_no_db_changes(self, pg_conn) -> None:
         from scripts.rescore import rescore
 
-        conn = _make_db(
+        _seed(
+            pg_conn,
             [
                 {
                     "company": "Mistral AI",
@@ -88,17 +105,22 @@ class TestRescore:
                     "score_value": 1.0,
                     "description": "python pytorch docker CDI 45k€ 2 ans d'expérience",
                 },
-            ]
+            ],
         )
-        row_before = conn.execute("SELECT score_grade FROM applications").fetchone()[0]
-        rescore(conn, dry_run=True)
-        row_after = conn.execute("SELECT score_grade FROM applications").fetchone()[0]
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT score_grade FROM applications")
+            row_before = cur.fetchone()[0]
+        rescore(pg_conn, TEST_USER_ID, dry_run=True)
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT score_grade FROM applications")
+            row_after = cur.fetchone()[0]
         assert row_before == row_after == "F"
 
-    def test_rescore_updates_grades(self) -> None:
+    def test_rescore_updates_grades(self, pg_conn) -> None:
         from scripts.rescore import rescore
 
-        conn = _make_db(
+        _seed(
+            pg_conn,
             [
                 {
                     "company": "Mistral AI",
@@ -107,19 +129,20 @@ class TestRescore:
                     "score_value": 1.0,
                     "description": "python pytorch docker mlops CDI 45k€ 2 ans d'expérience",
                 },
-            ]
+            ],
         )
-        stats = rescore(conn, dry_run=False)
-        row = conn.execute(
-            "SELECT score_grade, score_value FROM applications"
-        ).fetchone()
+        rescore(pg_conn, TEST_USER_ID, dry_run=False)
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT score_grade, score_value FROM applications")
+            row = cur.fetchone()
         assert row[0] != "F"
         assert row[1] > 1.0
 
-    def test_rescore_idempotent(self) -> None:
+    def test_rescore_idempotent(self, pg_conn) -> None:
         from scripts.rescore import rescore
 
-        conn = _make_db(
+        _seed(
+            pg_conn,
             [
                 {
                     "company": "Corp",
@@ -128,22 +151,23 @@ class TestRescore:
                     "score_value": 1.0,
                     "description": "python docker CDI",
                 },
-            ]
+            ],
         )
-        rescore(conn, dry_run=False)
-        row_first = conn.execute(
-            "SELECT score_grade, score_value FROM applications"
-        ).fetchone()
-        rescore(conn, dry_run=False)
-        row_second = conn.execute(
-            "SELECT score_grade, score_value FROM applications"
-        ).fetchone()
+        rescore(pg_conn, TEST_USER_ID, dry_run=False)
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT score_grade, score_value FROM applications")
+            row_first = cur.fetchone()
+        rescore(pg_conn, TEST_USER_ID, dry_run=False)
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT score_grade, score_value FROM applications")
+            row_second = cur.fetchone()
         assert row_first == row_second
 
-    def test_rescore_returns_summary(self) -> None:
+    def test_rescore_returns_summary(self, pg_conn) -> None:
         from scripts.rescore import rescore
 
-        conn = _make_db(
+        _seed(
+            pg_conn,
             [
                 {
                     "company": "Corp",
@@ -152,9 +176,9 @@ class TestRescore:
                     "score_value": 1.0,
                     "description": "python docker CDI 45k€",
                 },
-            ]
+            ],
         )
-        stats = rescore(conn, dry_run=False)
+        stats = rescore(pg_conn, TEST_USER_ID, dry_run=False)
         assert "total" in stats
         assert "changed" in stats
         assert isinstance(stats["total"], int)

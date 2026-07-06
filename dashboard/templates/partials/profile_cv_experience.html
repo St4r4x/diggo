@@ -34,7 +34,7 @@
       </div>
       <label class="pf-label">Bullets (un par ligne)</label>
       <textarea class="pf-input" data-exp="{{ loop.index0 }}" data-field="bullets" rows="3"
-                style="resize:vertical;font-family:monospace">{{ exp.bullets | map(attribute='text') | join('\n') }}</textarea>
+                style="resize:vertical;font-family:monospace">{{ exp.bullets | join('\n') }}</textarea>
     </div>
     {% else %}
     <p class="pf-label">Aucune expérience.</p>

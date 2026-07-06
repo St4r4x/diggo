@@ -169,11 +169,14 @@ def _normalize_company(name: str) -> str:
 
 
 def _all_target_companies(settings: dict) -> set[str]:
-    companies: set[str] = set()
-    for category in settings.get("target_companies", {}).values():
-        for name in category:
-            companies.add(_normalize_company(name))
-    return companies
+    # target_companies is a flat list from the DB, a dict of categories from settings.yaml
+    targets = settings.get("target_companies", [])
+    names = (
+        targets
+        if isinstance(targets, list)
+        else [name for category in targets.values() for name in category]
+    )
+    return {_normalize_company(name) for name in names}
 
 
 def _score_salary(

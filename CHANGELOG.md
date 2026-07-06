@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-06
+
+### Fixed
+- `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly
+- `scripts/pre_filter.py` — `_all_target_companies()` assumed `target_companies` is always a dict of categories (`settings.yaml` shape); DB-backed settings store it as a flat list, causing `AttributeError` in `rescore()`/`score_offer()` for any user without a `settings.yaml` file; now handles both shapes
+- `tests/test_rescore.py` — rewritten to use a PostgreSQL temp-table fixture and pass `user_id` to `rescore()`, matching the psycopg2 migration in `scripts/rescore.py`
+- `tests/test_dashboard_app.py` — `TestScan` fake `load_settings`/`_run_pipeline` fixtures updated to accept `user_id` kwarg, matching the real `_run_scan_task` call signatures
+
 ## 2026-07-05
 
 ### Fixed

@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-06 (continued)
+
+### Added
+- `dashboard/llm.py` — `PrepSheetDraft` dataclass and `generate_prep_questions(offer, analysis)` function (Phase 4), generating 2-3 sentence company summaries, technology stack lists, and 8-12 interview questions covering technical depth, MLOps/deployment, behavioural, and why-this-role topics
+- `tests/test_llm.py` — test for `generate_prep_questions()` verifying JSON response parsing into `PrepSheetDraft` dataclass fields
+
 ## 2026-07-06
 
 ### Added

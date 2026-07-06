@@ -288,3 +288,45 @@ def write_cover_letter(
     raise GroundingError(
         f"Cover letter still cites invalid experience_id after retry: {invalid}"
     )
+
+
+@dataclass
+class PrepSheetDraft:
+    company_summary: str
+    tech_stack: list[str]
+    questions: list[dict[str, str]]
+
+
+_PREP_SHEET_SCHEMA = {
+    "company_summary": "string",
+    "tech_stack": ["string"],
+    "questions": [{"theme": "string", "question": "string"}],
+}
+
+_PREP_SHEET_SYSTEM_PROMPT = (
+    "You write interview prep sheets: a company summary and 8-12 interview "
+    "questions covering technical depth, MLOps/deployment, behavioural (STAR "
+    "format), and why-this-role."
+)
+
+
+def generate_prep_questions(
+    offer: dict[str, Any], analysis: OfferAnalysis
+) -> PrepSheetDraft:
+    user_prompt = (
+        f"Company: {offer.get('company', '')}\nRole: {offer.get('role', '')}\n"
+        f"Company context: {analysis.company_context}\n"
+        f"Top skills required: {analysis.top_skills}\n\n"
+        "Write a 2-3 sentence company_summary, a tech_stack list, and 8-12 "
+        "questions covering technical depth (linked to top_skills), "
+        "MLOps/deployment, behavioural, and why-us/why-this-role."
+    )
+    raw = call_llm(
+        _PREP_SHEET_SYSTEM_PROMPT, user_prompt, json_schema=_PREP_SHEET_SCHEMA
+    )
+    data = json.loads(raw)
+    return PrepSheetDraft(
+        company_summary=str(data["company_summary"]),
+        tech_stack=list(data["tech_stack"]),
+        questions=list(data["questions"]),
+    )

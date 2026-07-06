@@ -227,3 +227,27 @@ def test_write_cover_letter_raises_grounding_error_after_second_invalid_citation
 
     with pytest.raises(llm.GroundingError):
         llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+
+
+def test_generate_prep_questions_parses_llm_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canned = {
+        "company_summary": "AI startup building developer tools.",
+        "tech_stack": ["Python", "Kubernetes"],
+        "questions": [
+            {
+                "theme": "Technique ML",
+                "question": "How would you deploy a RAG pipeline?",
+            },
+            {"theme": "MLOps", "question": "How do you monitor model drift?"},
+        ],
+    }
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
+
+    result = llm.generate_prep_questions(_SAMPLE_OFFER, _analysis())
+
+    assert result.company_summary == "AI startup building developer tools."
+    assert result.tech_stack == ["Python", "Kubernetes"]
+    assert len(result.questions) == 2
+    assert result.questions[0]["theme"] == "Technique ML"

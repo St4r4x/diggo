@@ -178,3 +178,112 @@ def rewrite_cv_summary(
     valid_skills = set(known_skills)
     highlighted = [s for s in data["highlighted_skills"] if s in valid_skills]
     return CvRewrite(highlighted_skills=highlighted, summary=str(data["summary"]))
+
+
+@dataclass
+class CoverLetterDraft:
+    paragraphs: list[str]
+    citations: list[dict[str, Any]]
+
+
+_COVER_LETTER_SCHEMA = {
+    "paragraphs": ["string", "string", "string"],
+    "citations": [{"claim": "string", "experience_id": 0}],
+}
+
+_BANNED_PHRASES = [
+    "Je suis très motivé",
+    "passionné par",
+    "je me permets de",
+    "dans l'espoir de",
+    "à fort impact",
+    "de bout en bout",
+    "production-first",
+    "rigueur technique",
+    "mettre mes compétences au service de",
+    "je serais ravi d'échanger sur la façon dont",
+    "dans l'attente de votre retour",
+]
+
+_PIVOT_SENTENCE = {
+    "fr": (
+        "Une reconversion délibérée : 8 ans à manager une équipe commerciale, "
+        "puis formation en AI engineering, me permet d'allier profondeur "
+        "technique et capacité à travailler avec des interlocuteurs non "
+        "techniques."
+    ),
+    "en": (
+        "A deliberate pivot: eight years leading a sales team, then "
+        "retraining as an AI engineer, means I bring both technical depth "
+        "and the communication skills to work directly with non-technical "
+        "stakeholders."
+    ),
+}
+
+_COVER_LETTER_SYSTEM_PROMPT = (
+    "You write cover letters for a candidate who pivoted from 8 years in "
+    "sales management to AI engineering. Every claim of professional "
+    "accomplishment must cite an experience_id from the provided experience "
+    "list, never invent one. Never use these phrases: "
+    + "; ".join(_BANNED_PHRASES)
+    + ". No em-dashes or en-dashes; use commas, periods, colons, or rephrase."
+)
+
+
+def write_cover_letter(
+    profile: dict[str, Any],
+    cv: dict[str, Any],
+    offer: dict[str, Any],
+    analysis: OfferAnalysis,
+) -> CoverLetterDraft:
+    experiences = [
+        {
+            "experience_id": e["id"],
+            "title": e.get("title", ""),
+            "company": e.get("company", ""),
+            "bullets": e.get("bullets", []),
+        }
+        for e in cv.get("experience", [])
+    ]
+    valid_ids = {e["id"] for e in cv.get("experience", [])}
+    lang = analysis.offer_language
+    pivot = _PIVOT_SENTENCE.get(lang, _PIVOT_SENTENCE["fr"])
+    base_user_prompt = (
+        f"Company: {offer.get('company', '')}\nRole: {offer.get('role', '')}\n"
+        f"Company context: {analysis.company_context}\n"
+        f"Hook angle: {analysis.hook_angle}\n"
+        f"Candidate's experience (cite only these experience_id values): "
+        f"{experiences}\n\n"
+        f"Write in {lang}. 3 paragraphs, under 300 words total:\n"
+        "1. Hook: one concrete reason tied to the hook_angle, never generic.\n"
+        "2. Proof: 2 specific experiences from the list above, each backed by "
+        "a citation.\n"
+        f'3. Close: include this sentence verbatim: "{pivot}" then mention '
+        "availability.\n"
+        "Return citations as a list of {claim, experience_id} for every "
+        "accomplishment claim."
+    )
+    user_prompt = base_user_prompt
+    invalid: list[dict[str, Any]] = []
+    for attempt in range(2):
+        raw = call_llm(
+            _COVER_LETTER_SYSTEM_PROMPT, user_prompt, json_schema=_COVER_LETTER_SCHEMA
+        )
+        data = json.loads(raw)
+        citations = list(data.get("citations", []))
+        invalid = [c for c in citations if c.get("experience_id") not in valid_ids]
+        if not invalid:
+            return CoverLetterDraft(
+                paragraphs=list(data["paragraphs"]), citations=citations
+            )
+        if attempt == 0:
+            bad_ids = [c.get("experience_id") for c in invalid]
+            user_prompt = (
+                base_user_prompt
+                + f"\n\nYour previous answer cited experience_id {bad_ids}, "
+                f"which do not exist. Only cite from this list: "
+                f"{sorted(valid_ids)}."
+            )
+    raise GroundingError(
+        f"Cover letter still cites invalid experience_id after retry: {invalid}"
+    )

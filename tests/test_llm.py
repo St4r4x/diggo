@@ -152,3 +152,78 @@ def test_rewrite_cv_summary_drops_unknown_skill(
     result = llm.rewrite_cv_summary({}, _SAMPLE_CV, analysis)
 
     assert result.highlighted_skills == ["PyTorch"]
+
+
+_SAMPLE_OFFER = {"company": "Acme", "role": "ML Engineer", "description": "..."}
+
+
+def _analysis(lang: str = "fr") -> "llm.OfferAnalysis":
+    return llm.OfferAnalysis(
+        top_skills=["PyTorch"],
+        keywords=["MLOps"],
+        company_context="AI startup.",
+        gaps=[],
+        hook_angle="Their open-source inference engine.",
+        offer_language=lang,
+        requires_english_cv=False,
+    )
+
+
+def test_write_cover_letter_accepts_valid_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canned = {
+        "paragraphs": ["Hook.", "Proof.", "Close."],
+        "citations": [{"claim": "Built RAG pipelines", "experience_id": 1}],
+    }
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
+
+    result = llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+
+    assert result.paragraphs == ["Hook.", "Proof.", "Close."]
+    assert result.citations[0]["experience_id"] == 1
+
+
+def test_write_cover_letter_retries_once_on_invalid_citation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = [
+        _json.dumps(
+            {
+                "paragraphs": ["Hook.", "Proof.", "Close."],
+                "citations": [{"claim": "Invented claim", "experience_id": 999}],
+            }
+        ),
+        _json.dumps(
+            {
+                "paragraphs": ["Hook.", "Proof fixed.", "Close."],
+                "citations": [{"claim": "Built RAG pipelines", "experience_id": 1}],
+            }
+        ),
+    ]
+    calls = []
+
+    def _fake_call_llm(system_prompt: str, user_prompt: str, **kwargs: object) -> str:
+        calls.append(user_prompt)
+        return responses[len(calls) - 1]
+
+    monkeypatch.setattr(llm, "call_llm", _fake_call_llm)
+
+    result = llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+
+    assert len(calls) == 2
+    assert "999" in calls[1]
+    assert result.paragraphs == ["Hook.", "Proof fixed.", "Close."]
+
+
+def test_write_cover_letter_raises_grounding_error_after_second_invalid_citation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canned = {
+        "paragraphs": ["Hook.", "Proof.", "Close."],
+        "citations": [{"claim": "Invented claim", "experience_id": 999}],
+    }
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
+
+    with pytest.raises(llm.GroundingError):
+        llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())

@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-06 (continued cont.)
+
+### Added
+- `dashboard/llm.py` — `CoverLetterDraft` dataclass and `write_cover_letter(profile, cv, offer, analysis)` function (Phase 3), generating 3-paragraph cover letters with strict experience_id grounding; retries once if citations reference unknown experience IDs, raises `GroundingError` after second failure
+- `tests/test_llm.py` — tests for `write_cover_letter()` covering valid citations accepted immediately, invalid-then-valid (retry succeeds), and invalid-twice (raises `GroundingError`)
+
 ## 2026-07-06 (continued)
 
 ### Added

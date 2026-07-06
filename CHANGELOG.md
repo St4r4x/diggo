@@ -10,13 +10,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-07-06
 
 ### Added
+- `alembic/versions/0003_prep_sheet_path.py` — adds `applications.prep_sheet_path` column, needed for the upcoming server-side candidature-prep pipeline (Group 1 of the deployment roadmap)
 - `dashboard/llm.py` — LLM client foundation with `call_llm()` function that calls Groq (llama-3.3-70b-versatile) first, transparently falling back to Gemini (gemini-2.0-flash) on failure; plus `LLMError` and `GroundingError` exceptions for phase functions and routes
 - `tests/test_llm.py` — test suite for `call_llm()` covering Groq success path, Gemini fallback, both-providers-fail case, and JSON schema hint appending
-
-## 2026-07-06 (prev)
-
-### Added
-- `alembic/versions/0003_prep_sheet_path.py` — adds `applications.prep_sheet_path` column, needed for the upcoming server-side candidature-prep pipeline (Group 1 of the deployment roadmap)
 
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly

@@ -16,3 +16,5 @@ alembic==1.13.3
 psycopg2-binary==2.9.12
 PyJWT==2.9.0
 cryptography==42.0.8
+openai==2.44.0
+google-genai==2.10.0

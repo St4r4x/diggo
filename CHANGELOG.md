@@ -24,6 +24,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_llm.py` — test for `generate_prep_questions()` verifying JSON response parsing into `PrepSheetDraft` dataclass fields
 
 ### Changed
+- `requirements.txt` — add `openai` and `google-genai` for the server-side LLM pipeline
+- `.env.example` — add `GEMINI_API_KEY` (Gemini fallback for the LLM pipeline)
 - `dashboard/llm.py` — migrate `_call_gemini` from the deprecated `google-generativeai` package to `google-genai` (`genai.Client`/`client.models.generate_content`); `google-generativeai` has ended all support upstream
 - `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
 

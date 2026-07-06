@@ -29,3 +29,5 @@ config/cover-letter-*.json
 .claude/
 # playwright mcp logs
 .playwright-mcp/
+# subagent-driven-development isolated worktrees
+.worktrees/

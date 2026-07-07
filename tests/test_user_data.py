@@ -41,7 +41,8 @@ CREATE TEMP TABLE user_settings (
     salary_min INT NOT NULL DEFAULT 0,
     salary_max INT NOT NULL DEFAULT 0,
     target_companies TEXT[] NOT NULL DEFAULT '{}',
-    follow_up_days INT NOT NULL DEFAULT 7
+    follow_up_days INT NOT NULL DEFAULT 7,
+    hf_token_encrypted BYTEA
 )
 """
 
@@ -127,6 +128,53 @@ def test_save_and_get_settings(conn):
     result = user_data.get_settings(conn, USER_A)
     assert result["keywords"] == ["AI Engineer", "ML Engineer"]
     assert result["salary_min"] == 40000
+
+
+def test_hf_token_missing_returns_none(conn, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    assert user_data.get_hf_token(conn, USER_A) is None
+
+
+def test_hf_token_save_and_get_roundtrip(conn, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_hf_token(conn, USER_A, "hf_secret123")
+    conn.commit()
+    assert user_data.get_hf_token(conn, USER_A) == "hf_secret123"
+
+
+def test_hf_token_isolated_per_user(conn, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_hf_token(conn, USER_A, "hf_secret123")
+    conn.commit()
+    assert user_data.get_hf_token(conn, USER_B) is None
+
+
+def test_hf_token_save_twice_overwrites(conn, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_hf_token(conn, USER_A, "hf_first")
+    conn.commit()
+    user_data.save_hf_token(conn, USER_A, "hf_second")
+    conn.commit()
+    assert user_data.get_hf_token(conn, USER_A) == "hf_second"
+
+
+def test_delete_hf_token_clears_it(conn, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_hf_token(conn, USER_A, "hf_secret123")
+    conn.commit()
+    user_data.delete_hf_token(conn, USER_A)
+    conn.commit()
+    assert user_data.get_hf_token(conn, USER_A) is None
 
 
 _CREATE_ATS_TARGETS = """

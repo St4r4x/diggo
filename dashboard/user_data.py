@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
+from cryptography.fernet import Fernet
 import psycopg2.extensions
 import yaml
 
@@ -175,6 +177,42 @@ def save_settings(
             f"INSERT INTO user_settings (user_id, {cols}) VALUES (%s, {placeholders})"
             f" ON CONFLICT (user_id) DO UPDATE SET {updates}",
             (user_id, *values),
+        )
+
+
+def _fernet() -> Fernet:
+    return Fernet(os.environ["SECRET_KEY"].encode())
+
+
+def get_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> str | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT hf_token_encrypted FROM user_settings WHERE user_id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+    if row is None or row[0] is None:
+        return None
+    return _fernet().decrypt(bytes(row[0])).decode()
+
+
+def save_hf_token(
+    conn: psycopg2.extensions.connection, user_id: str, token: str
+) -> None:
+    encrypted = _fernet().encrypt(token.encode())
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO user_settings (user_id, hf_token_encrypted) VALUES (%s, %s)"
+            " ON CONFLICT (user_id) DO UPDATE SET hf_token_encrypted = EXCLUDED.hf_token_encrypted",
+            (user_id, psycopg2.Binary(encrypted)),
+        )
+
+
+def delete_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE user_settings SET hf_token_encrypted = NULL WHERE user_id = %s",
+            (user_id,),
         )
 
 

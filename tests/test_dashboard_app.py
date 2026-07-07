@@ -1062,6 +1062,11 @@ class TestOfferPrepare:
 
         monkeypatch.setattr(
             dashboard_app.user_data,
+            "get_hf_token",
+            lambda conn, uid: "test-hf-token",
+        )
+        monkeypatch.setattr(
+            dashboard_app.user_data,
             "get_profile",
             lambda conn, uid: self._SAMPLE_PROFILE,
         )
@@ -1073,7 +1078,7 @@ class TestOfferPrepare:
         monkeypatch.setattr(
             llm,
             "analyze_offer",
-            lambda offer: llm.OfferAnalysis(
+            lambda hf_token, offer: llm.OfferAnalysis(
                 top_skills=["PyTorch"],
                 keywords=["MLOps"],
                 company_context="AI startup.",
@@ -1086,14 +1091,14 @@ class TestOfferPrepare:
         monkeypatch.setattr(
             llm,
             "rewrite_cv_summary",
-            lambda profile, cv, analysis: llm.CvRewrite(
+            lambda hf_token, profile, cv, analysis: llm.CvRewrite(
                 highlighted_skills=["PyTorch"], summary="Tailored summary."
             ),
         )
         monkeypatch.setattr(
             llm,
             "write_cover_letter",
-            lambda profile, cv, offer, analysis: llm.CoverLetterDraft(
+            lambda hf_token, profile, cv, offer, analysis: llm.CoverLetterDraft(
                 paragraphs=["Hook.", "Proof.", "Close."],
                 citations=[{"claim": "Built RAG pipelines", "experience_id": 1}],
             ),
@@ -1101,7 +1106,7 @@ class TestOfferPrepare:
         monkeypatch.setattr(
             llm,
             "generate_prep_questions",
-            lambda offer, analysis: llm.PrepSheetDraft(
+            lambda hf_token, offer, analysis: llm.PrepSheetDraft(
                 company_summary="AI startup.",
                 tech_stack=["Python"],
                 questions=[{"theme": "Technique ML", "question": "Explain RAG."}],
@@ -1146,7 +1151,7 @@ class TestOfferPrepare:
         offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
         self._patch_phases(monkeypatch, dashboard_app)
 
-        def _fail_prep_questions(offer: dict, analysis: object) -> None:
+        def _fail_prep_questions(hf_token: str, offer: dict, analysis: object) -> None:
             raise AssertionError(
                 "generate_prep_questions should not be called when skip_prep=True"
             )
@@ -1180,6 +1185,19 @@ class TestOfferPrepare:
         offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
         assert offer["cv_path"] == ""
 
+    def test_prepare_blocks_when_hf_token_missing(self, client: TestClient) -> None:
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        assert "Ajoute ton token Hugging Face" in r.text
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == ""
+
     def test_prepare_llm_failure_shows_error_and_writes_nothing(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -1188,8 +1206,11 @@ class TestOfferPrepare:
 
         db = dashboard_app.app.state.db
         offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+        monkeypatch.setattr(
+            dashboard_app.user_data, "get_hf_token", lambda conn, uid: "test-hf-token"
+        )
 
-        def _fail_analyze(offer: dict) -> None:
+        def _fail_analyze(hf_token: str, offer: dict) -> None:
             raise llm.LLMError("both providers down")
 
         monkeypatch.setattr(llm, "analyze_offer", _fail_analyze)
@@ -1212,7 +1233,7 @@ class TestOfferPrepare:
         self._patch_phases(monkeypatch, dashboard_app)
 
         def _fail_cover_letter(
-            profile: dict, cv: dict, offer: dict, analysis: object
+            hf_token: str, profile: dict, cv: dict, offer: dict, analysis: object
         ) -> None:
             raise llm.GroundingError("invalid citation")
 

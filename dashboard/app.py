@@ -430,14 +430,27 @@ async def offer_prepare(
             "Complète-la via les notes ou l'édition de l'offre avant de réessayer."
         )
 
+    hf_token = user_data.get_hf_token(conn, user_id)
+    if not hf_token:
+        return _error(
+            "Ajoute ton token Hugging Face dans les paramètres avant de préparer "
+            "une candidature."
+        )
+
     try:
-        analysis = llm.analyze_offer(offer)
+        analysis = llm.analyze_offer(hf_token, offer)
         cv_lang = "en" if analysis.requires_english_cv else "fr"
         cv = user_data.get_cv(conn, user_id, lang=cv_lang)
         profile = user_data.get_profile(conn, user_id)
-        cv_rewrite = llm.rewrite_cv_summary(profile, cv, analysis)
-        cover_letter_draft = llm.write_cover_letter(profile, cv, offer, analysis)
-        prep_draft = None if skip_prep else llm.generate_prep_questions(offer, analysis)
+        cv_rewrite = llm.rewrite_cv_summary(hf_token, profile, cv, analysis)
+        cover_letter_draft = llm.write_cover_letter(
+            hf_token, profile, cv, offer, analysis
+        )
+        prep_draft = (
+            None
+            if skip_prep
+            else llm.generate_prep_questions(hf_token, offer, analysis)
+        )
     except (llm.LLMError, llm.GroundingError) as exc:
         return _error(f"Échec de la préparation IA : {exc}")
 

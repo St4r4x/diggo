@@ -25,6 +25,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/llm.py` — drop the Gemini fallback (`_call_gemini`, `GEMINI_API_KEY`); Hugging Face is now the sole LLM provider, and `call_llm()` raises `LLMError` directly on failure instead of falling back
 - `google-genai` dependency and `GEMINI_API_KEY` from `.env.example`
 
+### Changed
+- `dashboard/templates/partials/settings_hf_token.html` — add guidance text (where to create a token, required "Inference Providers" permission, expected `hf_` prefix/length) and a `pattern` attribute on the input to catch obviously truncated pastes client-side before submission
+
 ## 2026-07-06
 
 ### Added

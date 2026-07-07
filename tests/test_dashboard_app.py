@@ -152,13 +152,50 @@ def client_with_interview_offer(client):
 
 
 class TestRoot:
+    """/ is now a smart entry point: landing for anon, redirect for authed."""
+
+    def test_anonymous_gets_landing_200(self, monkeypatch) -> None:
+        import auth
+        import app as dashboard_app
+
+        monkeypatch.setattr(auth, "_DEV_AUTO_LOGIN", False)
+        c = TestClient(dashboard_app.app, follow_redirects=False)
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "diggo" in r.text.lower()
+
+    def test_authenticated_redirects_to_candidatures(self) -> None:
+        import time
+
+        import app as dashboard_app
+        import jwt
+
+        secret = os.environ["SUPABASE_JWT_SECRET"]
+        token = jwt.encode(
+            {
+                "sub": "u1",
+                "email": "t@t.com",
+                "exp": int(time.time()) + 3600,
+                "aud": "authenticated",
+            },
+            secret,
+            algorithm="HS256",
+        )
+        c = TestClient(dashboard_app.app, follow_redirects=False)
+        c.cookies.set("session", token)
+        r = c.get("/")
+        assert r.status_code == 302
+        assert r.headers["location"] == "/candidatures"
+
+
+class TestCandidatures:
     def test_returns_200(self, client: TestClient) -> None:
-        r = client.get("/")
+        r = client.get("/candidatures")
         assert r.status_code == 200
 
     def test_contains_app_title(self, client: TestClient) -> None:
-        r = client.get("/")
-        assert "career-ops-fr" in r.text.lower()
+        r = client.get("/candidatures")
+        assert "diggo" in r.text.lower()
 
     def test_requires_auth(self) -> None:
         import app as dashboard_app
@@ -168,7 +205,7 @@ class TestRoot:
         c = TestClient(
             dashboard_app.app, raise_server_exceptions=False, follow_redirects=False
         )
-        r = c.get("/")
+        r = c.get("/candidatures")
         assert r.status_code == 302
 
 
@@ -779,12 +816,12 @@ class TestFollowupReminders:
         import app as dashboard_app
 
         self._insert_overdue(dashboard_app.app.state.db, "OverdueCo", "Envoyée")
-        r = client.get("/")
+        r = client.get("/candidatures")
         assert r.status_code == 200
         assert "relancer" in r.text.lower()
 
     def test_bandeau_hidden_when_no_followups(self, client: TestClient) -> None:
-        r = client.get("/")
+        r = client.get("/candidatures")
         assert r.status_code == 200
         assert "à relancer" not in r.text.lower()
 

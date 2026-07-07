@@ -10,6 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-07-07
 
 ### Added
+- `dashboard/templates/landing.html` — public landing page at `/` for anonymous visitors: hero, 4 feature cards, "Comment ça marche" steps, footer CTA
+- `GET /candidatures` in `dashboard/app.py` — offers list moved from `/` to this new path
+- `get_current_user_optional()` in `dashboard/auth.py` — returns `None` for anonymous requests instead of raising `HTTPException(302)`
+
+### Changed
+- `GET /` in `dashboard/app.py` — smart entry point: anonymous → landing page (200), authenticated → redirect to `/candidatures` (302)
+- `dashboard/templates/base.html` — rebrand `career-ops-fr` → `Diggo` in `<title>` and nav logo; "Candidatures" nav link updated from `/` to `/candidatures`
+- `dashboard/templates/auth/login.html`, `signup.html`, `confirm.html`, `reset-password.html` — rebrand page titles and logo h1 to "Diggo"
+- `docker-compose.yml` — add `name: diggo` to fix container naming (was derived from directory name)
+- `README.md` — rebrand title to "Diggo", update route list to include `/candidatures`
+
+
+
+### Added
 - `alembic/versions/0004_hf_token.py` — adds `user_settings.hf_token_encrypted` column for encrypted per-user Hugging Face token storage
 - `dashboard/user_data.py` — `get_hf_token()`, `save_hf_token()`, `delete_hf_token()`, encrypting with `cryptography.fernet.Fernet` keyed by a new `SECRET_KEY` env var
 - `POST /settings/hf-token` and `DELETE /settings/hf-token` in `dashboard/app.py` — set/replace/clear a user's own Hugging Face token

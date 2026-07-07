@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>career-ops-fr</title>
+  <title>Diggo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <style>
@@ -31,8 +31,8 @@
 </head>
 <body class="h-screen flex flex-col" style="background: linear-gradient(135deg, #0f0a1e 0%, #1a0f30 100%);">
   <nav style="background:#1e1535;border-bottom:1px solid #2d1f5e;" class="px-5 py-3 flex items-center gap-6 shrink-0">
-    <span class="font-bold text-lg" style="background:linear-gradient(135deg,#a5b4fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">career-ops-fr</span>
-    <a href="/" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Candidatures</a>
+    <span class="font-bold text-lg" style="background:linear-gradient(135deg,#a5b4fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Diggo</span>
+    <a href="/candidatures" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/candidatures' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Candidatures</a>
     <a href="/stats" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/stats' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Stats</a>
     <a href="/profile" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/profile' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Profil</a>
     <a href="/settings" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/settings' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Paramètres</a>

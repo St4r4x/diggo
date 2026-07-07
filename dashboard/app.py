@@ -19,6 +19,7 @@ from auth import (
     CurrentUser,
     clear_auth_cookies,
     get_current_user,
+    get_current_user_optional,
     set_auth_cookies,
     validate_access_token,
 )
@@ -183,6 +184,14 @@ async def auth_session_delete(request: Request) -> RedirectResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
+async def landing(request: Request) -> HTMLResponse:
+    user = get_current_user_optional(request)
+    if user is not None:
+        return RedirectResponse("/candidatures", status_code=302)
+    return templates.TemplateResponse(request, "landing.html")
+
+
+@app.get("/candidatures", response_class=HTMLResponse)
 async def index(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),

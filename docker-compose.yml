@@ -1,3 +1,5 @@
+name: diggo
+
 services:
   dashboard:
     build: .

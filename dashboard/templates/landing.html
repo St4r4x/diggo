@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diggo — Candidatures IA pour le marché français</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f0a1e; color: #e2e8f0; }
+    .bg-accent { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .bg-accent-rose { background: linear-gradient(135deg, #6366f1, #ec4899); }
+    .text-gradient { background: linear-gradient(135deg, #a5b4fc, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  </style>
+</head>
+<body style="background: linear-gradient(135deg, #0f0a1e 0%, #1a0f30 100%);">
+
+  <!-- Nav -->
+  <nav style="background:#1e1535;border-bottom:1px solid #2d1f5e;" class="px-6 py-3 flex items-center">
+    <span class="font-bold text-lg text-gradient">Diggo</span>
+    <div class="ml-auto flex items-center gap-3">
+      <a href="/login" class="text-sm text-slate-400 hover:text-slate-200 transition-colors">Se connecter</a>
+      <a href="/signup" class="text-sm px-4 py-1.5 rounded-lg text-white font-semibold bg-accent transition-opacity hover:opacity-90">Créer un compte</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="max-w-3xl mx-auto px-6 py-20 text-center">
+    <h1 class="text-4xl font-bold leading-tight mb-4">
+      <span class="text-gradient">CV, lettre de motivation et fiche d'entretien</span><br>
+      générés sur mesure pour chaque offre
+    </h1>
+    <p class="text-slate-400 text-lg mb-10">
+      Diggo scanne les portails d'emploi, score les offres et prépare ton dossier de candidature complet en un clic — grâce à l'IA.
+    </p>
+    <div class="flex items-center justify-center gap-4">
+      <a href="/signup" class="px-6 py-3 rounded-lg text-white font-semibold bg-accent-rose text-base transition-opacity hover:opacity-90">
+        Créer un compte
+      </a>
+      <a href="/login" class="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+        Se connecter →
+      </a>
+    </div>
+  </section>
+
+  <!-- Feature cards -->
+  <section class="max-w-4xl mx-auto px-6 pb-16 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="rounded-xl p-6" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div class="text-2xl mb-3">✦</div>
+      <h3 class="font-semibold text-white mb-1">Dossier de candidature IA</h3>
+      <p class="text-sm text-slate-400">CV recentré, lettre de motivation et fiche d'entretien générés automatiquement pour chaque offre, en français ou en anglais.</p>
+    </div>
+    <div class="rounded-xl p-6" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div class="text-2xl mb-3">🔍</div>
+      <h3 class="font-semibold text-white mb-1">Scan automatique des portails</h3>
+      <p class="text-sm text-slate-400">APEC, LinkedIn, Welcome to the Jungle, et les ATS Greenhouse, Lever, Ashby — les offres arrivent directement dans ton tableau de bord.</p>
+    </div>
+    <div class="rounded-xl p-6" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div class="text-2xl mb-3">📊</div>
+      <h3 class="font-semibold text-white mb-1">Scoring des offres</h3>
+      <p class="text-sm text-slate-400">Chaque offre est notée A–F selon ton profil, tes critères de recherche et la qualité de l'annonce. Les meilleures remontent en tête.</p>
+    </div>
+    <div class="rounded-xl p-6" style="background:#1e1535;border:1px solid #2d1f5e;">
+      <div class="text-2xl mb-3">📅</div>
+      <h3 class="font-semibold text-white mb-1">Suivi des statuts et relances</h3>
+      <p class="text-sm text-slate-400">Chaque candidature passe de "À envoyer" à "Offre reçue". Les relances en retard remontent automatiquement.</p>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="max-w-3xl mx-auto px-6 pb-20 text-center">
+    <h2 class="text-2xl font-bold text-white mb-10">Comment ça marche</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div>
+        <div class="text-3xl font-bold text-gradient mb-2">1</div>
+        <p class="text-sm text-slate-300 font-medium mb-1">Connecte ton profil</p>
+        <p class="text-xs text-slate-500">Renseigne ton CV, tes expériences et tes critères de recherche une seule fois.</p>
+      </div>
+      <div>
+        <div class="text-3xl font-bold text-gradient mb-2">2</div>
+        <p class="text-sm text-slate-300 font-medium mb-1">Scan automatique</p>
+        <p class="text-xs text-slate-500">Diggo cherche les offres qui correspondent à ton profil sur les principaux portails français.</p>
+      </div>
+      <div>
+        <div class="text-3xl font-bold text-gradient mb-2">3</div>
+        <p class="text-sm text-slate-300 font-medium mb-1">Prépare ta candidature en un clic</p>
+        <p class="text-xs text-slate-500">L'IA génère ton dossier complet adapté à l'offre. Tu télécharges, tu envoies.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <footer style="border-top:1px solid #2d1f5e;" class="py-12 text-center">
+    <p class="text-slate-400 mb-6 text-sm">Prêt à optimiser ta recherche d'emploi ?</p>
+    <a href="/signup" class="px-8 py-3 rounded-lg text-white font-semibold bg-accent-rose text-base transition-opacity hover:opacity-90">
+      Créer un compte gratuitement
+    </a>
+  </footer>
+
+</body>
+</html>

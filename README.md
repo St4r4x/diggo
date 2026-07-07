@@ -1,6 +1,6 @@
-# career-ops-fr · v0.2
+# Diggo · v0.2
 
-Automated AI/ML job search pipeline for the French market — scraping, scoring, dashboard, and Claude Code-assisted application generation (CV PDF, cover letter, interview prep sheet).
+Automated AI/ML job search pipeline for the French market — scraping, scoring, dashboard, and AI-assisted application generation (CV PDF, cover letter, interview prep sheet).
 
 ## Run the app (daily use)
 
@@ -269,7 +269,7 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/, /stats, /profile, /settings, /scan/*, /offers/*, /login, /signup, /auth/*)
+  app.py                    FastAPI routes (/, /candidatures, /stats, /profile, /settings, /scan/*, /offers/*, /login, /signup, /auth/*)
   auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
   db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)
   user_data.py              Per-user data access layer (profile, settings, ATS targets, CV tables)

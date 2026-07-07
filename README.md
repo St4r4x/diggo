@@ -77,6 +77,8 @@ Key variables:
 | `SUPABASE_PUBLIC_URL` | Browser-facing Supabase URL — `http://localhost:54321` |
 | `SUPABASE_ANON_KEY` | Anon key from `supabase status` |
 | `SUPABASE_JWT_SECRET` | JWT secret from `supabase status` |
+| `ALLOWED_ORIGINS` | CORS-allowed origins — `http://localhost:8000` for local dev |
+| `SECRET_KEY` | Encrypts per-user Hugging Face tokens at rest — generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `COOKIE_SECURE` | Set to `true` in production (HTTPS only); `false` for local dev |
 | `DEV_AUTO_LOGIN` | Set to `true` to bypass auth in local dev (hardcoded dev user) |
 
@@ -133,7 +135,7 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 | `/` | Candidatures — offer list with filters, notes, status tracking, scan button; amber bandeau when applications are overdue for follow-up (> 7 days since send) |
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
 | `/profile` | Profile editor — contact info, profile text, and CV editor (FR/EN tabs) backed by DB |
-| `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD |
+| `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD, Hugging Face API token |
 | `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |
 
 **Offer detail panel:**

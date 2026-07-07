@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-07
+
+### Added
+- `alembic/versions/0004_hf_token.py` — adds `user_settings.hf_token_encrypted` column for encrypted per-user Hugging Face token storage
+- `dashboard/user_data.py` — `get_hf_token()`, `save_hf_token()`, `delete_hf_token()`, encrypting with `cryptography.fernet.Fernet` keyed by a new `SECRET_KEY` env var
+- `POST /settings/hf-token` and `DELETE /settings/hf-token` in `dashboard/app.py` — set/replace/clear a user's own Hugging Face token
+- `dashboard/templates/partials/settings_hf_token.html` — Settings section showing only a "configured" boolean state, never the token itself
+
+### Changed
+- `dashboard/llm.py` — `call_llm()` and all four phase functions now require an `hf_token` argument instead of reading the shared `HF_TOKEN` env var
+- `dashboard/app.py` — `POST /offers/{offer_id}/prepare` blocks with a clear message when the user has no Hugging Face token configured, instead of falling back to any shared token
+- `.env.example` — remove `HF_TOKEN` (now per-user, set via Settings), add `SECRET_KEY` (encrypts per-user tokens at rest)
+- `README.md` — document `SECRET_KEY` and the Hugging Face token field on `/settings`
+
 ## 2026-07-06
 
 ### Added

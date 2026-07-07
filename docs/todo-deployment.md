@@ -75,7 +75,7 @@ Items are ordered by dependency: nothing in a later group can be done before the
 
 ### 2.1 Environment variables
 - [ ] Add `python-dotenv` + `.env` loading in `dashboard/app.py` and all scripts
-- [ ] Create `.env.example` documenting: `DATABASE_URL`, `HF_TOKEN`, `SECRET_KEY`, `ALLOWED_ORIGINS`, `STORAGE_BUCKET`, `PROXY_URL`
+- [ ] Create `.env.example` documenting: `DATABASE_URL`, `SECRET_KEY` (encrypts per-user Hugging Face tokens, set via `/settings`), `ALLOWED_ORIGINS`, `STORAGE_BUCKET`, `PROXY_URL`
 - [ ] Replace all `Path(__file__).parent.parent / "config"` hardcodes with env-configurable paths
 
 ### 2.2 Output / artifact storage (Supabase Storage)

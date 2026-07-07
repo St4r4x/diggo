@@ -90,7 +90,7 @@ def _insert_row(
 @pytest.fixture
 def client():
     import app as dashboard_app
-    from auth import get_current_user
+    from auth import get_current_user, require_onboarding_complete
 
     test_db = _make_pg_db()
     dashboard_app.app.state.db = test_db
@@ -104,6 +104,9 @@ def client():
         "error": "",
     }
     dashboard_app.app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+    dashboard_app.app.dependency_overrides[require_onboarding_complete] = lambda: (
+        MOCK_USER
+    )
     yield TestClient(dashboard_app.app)
     dashboard_app.app.dependency_overrides.clear()
     test_db.close()
@@ -199,14 +202,51 @@ class TestCandidatures:
 
     def test_requires_auth(self) -> None:
         import app as dashboard_app
-        from auth import get_current_user
+        from auth import get_current_user, require_onboarding_complete
 
         dashboard_app.app.dependency_overrides.pop(get_current_user, None)
+        dashboard_app.app.dependency_overrides.pop(require_onboarding_complete, None)
         c = TestClient(
             dashboard_app.app, raise_server_exceptions=False, follow_redirects=False
         )
         r = c.get("/candidatures")
         assert r.status_code == 302
+
+    def test_redirects_to_profile_when_onboarding_incomplete(self, monkeypatch) -> None:
+        import time
+
+        import app as dashboard_app
+        import jwt
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": False,
+                "profile_complete": False,
+                "search_complete": False,
+                "hf_token_complete": False,
+            },
+        )
+        test_db = _make_pg_db()
+        dashboard_app.app.state.db = test_db
+        secret = os.environ["SUPABASE_JWT_SECRET"]
+        token = jwt.encode(
+            {
+                "sub": "u1",
+                "email": "t@t.com",
+                "exp": int(time.time()) + 3600,
+                "aud": "authenticated",
+            },
+            secret,
+            algorithm="HS256",
+        )
+        c = TestClient(dashboard_app.app, follow_redirects=False)
+        c.cookies.set("session", token)
+        r = c.get("/candidatures")
+        assert r.status_code == 302
+        assert r.headers["location"] == "/profile"
+        test_db.close()
 
 
 class TestOfferList:
@@ -500,6 +540,26 @@ class TestStats:
         r = client_with_data.get("/stats")
         for s in VALID_STATUSES:
             assert s in r.text
+
+
+class TestOnboardingGateOnSettingsAndProfileNeverBlocks:
+    def test_settings_page_never_redirected_when_onboarding_incomplete(
+        self, monkeypatch, client: TestClient
+    ) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": False,
+                "profile_complete": False,
+                "search_complete": False,
+                "hf_token_complete": False,
+            },
+        )
+        r = client.get("/settings")
+        assert r.status_code == 200
 
 
 class TestScan:

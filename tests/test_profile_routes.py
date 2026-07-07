@@ -71,6 +71,16 @@ def profile_client(monkeypatch):
     monkeypatch.setattr(
         user_data, "delete_experience", lambda conn, user_id, exp_id: None
     )
+    monkeypatch.setattr(
+        user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": True,
+            "profile_complete": True,
+            "search_complete": True,
+            "hf_token_complete": True,
+        },
+    )
 
     mock_conn = MagicMock()
     mock_conn.commit = MagicMock()

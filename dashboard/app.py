@@ -20,6 +20,7 @@ from auth import (
     clear_auth_cookies,
     get_current_user,
     get_current_user_optional,
+    require_onboarding_complete,
     set_auth_cookies,
     validate_access_token,
 )
@@ -194,7 +195,7 @@ async def landing(request: Request) -> HTMLResponse:
 @app.get("/candidatures", response_class=HTMLResponse)
 async def index(
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
 ) -> HTMLResponse:
     db = request.app.state.db
     user_id = current_user["sub"]
@@ -217,7 +218,7 @@ async def index(
 @app.get("/offers", response_class=HTMLResponse)
 async def offer_list(
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
     status: str = Query(""),
     grade: str = Query(""),
     q: str = Query(""),
@@ -251,7 +252,7 @@ async def offer_list(
 async def offer_edit_form(
     request: Request,
     offer_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
 ) -> HTMLResponse:
     db = request.app.state.db
     user_id = current_user["sub"]
@@ -272,7 +273,7 @@ async def offer_edit_form(
 async def offer_detail(
     request: Request,
     offer_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
 ) -> HTMLResponse:
     db = request.app.state.db
     user_id = current_user["sub"]
@@ -402,7 +403,7 @@ async def offer_status(
 async def offer_prepare(
     request: Request,
     offer_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
     skip_prep: bool = Form(False),
 ) -> HTMLResponse:
     from datetime import date as _date
@@ -548,7 +549,7 @@ async def offer_prepare(
 @app.get("/stats", response_class=HTMLResponse)
 async def stats_page(
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
 ) -> HTMLResponse:
     db = request.app.state.db
     user_id = current_user["sub"]
@@ -587,10 +588,17 @@ async def profile_page(
     profile = profile_parser.load_profile(conn, user_id)
     cv = user_data.get_cv(conn, user_id, lang="fr")
     cv_en = user_data.get_cv(conn, user_id, lang="en")
+    onboarding = user_data.get_onboarding_state(conn, user_id)
     return templates.TemplateResponse(
         request,
         "profile.html",
-        {"profile": profile, "cv": cv, "cv_en": cv_en, "current_user": current_user},
+        {
+            "profile": profile,
+            "cv": cv,
+            "cv_en": cv_en,
+            "current_user": current_user,
+            "onboarding": onboarding,
+        },
     )
 
 
@@ -813,6 +821,7 @@ async def settings_page(
     settings = user_data.get_settings(conn, user_id)
     ats_targets = user_data.get_ats_targets(conn, user_id)
     hf_token_set = user_data.get_hf_token(conn, user_id) is not None
+    onboarding = user_data.get_onboarding_state(conn, user_id)
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -821,6 +830,7 @@ async def settings_page(
             "ats_targets": ats_targets,
             "current_user": current_user,
             "hf_token_set": hf_token_set,
+            "onboarding": onboarding,
         },
     )
 
@@ -1004,7 +1014,7 @@ def _start_scan(app_state: Any, user_id: str) -> bool:
 @app.post("/scan/start", response_class=HTMLResponse)
 async def scan_start(
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_onboarding_complete),
 ) -> HTMLResponse:
     async with _scan_lock:
         started = _start_scan(request.app.state, user_id=current_user["sub"])

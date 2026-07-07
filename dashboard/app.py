@@ -803,6 +803,7 @@ async def settings_page(
     user_id = current_user["sub"]
     settings = user_data.get_settings(conn, user_id)
     ats_targets = user_data.get_ats_targets(conn, user_id)
+    hf_token_set = user_data.get_hf_token(conn, user_id) is not None
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -810,6 +811,7 @@ async def settings_page(
             "settings": settings,
             "ats_targets": ats_targets,
             "current_user": current_user,
+            "hf_token_set": hf_token_set,
         },
     )
 
@@ -886,6 +888,43 @@ async def settings_ats_delete(
         request,
         "partials/settings_ats.html",
         {"ats_targets": ats_targets},
+    )
+
+
+@app.post("/settings/hf-token", response_class=HTMLResponse)
+async def settings_save_hf_token(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    hf_token: str = Form(""),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    token = hf_token.strip()
+    if token:
+        user_data.save_hf_token(conn, user_id, token)
+    else:
+        user_data.delete_hf_token(conn, user_id)
+    conn.commit()
+    return templates.TemplateResponse(
+        request,
+        "partials/settings_hf_token.html",
+        {"hf_token_set": bool(token)},
+    )
+
+
+@app.delete("/settings/hf-token", response_class=HTMLResponse)
+async def settings_delete_hf_token(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> HTMLResponse:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_hf_token(conn, user_id)
+    conn.commit()
+    return templates.TemplateResponse(
+        request,
+        "partials/settings_hf_token.html",
+        {"hf_token_set": False},
     )
 
 

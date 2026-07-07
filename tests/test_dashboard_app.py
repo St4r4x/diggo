@@ -891,6 +891,7 @@ _DEFAULT_SETTINGS = {
 }
 
 _ATS_STORE: list[dict] = []
+_HF_TOKEN_STORE: dict[str, str] = {}
 
 
 @pytest.fixture
@@ -917,6 +918,20 @@ def authed_client(client: TestClient, monkeypatch) -> TestClient:
     monkeypatch.setattr(user_data, "add_ats_target", _add_ats)
     monkeypatch.setattr(user_data, "delete_ats_target", _del_ats)
     _ATS_STORE.clear()
+
+    def _get_hf_token(conn, uid):
+        return _HF_TOKEN_STORE.get(uid)
+
+    def _save_hf_token(conn, uid, token):
+        _HF_TOKEN_STORE[uid] = token
+
+    def _delete_hf_token(conn, uid):
+        _HF_TOKEN_STORE.pop(uid, None)
+
+    monkeypatch.setattr(user_data, "get_hf_token", _get_hf_token)
+    monkeypatch.setattr(user_data, "save_hf_token", _save_hf_token)
+    monkeypatch.setattr(user_data, "delete_hf_token", _delete_hf_token)
+    _HF_TOKEN_STORE.clear()
     return client
 
 
@@ -982,6 +997,25 @@ class TestSettings:
         del_resp = authed_client.delete(f"/settings/ats/{target_id}")
         assert del_resp.status_code == 200
         assert "Mistral AI" not in del_resp.text
+
+    def test_settings_hf_token_save(self, authed_client: TestClient) -> None:
+        r = authed_client.post("/settings/hf-token", data={"hf_token": "hf_secret123"})
+        assert r.status_code == 200
+        assert "Configuré" in r.text
+
+    def test_settings_hf_token_empty_value_clears_it(
+        self, authed_client: TestClient
+    ) -> None:
+        authed_client.post("/settings/hf-token", data={"hf_token": "hf_secret123"})
+        r = authed_client.post("/settings/hf-token", data={"hf_token": ""})
+        assert r.status_code == 200
+        assert "Non configuré" in r.text
+
+    def test_settings_hf_token_delete(self, authed_client: TestClient) -> None:
+        authed_client.post("/settings/hf-token", data={"hf_token": "hf_secret123"})
+        r = authed_client.delete("/settings/hf-token")
+        assert r.status_code == 200
+        assert "Non configuré" in r.text
 
 
 class TestReportWidget:

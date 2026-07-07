@@ -1,0 +1,23 @@
+{% if hf_token_set %}
+<p class="text-green-400 text-sm mb-3">Configuré ✓</p>
+{% else %}
+<p class="text-gray-500 text-sm mb-3">Non configuré. Sans token, la préparation de candidature (CV, lettre, fiche entretien) est bloquée.</p>
+{% endif %}
+<form hx-post="/settings/hf-token" hx-target="#hf-token-section" hx-swap="innerHTML" class="flex gap-2">
+  <input type="password" name="hf_token" placeholder="hf_..." autocomplete="off"
+         class="flex-1 bg-gray-700 text-white rounded px-3 py-2 text-sm font-mono">
+  <button type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+    Enregistrer
+  </button>
+  {% if hf_token_set %}
+  <button type="button"
+          hx-delete="/settings/hf-token"
+          hx-target="#hf-token-section"
+          hx-swap="innerHTML"
+          hx-confirm="Supprimer le token Hugging Face ?"
+          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+    Supprimer
+  </button>
+  {% endif %}
+</form>

@@ -21,6 +21,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `.env.example` — remove `HF_TOKEN` (now per-user, set via Settings), add `SECRET_KEY` (encrypts per-user tokens at rest)
 - `README.md` — document `SECRET_KEY` and the Hugging Face token field on `/settings`
 
+### Removed
+- `dashboard/llm.py` — drop the Gemini fallback (`_call_gemini`, `GEMINI_API_KEY`); Hugging Face is now the sole LLM provider, and `call_llm()` raises `LLMError` directly on failure instead of falling back
+- `google-genai` dependency and `GEMINI_API_KEY` from `.env.example`
+
 ## 2026-07-06
 
 ### Added

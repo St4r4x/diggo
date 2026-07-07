@@ -1,30 +1,25 @@
 """LLM client and phase functions for server-side candidature prep.
 
-Hugging Face Inference Providers (openai/gpt-oss-120b) is the primary provider,
-via HF's OpenAI-compatible router. On any failure (timeout, 5xx, quota) this
-falls back transparently to Gemini Flash.
+Hugging Face Inference Providers (openai/gpt-oss-120b) is the sole provider,
+via HF's OpenAI-compatible router, using each user's own token.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any
 
-from google import genai
-from google.genai import types
 from openai import OpenAI, OpenAIError
 
 logger = logging.getLogger(__name__)
 
 _HF_MODEL = "openai/gpt-oss-120b:fastest"
-_GEMINI_MODEL = "gemini-2.5-flash"
 
 
 class LLMError(Exception):
-    """Raised when both Hugging Face and Gemini fail to answer."""
+    """Raised when Hugging Face fails to answer."""
 
 
 class GroundingError(Exception):
@@ -52,18 +47,6 @@ def _call_hf(
     return response.choices[0].message.content or ""
 
 
-def _call_gemini(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    config = types.GenerateContentConfig(
-        system_instruction=system_prompt,
-        response_mime_type="application/json" if json_mode else None,
-    )
-    response = client.models.generate_content(
-        model=_GEMINI_MODEL, contents=user_prompt, config=config
-    )
-    return response.text or ""
-
-
 def call_llm(
     hf_token: str,
     system_prompt: str,
@@ -71,7 +54,7 @@ def call_llm(
     *,
     json_schema: dict | None = None,
 ) -> str:
-    """Call Hugging Face first; fall back to Gemini on any failure. Logs which provider answered."""
+    """Call Hugging Face. Raises LLMError on any failure."""
     json_mode = json_schema is not None
     if json_mode:
         user_prompt = (
@@ -83,13 +66,7 @@ def call_llm(
         logger.info("llm: answered by huggingface")
         return result
     except OpenAIError as exc:
-        logger.warning("llm: huggingface failed (%s), falling back to gemini", exc)
-    try:
-        result = _call_gemini(system_prompt, user_prompt, json_mode)
-        logger.info("llm: answered by gemini")
-        return result
-    except Exception as exc:
-        raise LLMError(f"Both Hugging Face and Gemini failed: {exc}") from exc
+        raise LLMError(f"Hugging Face failed: {exc}") from exc
 
 
 @dataclass

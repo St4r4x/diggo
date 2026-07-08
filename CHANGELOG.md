@@ -16,6 +16,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components.json`, `frontend/lib/utils.ts`, `frontend/components/ui/button.tsx` — shadcn/ui initialized (`base-nova` style) and `Button` component added, reconciled to reuse Task 4's RGB-triplet tokens (`--background`, `--surface`, `--foreground`, `--border`, `--accent`, `--accent-foreground`) instead of shadcn's default OKLCH scheme
 - `frontend/components/theme-toggle.tsx` — dark/light toggle persisted to `localStorage`, FOUC-free via an inline bootstrap script in the root layout
 - `frontend/app/page.tsx` — proof-of-wiring home page that calls `/api/me` (works once served through the new proxy, Task 7)
+- `frontend/Dockerfile` — multi-stage build (deps → build → run) producing a lean standalone Next.js image; `frontend/.dockerignore` excludes `node_modules`, `.next`, `.git`
 
 ## 2026-07-08
 

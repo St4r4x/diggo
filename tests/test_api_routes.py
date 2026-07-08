@@ -44,3 +44,34 @@ def test_me_returns_current_user_when_authenticated(client) -> None:
     response = client.get("/api/me")
     assert response.status_code == 200
     assert response.json() == MOCK_USER
+
+
+def test_session_post_sets_cookies(client) -> None:
+    import time
+
+    import jwt
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    access_token = jwt.encode(
+        {
+            "sub": "u1",
+            "email": "t@t.com",
+            "exp": int(time.time()) + 3600,
+            "aud": "authenticated",
+        },
+        secret,
+        algorithm="HS256",
+    )
+    response = client.post(
+        "/api/auth/session",
+        json={"access_token": access_token, "refresh_token": "dummy-refresh"},
+    )
+    assert response.status_code == 200
+    assert "session" in response.cookies
+    assert "refresh" in response.cookies
+
+
+def test_session_delete_clears_cookies(client) -> None:
+    response = client.delete("/api/auth/session", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"

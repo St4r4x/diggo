@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import Body, Depends, FastAPI, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import mistune
 
@@ -18,12 +18,9 @@ import profile_parser
 import user_data
 from auth import (
     CurrentUser,
-    clear_auth_cookies,
     get_current_user,
     get_current_user_optional,
     require_onboarding_complete,
-    set_auth_cookies,
-    validate_access_token,
 )
 from db import VALID_STATUSES, open_db
 from env import load_env
@@ -33,9 +30,6 @@ load_env()
 _DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
 )
-_SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:54321")
-_SUPABASE_PUBLIC_URL = os.getenv("SUPABASE_PUBLIC_URL", _SUPABASE_URL)
-_SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
@@ -136,52 +130,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
-templates.env.globals["supabase_url"] = _SUPABASE_PUBLIC_URL
-templates.env.globals["supabase_anon_key"] = _SUPABASE_ANON_KEY
 
 app.include_router(api.router)
-
-
-# ── Public auth routes ────────────────────────────────────────────────────────
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/login.html")
-
-
-@app.get("/signup", response_class=HTMLResponse)
-async def signup_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/signup.html")
-
-
-@app.get("/auth/confirm", response_class=HTMLResponse)
-async def auth_confirm_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/confirm.html")
-
-
-@app.get("/auth/reset-password", response_class=HTMLResponse)
-async def auth_reset_password_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "auth/reset-password.html")
-
-
-@app.post("/auth/session")
-async def auth_session_create(
-    request: Request,
-    access_token: str = Body(...),
-    refresh_token: str = Body(...),
-) -> JSONResponse:
-    validate_access_token(access_token)
-    response = JSONResponse({"ok": True})
-    set_auth_cookies(response, access_token, refresh_token)
-    return response
-
-
-@app.delete("/auth/session")
-async def auth_session_delete(request: Request) -> RedirectResponse:
-    response = RedirectResponse("/login", status_code=302)
-    clear_auth_cookies(response)
-    return response
 
 
 # ── Protected routes ──────────────────────────────────────────────────────────

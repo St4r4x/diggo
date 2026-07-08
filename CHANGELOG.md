@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-08 (Task 1: auth-pages-migration)
+
+### Changed
+- `dashboard/api.py` — moved `POST`/`DELETE /auth/session` to `/api/auth/session`, so nginx can route it alongside the rest of the JSON API without colliding with the `/auth/confirm`/`/auth/reset-password` pages moving to the Next.js frontend
+
+### Removed
+- `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead
+
+## [Unreleased]
+
 ### Added
 - `dashboard/auth.py` — `get_current_user_api()`, a 401-raising auth dependency for the new `/api/*` JSON routes (the Jinja2 pages keep using the redirecting `get_current_user`)
 - `dashboard/api.py` — new `/api/*` JSON router: `GET /api/health` (unauthenticated), `GET /api/me` (returns the current user, 401 if not authenticated). First piece of the JSON API the Next.js frontend will consume.

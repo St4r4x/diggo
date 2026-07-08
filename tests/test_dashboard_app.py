@@ -931,50 +931,6 @@ class TestStatsFunnel:
         assert exits[0]["status"] == "Refusée"
 
 
-class TestAuthRoutes:
-    def test_login_page_loads(self) -> None:
-        import app as dashboard_app
-
-        raw = TestClient(dashboard_app.app)
-        r = raw.get("/login", follow_redirects=False)
-        assert r.status_code == 200
-        assert "login" in r.text.lower()
-
-    def test_session_post_sets_cookies(self) -> None:
-        import time
-
-        import app as dashboard_app
-        import jwt
-
-        secret = os.environ["SUPABASE_JWT_SECRET"]
-        access_token = jwt.encode(
-            {
-                "sub": "u1",
-                "email": "t@t.com",
-                "exp": int(time.time()) + 3600,
-                "aud": "authenticated",
-            },
-            secret,
-            algorithm="HS256",
-        )
-        raw = TestClient(dashboard_app.app)
-        r = raw.post(
-            "/auth/session",
-            json={"access_token": access_token, "refresh_token": "dummy-refresh"},
-        )
-        assert r.status_code == 200
-        assert "session" in r.cookies
-        assert "refresh" in r.cookies
-
-    def test_session_delete_clears_cookies(self) -> None:
-        import app as dashboard_app
-
-        raw = TestClient(dashboard_app.app)
-        r = raw.delete("/auth/session", follow_redirects=False)
-        assert r.status_code == 302
-        assert r.headers["location"] == "/login"
-
-
 class TestSettingsHfTokenValidation:
     def test_save_valid_token_succeeds(self, client: TestClient, monkeypatch) -> None:
         import app as dashboard_app

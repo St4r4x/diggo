@@ -34,6 +34,6 @@ Copy changes, to fit the broadened "cadres multi-secteurs" audience (sales, tech
 
 ## Out of scope
 
-- Any protected page (`/candidatures`, `/stats`, `/profile`, `/settings`) — untouched, still Jinja2, still redirects unauthenticated visitors to `/login` exactly as today.
+- Any protected page (`/candidatures`, `/stats`, `/profile`, `/settings`) — not touched by *this* spec, still Jinja2, still redirects unauthenticated visitors to `/login` exactly as today. All four are on the roadmap and get migrated next, one page at a time, each with its own spec/plan/implementation pass — this section only scopes what this particular spec changes, not what the project will eventually cover.
 - Any pricing/plans content — the product has no billing yet.
 - SEO tooling beyond what SSR already provides (no sitemap.xml, robots.txt, or structured-data work in this pass).

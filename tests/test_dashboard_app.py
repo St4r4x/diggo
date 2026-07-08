@@ -156,43 +156,6 @@ def client_with_interview_offer(client):
     return client
 
 
-class TestRoot:
-    """/ is now a smart entry point: landing for anon, redirect for authed."""
-
-    def test_anonymous_gets_landing_200(self, monkeypatch) -> None:
-        import auth
-        import app as dashboard_app
-
-        monkeypatch.setattr(auth, "_DEV_AUTO_LOGIN", False)
-        c = TestClient(dashboard_app.app, follow_redirects=False)
-        r = c.get("/")
-        assert r.status_code == 200
-        assert "diggo" in r.text.lower()
-
-    def test_authenticated_redirects_to_candidatures(self) -> None:
-        import time
-
-        import app as dashboard_app
-        import jwt
-
-        secret = os.environ["SUPABASE_JWT_SECRET"]
-        token = jwt.encode(
-            {
-                "sub": "u1",
-                "email": "t@t.com",
-                "exp": int(time.time()) + 3600,
-                "aud": "authenticated",
-            },
-            secret,
-            algorithm="HS256",
-        )
-        c = TestClient(dashboard_app.app, follow_redirects=False)
-        c.cookies.set("session", token)
-        r = c.get("/")
-        assert r.status_code == 302
-        assert r.headers["location"] == "/candidatures"
-
-
 class TestCandidatures:
     def test_returns_200(self, client: TestClient) -> None:
         r = client.get("/candidatures")

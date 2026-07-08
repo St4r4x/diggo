@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import mistune
 
@@ -19,7 +19,6 @@ import user_data
 from auth import (
     CurrentUser,
     get_current_user,
-    get_current_user_optional,
     require_onboarding_complete,
 )
 from db import VALID_STATUSES, open_db
@@ -135,14 +134,6 @@ app.include_router(api.router)
 
 
 # ── Protected routes ──────────────────────────────────────────────────────────
-
-
-@app.get("/", response_class=HTMLResponse)
-async def landing(request: Request) -> HTMLResponse:
-    user = get_current_user_optional(request)
-    if user is not None:
-        return RedirectResponse("/candidatures", status_code=302)
-    return templates.TemplateResponse(request, "landing.html")
 
 
 @app.get("/candidatures", response_class=HTMLResponse)

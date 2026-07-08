@@ -35,6 +35,7 @@ services:
       # auto-sets to the container ID; force it so the server listens on all
       # interfaces and the healthcheck can reach it via localhost.
       - HOSTNAME=0.0.0.0
+      - INTERNAL_API_URL=http://api:8000
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 5s

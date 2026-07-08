@@ -33,6 +33,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/templates/base.html` — updated logout button fetch URL to `/api/auth/session`
 - `proxy/nginx.conf` — added `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` location blocks routing to `web`; every other path still routes to `api` unchanged
 - `docker-compose.yml`, `frontend/Dockerfile` — `web`'s build now receives `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` as build args, inlined into the client bundle at `npm run build` time
+- `proxy/nginx.conf` — added `location = /` (exact match) routing to `web`; every other path, including all subpaths, still routes to `api` unchanged
+- `docker-compose.yml` — `web` service gets `INTERNAL_API_URL=http://api:8000`, used server-side by the new landing page's SSR auth check
 
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.
@@ -40,6 +42,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead
+- `dashboard/app.py`, `dashboard/auth.py`, `dashboard/templates/landing.html` — deleted the Jinja2-rendered `/` route, its template, and the `get_current_user_optional` helper (now orphaned) now that nginx routes `/` to the Next.js frontend instead
 
 ## 2026-07-08
 

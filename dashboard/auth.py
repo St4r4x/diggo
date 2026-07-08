@@ -65,19 +65,6 @@ def validate_access_token(token: str) -> CurrentUser:
     return {"sub": payload["sub"], "email": payload.get("email", "")}
 
 
-def get_current_user_optional(request: Request) -> CurrentUser | None:
-    if _DEV_AUTO_LOGIN:
-        return _DEV_USER
-    token = request.cookies.get(_COOKIE_SESSION)
-    if not token:
-        return None
-    try:
-        payload = _decode_token(token)
-    except jwt.InvalidTokenError:
-        return None
-    return {"sub": payload["sub"], "email": payload.get("email", "")}
-
-
 def get_current_user(request: Request) -> CurrentUser:
     if _DEV_AUTO_LOGIN:
         return _DEV_USER

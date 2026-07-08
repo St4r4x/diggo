@@ -78,7 +78,7 @@
           }),
         });
         if (!res.ok) { showErr('Erreur serveur: impossible de créer la session (' + res.status + ')'); return; }
-        window.location.href = '/';
+        window.location.href = '/profile';
       } catch (err) {
         showErr('Erreur réseau: ' + err.message);
       }

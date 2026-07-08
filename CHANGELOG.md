@@ -18,6 +18,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/page.tsx` — proof-of-wiring home page that calls `/api/me` (works once served through the new proxy, Task 7)
 - `frontend/Dockerfile` — multi-stage build (deps → build → run) producing a lean standalone Next.js image; `frontend/.dockerignore` excludes `node_modules`, `.next`, `.git`
 - `proxy/nginx.conf` — reverse proxy config routing `/api/*` to the FastAPI service; the default `/` still goes to `api` until pages migrate to `web`
+- `frontend/lib/supabase.ts` — shared browser Supabase client factory, reused by every auth page
+- `frontend/app/login/page.tsx` — login page (email/password, password-reset trigger, redirects to `/profile`), reproducing the former Jinja2 page's exact behavior on the new design system
+- `frontend/components/ui/{input,label,card}.tsx` — shadcn form primitives, reused by every future page with a form
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

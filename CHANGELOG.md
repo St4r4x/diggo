@@ -22,6 +22,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/login/page.tsx` — login page (email/password, password-reset trigger, redirects to `/profile`), reproducing the former Jinja2 page's exact behavior on the new design system
 - `frontend/components/ui/{input,label,card}.tsx` — shadcn form primitives, reused by every future page with a form
 - `frontend/app/signup/page.tsx` — signup page (email/password/confirm with client-side match+length validation), reproducing the former Jinja2 page's exact behavior, redirects to `/auth/confirm`
+- `frontend/app/auth/confirm/page.tsx` — static "check your email" page, reproducing the former Jinja2 page verbatim
+- `frontend/app/auth/reset-password/page.tsx` — new-password form, listens for Supabase's `PASSWORD_RECOVERY` event, redirects to `/login` 1.5s after success
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

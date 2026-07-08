@@ -46,6 +46,77 @@ def test_call_llm_appends_json_schema_hint_to_user_prompt(
     assert '"foo": "bar"' in seen_prompts[0]
 
 
+def test_validate_hf_token_succeeds_silently(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeClient:
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    return None
+
+    monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
+    llm.validate_hf_token("hf_valid_token")  # should not raise
+
+
+def _fake_response(status_code: int):
+    import httpx
+
+    request = httpx.Request("POST", "https://router.huggingface.co/v1/chat/completions")
+    return httpx.Response(status_code, request=request)
+
+
+def test_validate_hf_token_raises_llm_error_on_invalid_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise_auth_error(**kwargs):
+        raise llm.AuthenticationError(
+            message="invalid token", response=_fake_response(401), body=None
+        )
+
+    class _FakeClient:
+        class chat:
+            class completions:
+                create = staticmethod(_raise_auth_error)
+
+    monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
+    with pytest.raises(llm.LLMError, match="invalide"):
+        llm.validate_hf_token("hf_bad_token")
+
+
+def test_validate_hf_token_raises_llm_error_on_missing_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise_permission_error(**kwargs):
+        raise llm.PermissionDeniedError(
+            message="no inference permission", response=_fake_response(403), body=None
+        )
+
+    class _FakeClient:
+        class chat:
+            class completions:
+                create = staticmethod(_raise_permission_error)
+
+    monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
+    with pytest.raises(llm.LLMError, match="permission"):
+        llm.validate_hf_token("hf_token_without_inference_permission")
+
+
+def test_validate_hf_token_raises_llm_error_on_other_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise_generic_error(**kwargs):
+        raise llm.OpenAIError("network down")
+
+    class _FakeClient:
+        class chat:
+            class completions:
+                create = staticmethod(_raise_generic_error)
+
+    monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
+    with pytest.raises(llm.LLMError, match="réessaie"):
+        llm.validate_hf_token("hf_some_token")
+
+
 _CANNED_ANALYSIS = {
     "top_skills": ["PyTorch", "Kubernetes", "RAG"],
     "keywords": ["MLOps", "production ML"],

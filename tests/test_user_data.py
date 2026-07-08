@@ -6,6 +6,7 @@ from pathlib import Path
 
 import psycopg2
 import pytest
+from cryptography.fernet import Fernet
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 import user_data
@@ -131,14 +132,12 @@ def test_save_and_get_settings(conn):
 
 
 def test_hf_token_missing_returns_none(conn, monkeypatch):
-    from cryptography.fernet import Fernet
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
     assert user_data.get_hf_token(conn, USER_A) is None
 
 
 def test_hf_token_save_and_get_roundtrip(conn, monkeypatch):
-    from cryptography.fernet import Fernet
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
     user_data.save_hf_token(conn, USER_A, "hf_secret123")
@@ -147,7 +146,6 @@ def test_hf_token_save_and_get_roundtrip(conn, monkeypatch):
 
 
 def test_hf_token_isolated_per_user(conn, monkeypatch):
-    from cryptography.fernet import Fernet
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
     user_data.save_hf_token(conn, USER_A, "hf_secret123")
@@ -156,7 +154,6 @@ def test_hf_token_isolated_per_user(conn, monkeypatch):
 
 
 def test_hf_token_save_twice_overwrites(conn, monkeypatch):
-    from cryptography.fernet import Fernet
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
     user_data.save_hf_token(conn, USER_A, "hf_first")
@@ -167,7 +164,6 @@ def test_hf_token_save_twice_overwrites(conn, monkeypatch):
 
 
 def test_delete_hf_token_clears_it(conn, monkeypatch):
-    from cryptography.fernet import Fernet
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
     user_data.save_hf_token(conn, USER_A, "hf_secret123")
@@ -402,3 +398,169 @@ def test_save_education(conn_with_cv):
     user_data.save_education(conn_with_cv, USER_A, "fr", entries)
     cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
     assert cv["education"][0]["degree"] == "MSc AI"
+
+
+_CREATE_ONBOARDING_TABLES = (
+    _CREATE_PROFILES + ";" + _CREATE_SETTINGS + ";" + _CREATE_CV_TABLES
+)
+
+
+@pytest.fixture
+def conn_onboarding(monkeypatch):
+    c = psycopg2.connect(PG_URL)
+    c.autocommit = False
+    with c.cursor() as cur:
+        for stmt in _CREATE_ONBOARDING_TABLES.split(";"):
+            if stmt.strip():
+                cur.execute(stmt)
+    c.commit()
+    monkeypatch.setattr(user_data, "_migrate_profile_from_files", lambda: None)
+    monkeypatch.setattr(user_data, "_migrate_settings_from_files", lambda: None)
+    monkeypatch.setattr(user_data, "_migrate_cv_from_files", lambda lang="fr": None)
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    yield c
+    c.close()
+
+
+def test_onboarding_state_all_incomplete_by_default(conn_onboarding):
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["profile_complete"] is False
+    assert state["search_complete"] is False
+    assert state["hf_token_complete"] is False
+    assert state["is_complete"] is False
+
+
+def test_onboarding_state_profile_complete_requires_name_email_summary_experience_skill(
+    conn_onboarding,
+):
+    user_data.save_profile(
+        conn_onboarding,
+        USER_A,
+        {
+            "name": "Alice",
+            "title": "",
+            "email": "a@x.com",
+            "phone": "",
+            "location": "",
+            "linkedin": "",
+            "github": "",
+            "profile_md": "",
+        },
+    )
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["profile_complete"] is False  # no summary/experience/skill yet
+
+    user_data.save_cv_meta(conn_onboarding, USER_A, "fr", "Summary text")
+    user_data.save_experience(
+        conn_onboarding,
+        USER_A,
+        "fr",
+        [
+            {
+                "title": "Dev",
+                "company": "Acme",
+                "type": "CDI",
+                "period": "2024",
+                "bullets": [],
+            }
+        ],
+    )
+    user_data.save_skills(
+        conn_onboarding, USER_A, "fr", [{"category": "Langages", "skill": "Python"}]
+    )
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["profile_complete"] is True
+
+
+def test_onboarding_state_search_complete_requires_keywords(conn_onboarding):
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["search_complete"] is False
+
+    user_data.save_settings(
+        conn_onboarding,
+        USER_A,
+        {
+            "keywords": ["AI Engineer"],
+            "portal_queries": [],
+            "location": "",
+            "contract": "CDI",
+            "experience_max_years": 3,
+            "salary_min": 0,
+            "salary_max": 0,
+            "target_companies": [],
+            "follow_up_days": 7,
+        },
+    )
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["search_complete"] is True
+
+
+def test_onboarding_state_hf_token_complete_requires_saved_token(conn_onboarding):
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["hf_token_complete"] is False
+
+    user_data.save_hf_token(conn_onboarding, USER_A, "hf_secret123")
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["hf_token_complete"] is True
+
+
+def test_onboarding_state_is_complete_requires_all_three(conn_onboarding):
+    user_data.save_profile(
+        conn_onboarding,
+        USER_A,
+        {
+            "name": "Alice",
+            "title": "",
+            "email": "a@x.com",
+            "phone": "",
+            "location": "",
+            "linkedin": "",
+            "github": "",
+            "profile_md": "",
+        },
+    )
+    user_data.save_cv_meta(conn_onboarding, USER_A, "fr", "Summary text")
+    user_data.save_experience(
+        conn_onboarding,
+        USER_A,
+        "fr",
+        [
+            {
+                "title": "Dev",
+                "company": "Acme",
+                "type": "CDI",
+                "period": "2024",
+                "bullets": [],
+            }
+        ],
+    )
+    user_data.save_skills(
+        conn_onboarding, USER_A, "fr", [{"category": "Langages", "skill": "Python"}]
+    )
+    user_data.save_settings(
+        conn_onboarding,
+        USER_A,
+        {
+            "keywords": ["AI Engineer"],
+            "portal_queries": [],
+            "location": "",
+            "contract": "CDI",
+            "experience_max_years": 3,
+            "salary_min": 0,
+            "salary_max": 0,
+            "target_companies": [],
+            "follow_up_days": 7,
+        },
+    )
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["is_complete"] is False  # HF token still missing
+
+    user_data.save_hf_token(conn_onboarding, USER_A, "hf_secret123")
+    conn_onboarding.commit()
+    state = user_data.get_onboarding_state(conn_onboarding, USER_A)
+    assert state["is_complete"] is True

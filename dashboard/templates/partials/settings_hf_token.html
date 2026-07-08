@@ -3,14 +3,18 @@
 {% else %}
 <p class="text-gray-500 text-sm mb-3">Non configuré. Sans token, la préparation de candidature (CV, lettre, fiche entretien) est bloquée.</p>
 {% endif %}
-<p class="text-gray-400 text-xs mb-3 leading-relaxed">
-  Crée ou récupère un token sur
-  <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer"
-     class="text-blue-400 hover:underline">huggingface.co/settings/tokens</a>,
-  avec la permission d'appel aux <strong>Inference Providers</strong> (section "Inference" lors de la création).
-  Le token commence par <code class="font-mono">hf_</code> et fait une quarantaine de caractères
-  &mdash; vérifie que le copier-coller est complet avant d'enregistrer.
-</p>
+{% if hf_token_error %}
+<p class="text-red-400 text-sm mb-3">{{ hf_token_error }}</p>
+{% endif %}
+<ol class="text-gray-400 text-xs mb-3 leading-relaxed list-decimal list-inside space-y-1">
+  <li>Ouvre
+    <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer"
+       class="text-blue-400 hover:underline">huggingface.co/settings/tokens</a>
+  </li>
+  <li>Clique sur <strong>"New token"</strong></li>
+  <li>Active la permission <strong>"Inference Providers"</strong> (obligatoire, sans elle le token sera refusé)</li>
+  <li>Copie le token (commence par <code class="font-mono">hf_</code>) et colle-le ci-dessous</li>
+</ol>
 <form hx-post="/settings/hf-token" hx-target="#hf-token-section" hx-swap="innerHTML" class="flex gap-2">
   <input type="password" name="hf_token" placeholder="hf_..." autocomplete="off"
          pattern="hf_.{15,}" title="Le token doit commencer par hf_ et faire au moins 18 caractères"

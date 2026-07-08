@@ -216,6 +216,33 @@ def delete_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> None:
         )
 
 
+def get_onboarding_state(
+    conn: psycopg2.extensions.connection, user_id: str
+) -> dict[str, Any]:
+    """Compute onboarding completeness live from existing profile/CV/settings/token data."""
+    profile = get_profile(conn, user_id)
+    cv = get_cv(conn, user_id, lang="fr")
+    profile_complete = bool(
+        profile["name"].strip()
+        and profile["email"].strip()
+        and cv["meta"]["summary"].strip()
+        and len(cv["experience"]) >= 1
+        and len(cv["skills"]) >= 1
+    )
+
+    settings = get_settings(conn, user_id)
+    search_complete = len(settings["keywords"]) >= 1
+
+    hf_token_complete = get_hf_token(conn, user_id) is not None
+
+    return {
+        "profile_complete": profile_complete,
+        "search_complete": search_complete,
+        "hf_token_complete": hf_token_complete,
+        "is_complete": profile_complete and search_complete and hf_token_complete,
+    }
+
+
 def _migrate_ats_from_files() -> list[dict[str, str]] | None:
     if not _ATS_MAP_YAML.exists():
         return None

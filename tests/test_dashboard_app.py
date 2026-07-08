@@ -90,7 +90,7 @@ def _insert_row(
 @pytest.fixture
 def client():
     import app as dashboard_app
-    from auth import get_current_user
+    from auth import get_current_user, require_onboarding_complete
 
     test_db = _make_pg_db()
     dashboard_app.app.state.db = test_db
@@ -104,6 +104,9 @@ def client():
         "error": "",
     }
     dashboard_app.app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+    dashboard_app.app.dependency_overrides[require_onboarding_complete] = lambda: (
+        MOCK_USER
+    )
     yield TestClient(dashboard_app.app)
     dashboard_app.app.dependency_overrides.clear()
     test_db.close()
@@ -199,14 +202,51 @@ class TestCandidatures:
 
     def test_requires_auth(self) -> None:
         import app as dashboard_app
-        from auth import get_current_user
+        from auth import get_current_user, require_onboarding_complete
 
         dashboard_app.app.dependency_overrides.pop(get_current_user, None)
+        dashboard_app.app.dependency_overrides.pop(require_onboarding_complete, None)
         c = TestClient(
             dashboard_app.app, raise_server_exceptions=False, follow_redirects=False
         )
         r = c.get("/candidatures")
         assert r.status_code == 302
+
+    def test_redirects_to_profile_when_onboarding_incomplete(self, monkeypatch) -> None:
+        import time
+
+        import app as dashboard_app
+        import jwt
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": False,
+                "profile_complete": False,
+                "search_complete": False,
+                "hf_token_complete": False,
+            },
+        )
+        test_db = _make_pg_db()
+        dashboard_app.app.state.db = test_db
+        secret = os.environ["SUPABASE_JWT_SECRET"]
+        token = jwt.encode(
+            {
+                "sub": "u1",
+                "email": "t@t.com",
+                "exp": int(time.time()) + 3600,
+                "aud": "authenticated",
+            },
+            secret,
+            algorithm="HS256",
+        )
+        c = TestClient(dashboard_app.app, follow_redirects=False)
+        c.cookies.set("session", token)
+        r = c.get("/candidatures")
+        assert r.status_code == 302
+        assert r.headers["location"] == "/profile"
+        test_db.close()
 
 
 class TestOfferList:
@@ -500,6 +540,26 @@ class TestStats:
         r = client_with_data.get("/stats")
         for s in VALID_STATUSES:
             assert s in r.text
+
+
+class TestOnboardingGateOnSettingsAndProfileNeverBlocks:
+    def test_settings_page_never_redirected_when_onboarding_incomplete(
+        self, monkeypatch, client: TestClient
+    ) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": False,
+                "profile_complete": False,
+                "search_complete": False,
+                "hf_token_complete": False,
+            },
+        )
+        r = client.get("/settings")
+        assert r.status_code == 200
 
 
 class TestScan:
@@ -915,6 +975,38 @@ class TestAuthRoutes:
         assert r.headers["location"] == "/login"
 
 
+class TestSettingsHfTokenValidation:
+    def test_save_valid_token_succeeds(self, client: TestClient, monkeypatch) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(dashboard_app.llm, "validate_hf_token", lambda token: None)
+        r = client.post("/settings/hf-token", data={"hf_token": "hf_valid_token_123"})
+        assert r.status_code == 200
+        assert "Configuré" in r.text
+
+    def test_save_invalid_token_shows_error_and_does_not_save(
+        self, client: TestClient, monkeypatch
+    ) -> None:
+        import app as dashboard_app
+
+        conn = dashboard_app.app.state.db.conn
+        dashboard_app.user_data.delete_hf_token(conn, MOCK_USER["sub"])
+        conn.commit()
+
+        def _fail(token):
+            raise dashboard_app.llm.LLMError(
+                "Token invalide — vérifie que le copier-coller est complet."
+            )
+
+        monkeypatch.setattr(dashboard_app.llm, "validate_hf_token", _fail)
+        r = client.post("/settings/hf-token", data={"hf_token": "hf_bad_token"})
+        assert r.status_code == 200
+        assert "Token invalide" in r.text
+
+        conn = dashboard_app.app.state.db.conn
+        assert dashboard_app.user_data.get_hf_token(conn, MOCK_USER["sub"]) is None
+
+
 _DEFAULT_SETTINGS = {
     "keywords": [],
     "portal_queries": [],
@@ -933,8 +1025,10 @@ _HF_TOKEN_STORE: dict[str, str] = {}
 
 @pytest.fixture
 def authed_client(client: TestClient, monkeypatch) -> TestClient:
+    import llm
     import user_data
 
+    monkeypatch.setattr(llm, "validate_hf_token", lambda token: None)
     monkeypatch.setattr(
         user_data, "get_settings", lambda conn, uid: dict(_DEFAULT_SETTINGS)
     )

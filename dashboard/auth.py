@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 import jwt
+import user_data
 from fastapi import HTTPException, Request, Response
 
 _COOKIE_SESSION = "session"
@@ -88,6 +89,17 @@ def get_current_user(request: Request) -> CurrentUser:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=302, headers={"location": "/login"})
     return {"sub": payload["sub"], "email": payload.get("email", "")}
+
+
+def require_onboarding_complete(request: Request) -> CurrentUser:
+    current_user = get_current_user(request)
+    conn = request.app.state.db.conn
+    state = user_data.get_onboarding_state(conn, current_user["sub"])
+    if state["is_complete"]:
+        return current_user
+    if not state["profile_complete"]:
+        raise HTTPException(status_code=302, headers={"location": "/profile"})
+    raise HTTPException(status_code=302, headers={"location": "/settings"})
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:

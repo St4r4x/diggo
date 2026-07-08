@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="max-w-3xl mx-auto py-8 px-4 space-y-8">
+  {% include "partials/onboarding_banner.html" %}
   <h1 class="text-2xl font-bold text-white">Paramètres</h1>
 
-  <div class="bg-gray-800 rounded-xl p-6">
+  <div id="search" class="bg-gray-800 rounded-xl p-6">
     <h2 class="text-lg font-semibold text-white mb-4">Recherche</h2>
     {% include "partials/settings_search.html" %}
   </div>
 
-  <div class="bg-gray-800 rounded-xl p-6">
+  <div id="hf-token" class="bg-gray-800 rounded-xl p-6">
     <h2 class="text-lg font-semibold text-white mb-4">Clé API Hugging Face</h2>
     <div id="hf-token-section">
       {% include "partials/settings_hf_token.html" %}

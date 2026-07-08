@@ -114,3 +114,129 @@ def test_get_current_user_expired_cookie_redirects() -> None:
         get_current_user(_request_with_cookie(token))
     assert exc.value.status_code == 302
     assert exc.value.headers["location"] == "/login"
+
+
+class _FakeDB:
+    def __init__(self, conn):
+        self.conn = conn
+
+
+class _FakeAppState:
+    def __init__(self, conn):
+        self.db = _FakeDB(conn)
+
+
+class _FakeApp:
+    def __init__(self, conn):
+        self.state = _FakeAppState(conn)
+
+
+def _request_with_cookie_and_app(token: str, conn: object) -> Request:
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"cookie", f"session={token}".encode())],
+        "query_string": b"",
+        "app": _FakeApp(conn),
+    }
+    return Request(scope)
+
+
+def test_require_onboarding_complete_passes_through_when_complete(monkeypatch) -> None:
+    import auth
+    from auth import require_onboarding_complete
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": True,
+            "profile_complete": True,
+            "search_complete": True,
+            "hf_token_complete": True,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    result = require_onboarding_complete(request)
+    assert result["sub"] == "user-uuid-123"
+
+
+def test_require_onboarding_complete_redirects_to_profile_when_profile_incomplete(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete
+    from fastapi import HTTPException
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": False,
+            "search_complete": False,
+            "hf_token_complete": False,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    with pytest.raises(HTTPException) as exc:
+        require_onboarding_complete(request)
+    assert exc.value.status_code == 302
+    assert exc.value.headers["location"] == "/profile"
+
+
+def test_require_onboarding_complete_redirects_to_settings_when_only_search_incomplete(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete
+    from fastapi import HTTPException
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": True,
+            "search_complete": False,
+            "hf_token_complete": False,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    with pytest.raises(HTTPException) as exc:
+        require_onboarding_complete(request)
+    assert exc.value.status_code == 302
+    assert exc.value.headers["location"] == "/settings"
+
+
+def test_require_onboarding_complete_redirects_to_settings_when_only_hf_token_incomplete(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete
+    from fastapi import HTTPException
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": True,
+            "search_complete": True,
+            "hf_token_complete": False,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    with pytest.raises(HTTPException) as exc:
+        require_onboarding_complete(request)
+    assert exc.value.status_code == 302
+    assert exc.value.headers["location"] == "/settings"

@@ -71,6 +71,16 @@ def profile_client(monkeypatch):
     monkeypatch.setattr(
         user_data, "delete_experience", lambda conn, user_id, exp_id: None
     )
+    monkeypatch.setattr(
+        user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": True,
+            "profile_complete": True,
+            "search_complete": True,
+            "hf_token_complete": True,
+        },
+    )
 
     mock_conn = MagicMock()
     mock_conn.commit = MagicMock()
@@ -99,6 +109,45 @@ class TestProfilePage:
         r = profile_client.get("/profile")
         assert "/profile" in r.text
         assert "Profil" in r.text
+
+    def test_profile_page_shows_onboarding_banner_when_incomplete(
+        self, profile_client, monkeypatch
+    ) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": False,
+                "profile_complete": True,
+                "search_complete": False,
+                "hf_token_complete": False,
+            },
+        )
+        r = profile_client.get("/profile")
+        assert r.status_code == 200
+        assert "Mots-clés de recherche" in r.text
+        assert "Token Hugging Face" in r.text
+
+    def test_profile_page_hides_onboarding_banner_when_complete(
+        self, profile_client, monkeypatch
+    ) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_onboarding_state",
+            lambda conn, user_id: {
+                "is_complete": True,
+                "profile_complete": True,
+                "search_complete": True,
+                "hf_token_complete": True,
+            },
+        )
+        r = profile_client.get("/profile")
+        assert r.status_code == 200
+        assert "Pour démarrer" not in r.text
 
 
 class TestSaveContact:

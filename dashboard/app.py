@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import mistune
 
+import api
 import llm
 import profile_parser
 import user_data
@@ -137,6 +138,8 @@ templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
 templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 templates.env.globals["supabase_url"] = _SUPABASE_PUBLIC_URL
 templates.env.globals["supabase_anon_key"] = _SUPABASE_ANON_KEY
+
+app.include_router(api.router)
 
 
 # ── Public auth routes ────────────────────────────────────────────────────────

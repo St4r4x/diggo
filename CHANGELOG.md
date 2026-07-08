@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - `dashboard/auth.py` — `get_current_user_api()`, a 401-raising auth dependency for the new `/api/*` JSON routes (the Jinja2 pages keep using the redirecting `get_current_user`)
+- `dashboard/api.py` — new `/api/*` JSON router: `GET /api/health` (unauthenticated), `GET /api/me` (returns the current user, 401 if not authenticated). First piece of the JSON API the Next.js frontend will consume.
 
 ## 2026-07-08
 

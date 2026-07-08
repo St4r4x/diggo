@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
+import { OfferEditForm } from "@/components/candidatures/offer-edit-form";
 
 type Filters = {
   status: string;
@@ -126,14 +127,17 @@ export function CandidaturesClient() {
   });
 
   const [notesInput, setNotesInput] = useState<string>("");
+  const [isEditing, setIsEditing] = useState<boolean>(false);
 
-  // Reset the notes draft when switching offers, so the previous offer's
-  // text doesn't briefly show while the new detail is still loading.
+  // Reset the notes draft and edit mode when switching offers, so the
+  // previous offer's text/form doesn't briefly show while the new detail
+  // is still loading.
   // ponytail: syncing from an external system (the query cache), not
   // derived state — same shape as theme-toggle.tsx's suppression.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNotesInput(detail?.offer.notes ?? "");
+    setIsEditing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.offer.id]);
 
@@ -316,6 +320,12 @@ export function CandidaturesClient() {
                     {detail.offer.status}
                   </span>
                   <button
+                    onClick={() => setIsEditing((v) => !v)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-background border border-border text-foreground hover:bg-card"
+                  >
+                    {isEditing ? "Annuler" : "Modifier"}
+                  </button>
+                  <button
                     onClick={() => {
                       if (window.confirm("Supprimer cette candidature ?")) {
                         deleteMutation.mutate();
@@ -343,6 +353,16 @@ export function CandidaturesClient() {
 
               <div className="flex gap-6 flex-1 min-h-0">
                 <div className="w-72 shrink-0 flex flex-col gap-5 overflow-y-auto">
+                  {isEditing ? (
+                    <OfferEditForm
+                      offer={detail.offer}
+                      onSave={(fields) => {
+                        updateMutation.mutate(fields);
+                        setIsEditing(false);
+                      }}
+                      onCancel={() => setIsEditing(false)}
+                    />
+                  ) : (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <dt className="text-primary">Détecté le</dt>
                     <dd className="text-foreground">
@@ -388,6 +408,7 @@ export function CandidaturesClient() {
                       </>
                     )}
                   </dl>
+                  )}
                 </div>
 
                 <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0 overflow-y-auto">

@@ -34,6 +34,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components/dashboard-nav.tsx`, `frontend/components/logout-button.tsx` — shared nav for authenticated pages (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout), first used by `/candidatures`; every later migrated protected page reuses it
 - `dashboard/api.py` — `PATCH /api/offers/{offer_id}` (partial update: status/notes/company/role/offer_url/send_date/follow_up_date/contacts, 422 on invalid status) and `DELETE /api/offers/{offer_id}`, the mutation side of the Candidatures page's JSON API
 - `frontend/components/candidatures/candidatures-client.tsx` — status quick-change buttons, notes autosave (800ms debounce), and a delete button (confirm dialog) in the Candidatures detail panel, wired to the new `PATCH`/`DELETE /api/offers/{id}` routes via TanStack Query mutations
+- `frontend/components/candidatures/offer-edit-form.tsx` — 6-field edit form (entreprise, rôle, URL, date d'envoi, date de relance, contacts) toggled via "Modifier"/"Annuler" in the Candidatures detail panel, replacing the old 14-field Jinja2 edit form (status/notes edited elsewhere in the panel, detection date/score/CV paths not manually editable — see spec)
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

@@ -7,6 +7,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-08
+
+### Added
+- `dashboard/user_data.py` — `get_onboarding_state()` computes profile/search/HF-token completeness live from existing data, no new DB columns
+- `dashboard/auth.py` — `require_onboarding_complete` dependency redirects incomplete accounts to `/profile` or `/settings`
+- `dashboard/templates/partials/onboarding_banner.html` — progress banner shown on `/profile` and `/settings` while onboarding is incomplete
+- `dashboard/llm.py` — `validate_hf_token()` checks a Hugging Face token is valid and has Inference Providers permission before saving
+
+### Changed
+- `dashboard/app.py` — `/candidatures`, `/offers`, `/stats`, `/scan/start`, `/offers/{id}/prepare` now require onboarding completeness, not just auth
+- `dashboard/templates/partials/settings_hf_token.html` — replaced single paragraph with numbered setup steps; shows a specific error when the token fails validation
+- `dashboard/templates/auth/login.html` — post-login redirect now targets `/profile` instead of `/`
+
 ## 2026-07-07
 
 ### Added

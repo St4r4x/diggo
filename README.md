@@ -228,7 +228,7 @@ docker compose --profile manual run --rm pipeline
 docker compose exec api python3 scripts/backfill_descriptions.py
 ```
 
-The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`, everything else to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
+The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`; the migrated auth pages — `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` — to `web`; everything else still to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
 
 ---
 
@@ -269,14 +269,14 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/, /candidatures, /stats, /profile, /settings, /scan/*, /offers/*, /login, /signup, /auth/*)
+  app.py                    FastAPI routes (/, /candidatures, /stats, /profile, /settings, /scan/*, /offers/*)
+  api.py                    JSON API router under /api/* (health, me, auth/session — consumed by the Next.js frontend)
   auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
   db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)
   user_data.py              Per-user data access layer (profile, settings, ATS targets, CV tables)
   profile_parser.py         Profile load/save — delegates to user_data (DB); file fallback for migration
   templates/
     base.html               Layout with nav (user email + logout)
-    auth/                   Login, signup, confirm, reset-password pages (supabase-js v2)
     partials/               HTMX partial templates
   data/                     (gitignored)
 

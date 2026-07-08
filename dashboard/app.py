@@ -919,15 +919,28 @@ async def settings_save_hf_token(
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     token = hf_token.strip()
-    if token:
-        user_data.save_hf_token(conn, user_id, token)
-    else:
+    if not token:
         user_data.delete_hf_token(conn, user_id)
+        conn.commit()
+        return templates.TemplateResponse(
+            request,
+            "partials/settings_hf_token.html",
+            {"hf_token_set": False},
+        )
+    try:
+        llm.validate_hf_token(token)
+    except llm.LLMError as exc:
+        return templates.TemplateResponse(
+            request,
+            "partials/settings_hf_token.html",
+            {"hf_token_set": False, "hf_token_error": str(exc)},
+        )
+    user_data.save_hf_token(conn, user_id, token)
     conn.commit()
     return templates.TemplateResponse(
         request,
         "partials/settings_hf_token.html",
-        {"hf_token_set": bool(token)},
+        {"hf_token_set": True},
     )
 
 

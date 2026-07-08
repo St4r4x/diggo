@@ -975,6 +975,38 @@ class TestAuthRoutes:
         assert r.headers["location"] == "/login"
 
 
+class TestSettingsHfTokenValidation:
+    def test_save_valid_token_succeeds(self, client: TestClient, monkeypatch) -> None:
+        import app as dashboard_app
+
+        monkeypatch.setattr(dashboard_app.llm, "validate_hf_token", lambda token: None)
+        r = client.post("/settings/hf-token", data={"hf_token": "hf_valid_token_123"})
+        assert r.status_code == 200
+        assert "Configuré" in r.text
+
+    def test_save_invalid_token_shows_error_and_does_not_save(
+        self, client: TestClient, monkeypatch
+    ) -> None:
+        import app as dashboard_app
+
+        conn = dashboard_app.app.state.db.conn
+        dashboard_app.user_data.delete_hf_token(conn, MOCK_USER["sub"])
+        conn.commit()
+
+        def _fail(token):
+            raise dashboard_app.llm.LLMError(
+                "Token invalide — vérifie que le copier-coller est complet."
+            )
+
+        monkeypatch.setattr(dashboard_app.llm, "validate_hf_token", _fail)
+        r = client.post("/settings/hf-token", data={"hf_token": "hf_bad_token"})
+        assert r.status_code == 200
+        assert "Token invalide" in r.text
+
+        conn = dashboard_app.app.state.db.conn
+        assert dashboard_app.user_data.get_hf_token(conn, MOCK_USER["sub"]) is None
+
+
 _DEFAULT_SETTINGS = {
     "keywords": [],
     "portal_queries": [],
@@ -993,8 +1025,10 @@ _HF_TOKEN_STORE: dict[str, str] = {}
 
 @pytest.fixture
 def authed_client(client: TestClient, monkeypatch) -> TestClient:
+    import llm
     import user_data
 
+    monkeypatch.setattr(llm, "validate_hf_token", lambda token: None)
     monkeypatch.setattr(
         user_data, "get_settings", lambda conn, uid: dict(_DEFAULT_SETTINGS)
     )

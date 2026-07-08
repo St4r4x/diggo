@@ -7,7 +7,9 @@ import os
 import psycopg2
 import pytest
 
-PG_URL = os.getenv("DATABASE_URL", "postgresql://career:career@localhost:5432/career")
+PG_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+)
 TEST_USER_ID = "test-rescore-user"
 
 _CREATE_TEMP = """

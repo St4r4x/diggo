@@ -7,9 +7,6 @@ import jwt
 import pytest
 
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-32-chars-minimum-ok!")
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
-)
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 

@@ -9,7 +9,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 from db import DB, VALID_STATUSES
 
-PG_URL = os.getenv("DATABASE_URL", "postgresql://career:career@localhost:5432/career")
+PG_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+)
 TEST_USER = "test-user"
 OTHER_USER = "other-user"
 

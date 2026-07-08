@@ -12,7 +12,9 @@ os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-32-chars-minimum-ok!")
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 
-PG_URL = os.getenv("DATABASE_URL", "postgresql://career:career@localhost:5432/career")
+PG_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+)
 TEST_USER_ID = "test-user-uuid-fixture"
 MOCK_USER = {"sub": TEST_USER_ID, "email": "test@example.com"}
 

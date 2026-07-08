@@ -32,6 +32,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/providers.tsx` — `QueryClientProvider` wrapper, now wrapping every page via the root layout
 - `frontend/lib/types.ts`, `frontend/lib/status-colors.ts` — shared `Offer` types and the ported `STATUS_COLORS`/`GRADE_COLORS` maps, reused by later Candidatures sub-phases
 - `frontend/components/dashboard-nav.tsx`, `frontend/components/logout-button.tsx` — shared nav for authenticated pages (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout), first used by `/candidatures`; every later migrated protected page reuses it
+- `dashboard/api.py` — `PATCH /api/offers/{offer_id}` (partial update: status/notes/company/role/offer_url/send_date/follow_up_date/contacts, 422 on invalid status) and `DELETE /api/offers/{offer_id}`, the mutation side of the Candidatures page's JSON API
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

@@ -87,3 +87,37 @@ async def get_offer(
         "offer": offer,
         "description": parse_description(offer.get("description", "")),
     }
+
+
+@router.patch("/offers/{offer_id}")
+async def update_offer(
+    request: Request,
+    offer_id: int,
+    fields: dict = Body(...),
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    if "status" in fields and fields["status"] not in VALID_STATUSES:
+        raise HTTPException(status_code=422, detail={"error": "invalid_status"})
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    if db.get_by_id(offer_id, user_id=user_id) is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    offer = db.update(offer_id, fields, user_id=user_id)
+    return {
+        "offer": offer,
+        "description": parse_description(offer.get("description", "")),
+    }
+
+
+@router.delete("/offers/{offer_id}")
+async def delete_offer(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    if db.get_by_id(offer_id, user_id=user_id) is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    db.delete(offer_id, user_id=user_id)
+    return {"ok": True}

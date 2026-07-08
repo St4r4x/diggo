@@ -235,3 +235,101 @@ def test_get_offer_returns_200_for_existing(client_with_offers) -> None:
 def test_get_offer_returns_404_for_missing(client_with_offers) -> None:
     response = client_with_offers.get("/api/offers/999")
     assert response.status_code == 404
+
+
+def test_patch_offer_updates_status(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.patch(
+        f"/api/offers/{row['id']}", json={"status": "Envoyée"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["offer"]["status"] == "Envoyée"
+    assert "mission" in body["description"]
+    updated = db.get_by_id(row["id"], user_id=MOCK_USER["sub"])
+    assert updated["status"] == "Envoyée"
+
+
+def test_patch_offer_rejects_invalid_status(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.patch(
+        f"/api/offers/{row['id']}", json={"status": "NotAStatus"}
+    )
+    assert response.status_code == 422
+    updated = db.get_by_id(row["id"], user_id=MOCK_USER["sub"])
+    assert updated["status"] == row["status"]
+
+
+def test_patch_offer_updates_notes(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.patch(
+        f"/api/offers/{row['id']}", json={"notes": "Relancer jeudi"}
+    )
+    assert response.status_code == 200
+    updated = db.get_by_id(row["id"], user_id=MOCK_USER["sub"])
+    assert updated["notes"] == "Relancer jeudi"
+
+
+def test_patch_offer_updates_edit_fields(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.patch(
+        f"/api/offers/{row['id']}",
+        json={
+            "company": "Renamed Co",
+            "role": "Staff ML Engineer",
+            "offer_url": "https://example.com/renamed",
+            "send_date": "2026-07-01",
+            "follow_up_date": "2026-07-08",
+            "contacts": "jane@renamed.co",
+        },
+    )
+    assert response.status_code == 200
+    updated = db.get_by_id(row["id"], user_id=MOCK_USER["sub"])
+    assert updated["company"] == "Renamed Co"
+    assert updated["role"] == "Staff ML Engineer"
+    assert updated["send_date"] == "2026-07-01"
+    assert updated["follow_up_date"] == "2026-07-08"
+    assert updated["contacts"] == "jane@renamed.co"
+
+
+def test_patch_offer_returns_404_for_missing(client_with_offers) -> None:
+    response = client_with_offers.patch("/api/offers/999", json={"notes": "x"})
+    assert response.status_code == 404
+
+
+def test_patch_offer_requires_auth(client) -> None:
+    response = client.patch("/api/offers/1", json={"notes": "x"})
+    assert response.status_code == 401
+
+
+def test_delete_offer_removes_row(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.delete(f"/api/offers/{row['id']}")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert db.get_by_id(row["id"], user_id=MOCK_USER["sub"]) is None
+
+
+def test_delete_offer_returns_404_for_missing(client_with_offers) -> None:
+    response = client_with_offers.delete("/api/offers/999")
+    assert response.status_code == 404
+
+
+def test_delete_offer_requires_auth(client) -> None:
+    response = client.delete("/api/offers/1")
+    assert response.status_code == 401

@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from openai import OpenAI, OpenAIError
+from openai import AuthenticationError, OpenAI, OpenAIError, PermissionDeniedError
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,30 @@ def _call_hf(
         **kwargs,
     )
     return response.choices[0].message.content or ""
+
+
+def validate_hf_token(hf_token: str) -> None:
+    """Raise LLMError with a specific, actionable message if the token doesn't work."""
+    client = OpenAI(api_key=hf_token, base_url="https://router.huggingface.co/v1")
+    try:
+        client.chat.completions.create(
+            model=_HF_MODEL,
+            messages=[{"role": "user", "content": "hi"}],
+            max_tokens=1,
+        )
+    except AuthenticationError as exc:
+        raise LLMError(
+            "Token invalide — vérifie que le copier-coller est complet."
+        ) from exc
+    except PermissionDeniedError as exc:
+        raise LLMError(
+            "Token valide mais sans la permission Inference Providers — "
+            "active-la dans les paramètres du token sur Hugging Face."
+        ) from exc
+    except OpenAIError as exc:
+        raise LLMError(
+            "Impossible de vérifier le token pour le moment, réessaie."
+        ) from exc
 
 
 def call_llm(

@@ -50,7 +50,7 @@
   </nav>
   <script>
     async function logout() {
-      await fetch('/auth/session', { method: 'DELETE' });
+      await fetch('/api/auth/session', { method: 'DELETE' });
       window.location.href = '/login';
     }
   </script>

@@ -33,6 +33,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `proxy/nginx.conf` — added `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` location blocks routing to `web`; every other path still routes to `api` unchanged
 - `docker-compose.yml`, `frontend/Dockerfile` — `web`'s build now receives `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` as build args, inlined into the client bundle at `npm run build` time
 
+### Fixed
+- `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.
+- `tests/test_api_routes.py`, `tests/test_auth.py`, `tests/test_dashboard_app.py`, `tests/test_dashboard_db.py`, `tests/test_import_offers.py`, `tests/test_rescore.py` — corrected `DATABASE_URL` test defaults that still pointed at a legacy pre-Supabase Postgres (`career:career@localhost:5432/career`); two files were also setting it via `os.environ.setdefault()` at import time despite never needing a live connection themselves, which silently poisoned the shared env for every test file collected afterward. Full suite now passes with zero DB-connectivity errors.
+
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead
 

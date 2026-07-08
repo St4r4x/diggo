@@ -11,6 +11,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/auth.py` — `get_current_user_api()`, a 401-raising auth dependency for the new `/api/*` JSON routes (the Jinja2 pages keep using the redirecting `get_current_user`)
 - `dashboard/api.py` — new `/api/*` JSON router: `GET /api/health` (unauthenticated), `GET /api/me` (returns the current user, 401 if not authenticated). First piece of the JSON API the Next.js frontend will consume.
 - `frontend/` — new Next.js 16 app (TypeScript, App Router, Tailwind v4), scaffolded as the future home of the whole dashboard UI. Empty shell for now — pages migrate here one at a time in later plans. `next.config.ts` sets `output: "standalone"` for a lean Docker image.
+- `frontend/app/globals.css` — Diggo design tokens (dark-default palette, teal accent, light-theme overrides under `.light`)
+- `frontend/app/layout.tsx` — Inter font self-hosted via `next/font/google`
 
 ## 2026-07-08
 

@@ -240,3 +240,35 @@ def test_require_onboarding_complete_redirects_to_settings_when_only_hf_token_in
         require_onboarding_complete(request)
     assert exc.value.status_code == 302
     assert exc.value.headers["location"] == "/settings"
+
+
+def test_get_current_user_api_valid_token() -> None:
+    from auth import get_current_user_api
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    user = get_current_user_api(_request_with_cookie(token))
+    assert user["sub"] == "user-uuid-123"
+    assert user["email"] == "test@example.com"
+
+
+def test_get_current_user_api_missing_token_raises_401() -> None:
+    from fastapi import HTTPException
+
+    from auth import get_current_user_api
+
+    with pytest.raises(HTTPException) as exc:
+        get_current_user_api(_request_no_auth())
+    assert exc.value.status_code == 401
+
+
+def test_get_current_user_api_expired_token_raises_401() -> None:
+    from fastapi import HTTPException
+
+    from auth import get_current_user_api
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret, exp_offset=-10)
+    with pytest.raises(HTTPException) as exc:
+        get_current_user_api(_request_with_cookie(token))
+    assert exc.value.status_code == 401

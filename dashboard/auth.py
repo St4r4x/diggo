@@ -91,6 +91,21 @@ def get_current_user(request: Request) -> CurrentUser:
     return {"sub": payload["sub"], "email": payload.get("email", "")}
 
 
+def get_current_user_api(request: Request) -> CurrentUser:
+    """Like get_current_user, but raises a 401 instead of redirecting —
+    for /api/* JSON routes consumed by the Next.js frontend."""
+    if _DEV_AUTO_LOGIN:
+        return _DEV_USER
+    token = request.cookies.get(_COOKIE_SESSION)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = _decode_token(token)
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"sub": payload["sub"], "email": payload.get("email", "")}
+
+
 def require_onboarding_complete(request: Request) -> CurrentUser:
     current_user = get_current_user(request)
     conn = request.app.state.db.conn

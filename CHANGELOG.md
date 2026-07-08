@@ -27,6 +27,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/page.tsx` — real landing page (replaces the Frontend Foundations proof-of-wiring content): SSR auth check via `INTERNAL_API_URL`/`/api/me`, redirects authenticated visitors to `/candidatures`, otherwise renders the marketing page (hero, 4 feature cards, "Comment ça marche", footer CTA) on the design system, with copy generalized for the broadened cadres-multi-secteurs audience (no more explicit Greenhouse/Lever/Ashby naming)
 - `dashboard/api.py` — `GET /api/offers` (filtered list) and `GET /api/offers/{offer_id}` (detail), the read side of the Candidatures page's JSON API
 - `dashboard/auth.py` — `require_onboarding_complete_api()`, a 403-JSON sibling of `require_onboarding_complete` for `/api/*` routes that need the onboarding gate
+- `@tanstack/react-query` — data fetching/caching for the Candidatures page (list filters as cache keys, detail-on-select)
+- `frontend/app/candidatures/page.tsx`, `frontend/components/candidatures/candidatures-client.tsx` — the offers list (filters, follow-up banner) and read-only detail panel, reproducing the former Jinja2 `index.html`/`offer_list.html`/`offer_detail.html`'s layout and copy on the design system
+- `frontend/app/providers.tsx` — `QueryClientProvider` wrapper, now wrapping every page via the root layout
+- `frontend/lib/types.ts`, `frontend/lib/status-colors.ts` — shared `Offer` types and the ported `STATUS_COLORS`/`GRADE_COLORS` maps, reused by later Candidatures sub-phases
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

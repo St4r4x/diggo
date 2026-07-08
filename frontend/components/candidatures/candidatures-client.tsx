@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
 
@@ -19,6 +19,10 @@ async function fetchOffers(filters: Filters): Promise<OffersResponse> {
   if (filters.q) params.set("q", filters.q);
   if (filters.sal_min) params.set("sal_min", filters.sal_min);
   const res = await fetch(`/api/offers?${params.toString()}`);
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("session expired");
+  }
   if (res.status === 403) {
     const body = await res.json();
     window.location.href = body.detail?.redirect ?? "/profile";
@@ -30,8 +34,38 @@ async function fetchOffers(filters: Filters): Promise<OffersResponse> {
 
 async function fetchOfferDetail(id: number): Promise<OfferDetailResponse> {
   const res = await fetch(`/api/offers/${id}`);
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("session expired");
+  }
   if (!res.ok) throw new Error("failed to fetch offer");
   return res.json();
+}
+
+async function patchOffer(
+  id: number,
+  fields: Record<string, unknown>,
+): Promise<OfferDetailResponse> {
+  const res = await fetch(`/api/offers/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("session expired");
+  }
+  if (!res.ok) throw new Error("failed to update offer");
+  return res.json();
+}
+
+async function deleteOffer(id: number): Promise<void> {
+  const res = await fetch(`/api/offers/${id}`, { method: "DELETE" });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("session expired");
+  }
+  if (!res.ok) throw new Error("failed to delete offer");
 }
 
 const DESCRIPTION_SECTIONS = [
@@ -71,6 +105,46 @@ export function CandidaturesClient() {
     queryFn: () => fetchOfferDetail(selectedId as number),
     enabled: selectedId !== null,
   });
+
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (fields: Record<string, unknown>) =>
+      patchOffer(selectedId as number, fields),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["offers"] });
+      queryClient.invalidateQueries({ queryKey: ["offer", selectedId] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteOffer(selectedId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["offers"] });
+      setSelectedId(null);
+    },
+  });
+
+  const [notesInput, setNotesInput] = useState<string>("");
+
+  // Reset the notes draft when switching offers, so the previous offer's
+  // text doesn't briefly show while the new detail is still loading.
+  // ponytail: syncing from an external system (the query cache), not
+  // derived state — same shape as theme-toggle.tsx's suppression.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNotesInput(detail?.offer.notes ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.offer.id]);
+
+  useEffect(() => {
+    if (!detail || notesInput === detail.offer.notes) return;
+    const timeoutId = setTimeout(() => {
+      updateMutation.mutate({ notes: notesInput });
+    }, 800);
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notesInput]);
 
   const offers = data?.offers ?? [];
   const followupIds = new Set(data?.followup_ids ?? []);
@@ -241,7 +315,30 @@ export function CandidaturesClient() {
                   >
                     {detail.offer.status}
                   </span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Supprimer cette candidature ?")) {
+                        deleteMutation.mutate();
+                      }
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-900 text-red-200 hover:bg-red-800"
+                  >
+                    Supprimer
+                  </button>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 mb-4 shrink-0">
+                {statuses.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => updateMutation.mutate({ status: s })}
+                    disabled={s === detail.offer.status}
+                    className={`text-xs px-2 py-1 rounded font-medium disabled:opacity-40 disabled:cursor-default ${statusColor(s)}`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
 
               <div className="flex gap-6 flex-1 min-h-0">
@@ -312,6 +409,19 @@ export function CandidaturesClient() {
                         ) : null,
                       )}
                     </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col min-h-0 shrink-0">
+                    <p className="text-sm font-semibold mb-2 text-primary">
+                      Notes
+                    </p>
+                    <textarea
+                      value={notesInput}
+                      onChange={(e) => setNotesInput(e.target.value)}
+                      rows={5}
+                      placeholder="Ajouter une note..."
+                      className="w-full text-sm rounded-lg p-2 bg-background border border-border text-foreground focus:outline-none focus:border-primary resize-none"
+                    />
                   </div>
                 </div>
               </div>

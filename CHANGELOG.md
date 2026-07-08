@@ -33,6 +33,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/lib/types.ts`, `frontend/lib/status-colors.ts` — shared `Offer` types and the ported `STATUS_COLORS`/`GRADE_COLORS` maps, reused by later Candidatures sub-phases
 - `frontend/components/dashboard-nav.tsx`, `frontend/components/logout-button.tsx` — shared nav for authenticated pages (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout), first used by `/candidatures`; every later migrated protected page reuses it
 - `dashboard/api.py` — `PATCH /api/offers/{offer_id}` (partial update: status/notes/company/role/offer_url/send_date/follow_up_date/contacts, 422 on invalid status) and `DELETE /api/offers/{offer_id}`, the mutation side of the Candidatures page's JSON API
+- `frontend/components/candidatures/candidatures-client.tsx` — status quick-change buttons, notes autosave (800ms debounce), and a delete button (confirm dialog) in the Candidatures detail panel, wired to the new `PATCH`/`DELETE /api/offers/{id}` routes via TanStack Query mutations
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
@@ -49,6 +50,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.
 - `tests/test_api_routes.py`, `tests/test_auth.py`, `tests/test_dashboard_app.py`, `tests/test_dashboard_db.py`, `tests/test_import_offers.py`, `tests/test_rescore.py` — corrected `DATABASE_URL` test defaults that still pointed at a legacy pre-Supabase Postgres (`career:career@localhost:5432/career`); two files were also setting it via `os.environ.setdefault()` at import time despite never needing a live connection themselves, which silently poisoned the shared env for every test file collected afterward. Full suite now passes with zero DB-connectivity errors.
+- `frontend/components/candidatures/candidatures-client.tsx` — a 401 (expired session) on any `/api/offers*` call now redirects to `/login`, matching the existing 403 (onboarding-incomplete) handling; previously only the 403 case was handled and an expired session left the page silently stuck loading
 
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead

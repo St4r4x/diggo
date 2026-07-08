@@ -132,16 +132,13 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 
 | Route | Description |
 |-------|-------------|
-| `/candidatures` | Offer list with filters, notes, status tracking, scan button; amber bandeau when applications are overdue for follow-up (> 7 days since send) |
+| `/candidatures` | Offer list with filters and a read-only detail panel — served by the Next.js frontend (`web`); shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
 | `/profile` | Profile editor — contact info, profile text, and CV editor (FR/EN tabs) backed by DB |
 | `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD, Hugging Face API token |
 | `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |
 
-**Offer detail panel:**
-- Change status (À envoyer → Envoyée → Entretien RH → …)
-- Write notes (autosaved with 800ms debounce)
-- Copy the context-sensitive action command (see below): "Préparer candidature" for apply statuses, "Préparer entretien" for interview statuses
+Status changes, notes, and the "Préparer candidature"/"Préparer entretien" action commands are implemented as backend routes (`POST /offers/{offer_id}`, `/status`, `/notes`, `/prepare`) but not yet reachable from the migrated `/candidatures` page's UI — pending a later sub-phase.
 
 ---
 
@@ -228,7 +225,7 @@ docker compose --profile manual run --rm pipeline
 docker compose exec api python3 scripts/backfill_descriptions.py
 ```
 
-The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`; the migrated pages — `/`, `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` — to `web`; everything else still to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
+The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`; the migrated pages — `/`, `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password`, `/candidatures` — to `web`; everything else still to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
 
 ---
 
@@ -269,7 +266,7 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/candidatures, /stats, /profile, /settings, /scan/*, /offers/*)
+  app.py                    FastAPI routes (/stats, /profile, /settings, /scan/*, /offers/*)
   api.py                    JSON API router under /api/* (health, me, auth/session — consumed by the Next.js frontend)
   auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
   db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)

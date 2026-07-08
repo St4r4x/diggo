@@ -31,6 +31,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/candidatures/page.tsx`, `frontend/components/candidatures/candidatures-client.tsx` — the offers list (filters, follow-up banner) and read-only detail panel, reproducing the former Jinja2 `index.html`/`offer_list.html`/`offer_detail.html`'s layout and copy on the design system
 - `frontend/app/providers.tsx` — `QueryClientProvider` wrapper, now wrapping every page via the root layout
 - `frontend/lib/types.ts`, `frontend/lib/status-colors.ts` — shared `Offer` types and the ported `STATUS_COLORS`/`GRADE_COLORS` maps, reused by later Candidatures sub-phases
+- `frontend/components/dashboard-nav.tsx`, `frontend/components/logout-button.tsx` — shared nav for authenticated pages (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout), first used by `/candidatures`; every later migrated protected page reuses it
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
@@ -42,6 +43,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `proxy/nginx.conf` — added `location = /` (exact match) routing to `web`; every other path, including all subpaths, still routes to `api` unchanged
 - `docker-compose.yml` — `web` service gets `INTERNAL_API_URL=http://api:8000`, used server-side by the new landing page's SSR auth check
 - `dashboard/db.py` — added `parse_description()`, moved from `dashboard/app.py`'s private `_parse_description` so both `app.py` and `api.py` can use it without a circular import
+- `proxy/nginx.conf` — added `location /candidatures` routing to `web`; the page is now fully served by the Next.js frontend
 
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.
@@ -50,6 +52,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead
 - `dashboard/app.py`, `dashboard/auth.py`, `dashboard/templates/landing.html` — deleted the Jinja2-rendered `/` route, its template, and the `get_current_user_optional` helper (now orphaned) now that nginx routes `/` to the Next.js frontend instead
+- `dashboard/app.py`, `dashboard/templates/index.html`, `dashboard/templates/partials/offer_list.html` — deleted the Jinja2-rendered `/candidatures` and `/offers` (list) routes now that nginx routes `/candidatures` to `web`. `partials/offer_detail.html` and the `/offers/{id}/edit`, `/offers/{id}/status`, `/offers/{id}/notes`, `/offers/{id}` (POST/DELETE), `/offers/{id}/prepare` routes are untouched — migrated in later sub-phases
+- `tests/test_dashboard_app.py` — deleted `TestCandidatures`, `TestOfferList`, `TestOfferDetail` (tested the now-removed GET routes directly), plus `TestPrepareCandidature` and `TestFollowupReminders` (asserted on the same removed routes' rendered HTML for unrelated features — prep button, follow-up banner/dot — that Task 1/2 already migrated into `/api/offers` and `candidatures-client.tsx`; not caught by the original task brief's scope, confirmed via failing-test triage before deleting)
 
 ## 2026-07-08
 

@@ -116,62 +116,6 @@ app.include_router(api.router)
 # ── Protected routes ──────────────────────────────────────────────────────────
 
 
-@app.get("/candidatures", response_class=HTMLResponse)
-async def index(
-    request: Request,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-) -> HTMLResponse:
-    db = request.app.state.db
-    user_id = current_user["sub"]
-    offers = db.get_all({}, user_id=user_id)
-    followup_ids = {f["id"] for f in db.get_followups(user_id=user_id)}
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {
-            "offers": offers,
-            "statuses": VALID_STATUSES,
-            "status": request.app.state.scan_status,
-            "result": request.app.state.scan_result,
-            "followup_ids": followup_ids,
-            "current_user": current_user,
-        },
-    )
-
-
-@app.get("/offers", response_class=HTMLResponse)
-async def offer_list(
-    request: Request,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-    status: str = Query(""),
-    grade: str = Query(""),
-    q: str = Query(""),
-    sal_min: str = Query(""),
-) -> HTMLResponse:
-    db = request.app.state.db
-    user_id = current_user["sub"]
-    filters = {
-        k: v
-        for k, v in {
-            "status": status,
-            "grade": grade,
-            "q": q,
-            "sal_min": sal_min,
-        }.items()
-        if v
-    }
-    offers = db.get_all(filters, user_id=user_id)
-    followup_ids = {f["id"] for f in db.get_followups(user_id=user_id)}
-    return templates.TemplateResponse(
-        request,
-        "partials/offer_list.html",
-        {
-            "offers": offers,
-            "followup_ids": followup_ids,
-        },
-    )
-
-
 @app.get("/offers/{offer_id}/edit", response_class=HTMLResponse)
 async def offer_edit_form(
     request: Request,
@@ -189,28 +133,6 @@ async def offer_edit_form(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
-        },
-    )
-
-
-@app.get("/offers/{offer_id}", response_class=HTMLResponse)
-async def offer_detail(
-    request: Request,
-    offer_id: int,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-) -> HTMLResponse:
-    db = request.app.state.db
-    user_id = current_user["sub"]
-    offer = db.get_by_id(offer_id, user_id=user_id)
-    if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
-    return templates.TemplateResponse(
-        request,
-        "partials/offer_detail.html",
-        {
-            "offer": offer,
-            "statuses": VALID_STATUSES,
-            "parsed_desc": parse_description(offer.get("description", "")),
         },
     )
 

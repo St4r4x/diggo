@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { DashboardNav } from "@/components/dashboard-nav";
 import { CandidaturesClient } from "@/components/candidatures/candidatures-client";
 
-async function isAuthenticated(): Promise<boolean> {
+async function getSessionUser(): Promise<{ email: string } | null> {
   const headersList = await headers();
   const cookie = headersList.get("cookie") ?? "";
   const apiUrl = process.env.INTERNAL_API_URL ?? "http://api:8000";
@@ -11,16 +12,25 @@ async function isAuthenticated(): Promise<boolean> {
       headers: { cookie },
       cache: "no-store",
     });
-    return res.ok;
+    if (!res.ok) return null;
+    return res.json();
   } catch {
-    return false;
+    return null;
   }
 }
 
 export default async function CandidaturesPage() {
-  if (!(await isAuthenticated())) {
+  const user = await getSessionUser();
+  if (!user) {
     redirect("/login");
   }
 
-  return <CandidaturesClient />;
+  return (
+    <div className="flex flex-col h-screen">
+      <DashboardNav email={user.email} activePath="/candidatures" />
+      <div className="flex-1 min-h-0">
+        <CandidaturesClient />
+      </div>
+    </div>
+  );
 }

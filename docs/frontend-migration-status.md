@@ -1,6 +1,6 @@
 # Diggo — Next.js frontend migration — status & handoff
 
-Date: 2026-07-09
+Date: 2026-07-09 (updated after Candidatures sub-phase B)
 Purpose: continuity doc for resuming this work in a fresh session/context. Read this first, then pick up at "Next step" below.
 
 ## Goal
@@ -9,14 +9,16 @@ Migrate the whole Diggo dashboard from FastAPI/Jinja2/HTMX to a Next.js frontend
 
 ## Branch / environment state
 
-- Branch: `claude/objective-gates-1d007a` (this worktree). **Not merged to `master`** past the Foundations phase — `master` is at `d43e383`. Everything below (Auth, Landing, Candidatures-A) exists only on this branch, by explicit user choice ("keep as-is" after Auth finished) — do not assume it's live anywhere else.
+- Branch: `claude/objective-gates-1d007a` (this worktree). **Not merged to `master`** past the Foundations phase — `master` is at `d43e383`. Everything below (Auth, Landing, Candidatures-A, Candidatures-B) exists only on this branch, by explicit user choice ("keep as-is" repeated after Auth, Landing, and now Candidatures-B) — do not assume it's live anywhere else.
 - To resume local dev: `supabase start` (local Postgres/Auth stack), repo-root `.env` already exists and is gitignored (has working `DATABASE_URL`/`SUPABASE_*`/`SECRET_KEY` values pulled from `supabase status` — don't recreate it, check it's still there first).
 - To rebuild/preview: `docker compose build api web && docker compose up -d api web proxy` — preview on `http://localhost:8000`. `proxy` is nginx with a bind-mounted config; if you edit `proxy/nginx.conf` and the container doesn't pick it up, `docker compose restart proxy`.
 - `frontend/.env.local` exists for local `npm run dev` (outside Docker) — has `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ## Process being followed (repeat this for every remaining page/phase)
 
-For each phase: **brainstorm → write spec to `docs/superpowers/specs/` → write plan to `docs/superpowers/plans/` (gitignored, not committed) → execute via `superpowers:subagent-driven-development`** (fresh implementer subagent per task, task-scoped reviewer after each, final whole-branch review at the end of the phase, fix rounds for Critical/Important findings). This has worked well seven times over (Foundations 7 tasks, Auth 5 tasks, Landing 2 tasks, Candidatures-A 3 tasks) — keep using it.
+For each phase: **brainstorm → write spec to `docs/superpowers/specs/` → write plan to `docs/superpowers/plans/` (gitignored, not committed) → execute via `superpowers:subagent-driven-development`** (fresh implementer subagent per task, task-scoped reviewer after each, final whole-branch review at the end of the phase, fix rounds for Critical/Important findings). This has worked well eleven times over (Foundations 7 tasks, Auth 5 tasks, Landing 2 tasks, Candidatures-A 3 tasks, Candidatures-B 4 tasks) — keep using it.
+
+Note on "final whole-branch review" scope: since this branch accumulates multiple unmerged phases (see above), each phase's final review has in practice been scoped to just that phase's own commits (from right before its first task to its last), not literally every commit since the branch diverged from `master` — re-reviewing already-approved prior phases every time would be wasteful. Candidatures-B's final review used base `c507ce7` (the last docs commit before Task 1) through `d6315d4` (Task 4's commit), not `d43e383` (the true branch-divergence point).
 
 Key conventions established along the way (a fresh session should know these, they've caused real bugs when forgotten):
 - **`CHANGELOG.md` must have exactly ONE `## [Unreleased]` header in the whole file, always.** New entries go into the existing `### Added`/`### Changed`/`### Removed` subsections under it. This has been violated and had to be fixed twice already — always `Read` the file first before editing it.
@@ -27,6 +29,8 @@ Key conventions established along the way (a fresh session should know these, th
 - `frontend/components/dashboard-nav.tsx` + `frontend/components/logout-button.tsx` (added during Candidatures-A) are the shared nav for every authenticated page — reuse them, don't rebuild.
 - TanStack Query (`@tanstack/react-query`) is the data-fetching library, wired via `frontend/app/providers.tsx` in the root layout — use `useQuery`/`useMutation`, invalidate the relevant query keys after mutations.
 - SSR auth-check pattern (used by landing page and Candidatures): an async Server Component calls `http://api:8000/api/me` (via `INTERNAL_API_URL` env var, already set in `docker-compose.yml`) directly over the Docker network, forwarding the `Cookie` header from `next/headers`, `cache: "no-store"`.
+- **Interactive browser verification of a protected page, without real user credentials**: flip `DEV_AUTO_LOGIN=true` in the repo-root `.env`, `docker compose up -d api` to pick it up — `get_current_user`/`get_current_user_api` then return a fixed `dev-user-local` identity with no cookie needed. Seed onboarding completeness for that identity with the app's own `user_data.save_profile`/`save_cv_meta`/`save_experience`/`save_skills`/`save_settings`/`save_hf_token` functions run inside the `api` container (`docker exec diggo-api-1 python3 -c "..."` — reuses the container's own `SECRET_KEY`/`DATABASE_URL`, avoids handling secrets directly), plus one throwaway `applications` row via `docker exec supabase_db_career-ops-fr psql`. **Always clean up afterward**: delete the seeded rows, flip `DEV_AUTO_LOGIN` back to `false`, recreate `api` again. Never touch a real user's account/password for this (Claude Code's own safety classifier blocked an attempt to mint a magic-link token for a real Supabase user during Candidatures-B verification — rightly so; `DEV_AUTO_LOGIN` is the sanctioned app-level escape hatch, not credential extraction).
+- **Two docker gotchas that bit Candidatures-B verification, worth remembering**: (1) `docker compose up -d <service>` recreates a container from the **existing image** — it does NOT rebuild, so code changes committed after the image was last built are silently not served; use `docker compose up -d --build <service>` whenever you need the container to reflect just-committed code. (2) After `api` gets recreated (new internal Docker IP), `nginx` (`proxy`) can keep proxying to the *old* IP and return `502 Bad Gateway` even though `api` itself is healthy — `docker compose restart proxy` fixes it.
 
 ## Phases done (all reviewed clean, "ready to merge")
 
@@ -34,42 +38,27 @@ Key conventions established along the way (a fresh session should know these, th
 2. **Auth pages** — login/signup/confirm/reset-password migrated, `/auth/session` moved to `/api/auth/session`. Spec: `docs/superpowers/specs/2026-07-08-auth-pages-migration-design.md`.
 3. **Landing page** (`/`) — SSR auth-check + redirect, marketing copy generalized for a broader "cadres multi-secteurs" audience (no more explicit Greenhouse/Lever/Ashby naming). Spec: `docs/superpowers/specs/2026-07-08-landing-page-migration-design.md`.
 4. **Candidatures sub-phase A** (list + filters + detail, read-only) — `GET /api/offers`, `GET /api/offers/{id}`, TanStack Query, the shared dashboard nav (first protected page, nav didn't exist before). `/candidatures` now served by `web`. Spec: `docs/superpowers/specs/2026-07-08-candidatures-list-detail-design.md`.
+5. **Candidatures sub-phase B** (mutations) — `PATCH`/`DELETE /api/offers/{id}` (one flexible route replacing 3 old Jinja2 mutation routes), status quick-change buttons, notes autosave, delete (confirm dialog), and a 6-field edit form (`frontend/components/candidatures/offer-edit-form.tsx`), all wired into `candidatures-client.tsx`. Fixed the 401-handling gap noted below. Deleted the now-fully-superseded Jinja2 routes/template/tests. Spec: `docs/superpowers/specs/2026-07-09-candidatures-mutations-design.md`.
 
 **Known minor issues flagged by reviews, not yet fixed (low priority, noted for whoever touches these files next):**
-- `frontend/components/candidatures/candidatures-client.tsx`: a 401 (expired session) on `/api/offers` has no client-side handling — only 403 (onboarding incomplete) redirects. Worth a one-line fix (`if (res.status === 401) window.location.href = "/login"`) when sub-phase B touches this file anyway.
 - `dashboard/templates/partials/scan_status.html`: has a dangling `hx-get="/offers"` targeting a `#offer-list` element that no longer exists (both lived only in the now-deleted `index.html`). Inert today (no UI can currently trigger a scan), but whoever migrates the scan flow (sub-phase C) needs to know this partial can't be trusted as-is.
-- `dashboard/templates/partials/offer_form.html`: the "Annuler" button HTMX-GETs the now-deleted `/offers/{id}` route. Also inert (its only container, `#offer-detail` in `index.html`, is gone) — whoever migrates the edit form (sub-phase B, see below) should just not reuse this template.
+- `dashboard/templates/partials/offer_detail.html` and `partials/offer_notes.html`: as of sub-phase B, their `hx-post`/`hx-get`/`hx-delete` targets (`/offers/{id}/status`, `/offers/{id}/edit`, `/offers/{id}`, `/offers/{id}/notes`) all point at routes that no longer exist (deleted in sub-phase B — the frontend now uses `PATCH`/`DELETE /api/offers/{id}` instead). Both templates are marked with `TODO(sub-phase D)` comments explaining this. Still inert today (only `offer_prepare` renders them, and nothing in the live UI reaches `offer_prepare`) — but whoever migrates the prepare flow (sub-phase D) must rebuild these actions against the JSON API, not just re-point the old URLs.
+- `frontend/components/candidatures/candidatures-client.tsx` (~464 lines after 3 tasks of additions): the `if (res.status === 401) { window.location.href = "/login"; throw ... }` block is now duplicated verbatim across 4 fetch helpers (`fetchOffers`/`fetchOfferDetail`/`patchOffer`/`deleteOffer`). Worth extracting a small `handleAuthErrors(res)` helper the next time this file is touched (sub-phase C/D), rather than adding a 5th copy.
+- Mutations (`updateMutation`/`deleteMutation` in `candidatures-client.tsx`) have no `onError` handler — a non-401 failure (e.g. 500) fails silently with no UI feedback. Matches the old HTMX flow's behavior (also silent), so not a regression, just accepted debt across the whole mutation surface.
 
-## Candidatures is split into 4 sub-phases (A done, B/C/D not started)
+## Candidatures is split into 4 sub-phases (A, B done; C, D not started)
 
 Decision: `/candidatures` cuts over to `web` progressively (already happened, end of sub-phase A) rather than all-at-once at the end — each sub-phase adds functionality to the now-live page, no more nginx changes needed for B/C/D.
 
-### Next step: Candidatures sub-phase B (mutations) — design approved, NOT yet written to a spec file or plan
+### Next step: Candidatures sub-phase C (scan flow) — not designed yet
 
-This is what to do first when resuming. The design below was approved in conversation but never written to `docs/superpowers/specs/` — **do that first** (spec self-review, commit, then `writing-plans`, then `subagent-driven-development`), don't skip straight to planning.
+This is what to do first when resuming. Nothing has been brainstormed or written for this sub-phase — start with `superpowers:brainstorming`, then the usual spec → plan → `subagent-driven-development` flow.
 
-**Backend** — one flexible route in `dashboard/api.py`, replacing the Jinja2 `offer_status`/`offer_notes`/`offer_save` routes:
-- `PATCH /api/offers/{offer_id}` — accepts any subset of the fields `db.update()` already whitelists (`company`, `role`, `offer_url`, `send_date`, `follow_up_date`, `contacts`, `status`, `notes`, plus whatever else `db.update()`'s existing `allowed` set includes — check `dashboard/db.py`). Validates `status` against `VALID_STATUSES` (422 if invalid, matching the old `offer_status` route's behavior). 404 if the offer doesn't exist/isn't owned by the user. Response: `{"offer": {...}, "description": {...}}` — same shape as `GET /api/offers/{id}`, so the frontend can reuse one type.
-- `DELETE /api/offers/{offer_id}` — 404 if missing, else deletes, returns `{"ok": true}`.
+Sub-phase C details: scan flow. Trigger + 2s polling (`app.state.scan_status`/`app.state.scan_result`, currently a **global singleton, not per-user** — worth flagging as a pre-existing bug/design smell when this gets designed, not something to silently carry forward without at least noting it).
 
-Chosen over 3 separate mirrored routes (status/notes/full-edit) because `db.update()` is already a flexible whitelist-based updater — one endpoint is less code and lets the frontend use one `useMutation` hook for status buttons, notes autosave, and the edit form alike.
+### After C: sub-phase D (not designed yet)
 
-**Frontend** — all extending the existing `frontend/components/candidatures/candidatures-client.tsx` from sub-phase A (no new page, no nginx change):
-- Status quick-change buttons in the detail panel (9 statuses, matching `VALID_STATUSES`) → `PATCH {status}` → invalidate the `offers` and `offer` query keys so both list and detail refresh.
-- Notes field with 800ms autosave debounce (same debounce pattern already used for the search input — a `useEffect`+`setTimeout` pair, not a new library) → `PATCH {notes}`.
-- Delete button with a confirm step → `DELETE`, then deselect the offer (clear `selectedId` state) and let the list refetch.
-- Edit form — **simplified to 6 fields** (user's explicit choice, not full parity): entreprise (`company`), rôle (`role`), URL (`offer_url`), date d'envoi (`send_date`), date de relance (`follow_up_date`), contacts (`contacts`). Dropped vs. the original 14-field form: `status`/`notes` (redundant — already editable elsewhere in the detail panel), `detection_date` (auto-set, rarely manually corrected), `score_grade`/`score_value` (computed by the scoring engine, not manually overridden in this pass), `cv_path`/`cover_letter_path` (managed by the prepare flow in sub-phase D, not manual text entry). The edit form replaces the detail panel view temporarily (toggle via a "Modifier"/"Annuler" affordance), matching the original UX pattern.
-
-**Suggested task decomposition** (not yet written as a formal plan):
-1. Backend — `PATCH`/`DELETE` routes + tests (mirror the TDD-per-route pattern from sub-phase A's Task 1; note `dashboard/templates/partials/offer_detail.html` is STILL used by `offer_prepare` — don't delete it yet, sub-phase D still needs it. The Jinja2 `offer_status`/`offer_notes`/`offer_save`/`offer_edit_form` routes and `offer_form.html` template become deletable once this phase's frontend work lands and cuts them off — but only after the frontend actually replaces their UI, same "delete what you replace, not more" discipline as every prior phase).
-2. Frontend — status buttons + notes autosave + delete (extends the existing detail panel, no new files needed beyond edits to `candidatures-client.tsx`).
-3. Frontend — edit form (6 fields, likely its own small component file, e.g. `frontend/components/candidatures/offer-edit-form.tsx`).
-4. Backend cleanup — delete the now-fully-replaced Jinja2 mutation routes + `offer_form.html` (NOT `offer_detail.html` — still needed by `offer_prepare`, sub-phase D). Update/delete corresponding tests in `tests/test_dashboard_app.py` (`TestOfferEdit`, `TestOfferStatus`, `TestOfferNotes`, `TestOfferDelete` — check current file for exact class names/line numbers, they may have shifted since Candidatures-A's deletions).
-
-### After B: sub-phases C and D (not designed yet)
-
-- **Sub-phase C — scan flow.** Trigger + 2s polling (`app.state.scan_status`/`app.state.scan_result`, currently a **global singleton, not per-user** — worth flagging as a pre-existing bug/design smell when this gets designed, not something to silently carry forward without at least noting it). Needs its own brainstorm.
-- **Sub-phase D — "Préparer candidature"/"Préparer entretien".** **User already decided this becomes async-with-polling** (like the scan flow), not the current 30-60s blocking synchronous POST — this is a real backend architecture change (new per-offer task-state tracking, since the existing scan pattern is a single global slot and prepare is per-offer, potentially concurrent across offers). Needs its own brainstorm before writing a spec — this is the most architecturally involved remaining sub-phase.
+**Sub-phase D — "Préparer candidature"/"Préparer entretien".** **User already decided this becomes async-with-polling** (like the scan flow), not the current 30-60s blocking synchronous POST — this is a real backend architecture change (new per-offer task-state tracking, since the existing scan pattern is a single global slot and prepare is per-offer, potentially concurrent across offers). Needs its own brainstorm before writing a spec — this is the most architecturally involved remaining sub-phase. Also the sub-phase that finally retires `offer_detail.html`/`offer_notes.html` (see "Known minor issues" above) and their now-dangling `hx-*` targets.
 
 ## After Candidatures (all 4 sub-phases): remaining top-level phases
 

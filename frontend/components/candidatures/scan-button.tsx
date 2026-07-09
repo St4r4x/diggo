@@ -3,23 +3,18 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ScanStatusResponse } from "@/lib/types";
+import { redirectOnUnauthenticated } from "@/lib/api-errors";
 
 async function fetchScanStatus(): Promise<ScanStatusResponse> {
   const res = await fetch("/api/scan/status");
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to fetch scan status");
   return res.json();
 }
 
 async function startScan(): Promise<ScanStatusResponse> {
   const res = await fetch("/api/scan/start", { method: "POST" });
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to start scan");
   return res.json();
 }

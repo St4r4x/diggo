@@ -133,7 +133,7 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 | Route | Description |
 |-------|-------------|
 | `/candidatures` | Offer list with filters and a read-only detail panel — served by the Next.js frontend (`web`); shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
-| `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
+| `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget — served by the Next.js frontend (`web`) |
 | `/profile` | Profile editor — contact info, profile text, and CV editor (FR/EN tabs) backed by DB |
 | `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD, Hugging Face API token |
 | `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |

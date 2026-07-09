@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# In-process memory only: _status/_result are plain dicts, lost on restart
+# and not shared across replicas. Restarting the `api` container is the
+# documented way to kill a running scan (see docs/frontend-migration-status.md).
 import asyncio
 from typing import Any
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
+import { redirectOnUnauthenticated } from "@/lib/api-errors";
 import { OfferEditForm } from "@/components/candidatures/offer-edit-form";
 import { ScanButton } from "@/components/candidatures/scan-button";
 import { PreparePanel } from "@/components/candidatures/prepare-panel";
@@ -22,10 +23,7 @@ async function fetchOffers(filters: Filters): Promise<OffersResponse> {
   if (filters.q) params.set("q", filters.q);
   if (filters.sal_min) params.set("sal_min", filters.sal_min);
   const res = await fetch(`/api/offers?${params.toString()}`);
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (res.status === 403) {
     const body = await res.json();
     window.location.href = body.detail?.redirect ?? "/profile";
@@ -37,10 +35,7 @@ async function fetchOffers(filters: Filters): Promise<OffersResponse> {
 
 async function fetchOfferDetail(id: number): Promise<OfferDetailResponse> {
   const res = await fetch(`/api/offers/${id}`);
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to fetch offer");
   return res.json();
 }
@@ -54,20 +49,14 @@ async function patchOffer(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(fields),
   });
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to update offer");
   return res.json();
 }
 
 async function deleteOffer(id: number): Promise<void> {
   const res = await fetch(`/api/offers/${id}`, { method: "DELETE" });
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to delete offer");
 }
 

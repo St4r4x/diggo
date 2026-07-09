@@ -146,32 +146,6 @@ def client_with_interview_offer(client):
     return client
 
 
-class TestStats:
-    def test_stats_returns_200(self, client_with_data: TestClient) -> None:
-        r = client_with_data.get("/stats")
-        assert r.status_code == 200
-
-    def test_stats_shows_total_count(self, client_with_data: TestClient) -> None:
-        import app as dashboard_app
-
-        db = dashboard_app.app.state.db
-        stats = db.get_stats(user_id=TEST_USER_ID)
-        r = client_with_data.get("/stats")
-        assert str(stats["total"]) in r.text
-
-    def test_stats_empty_db_returns_200(self, client: TestClient) -> None:
-        r = client.get("/stats")
-        assert r.status_code == 200
-        assert "0" in r.text
-
-    def test_stats_shows_all_statuses(self, client_with_data: TestClient) -> None:
-        from db import VALID_STATUSES
-
-        r = client_with_data.get("/stats")
-        for s in VALID_STATUSES:
-            assert s in r.text
-
-
 class TestOnboardingGateOnSettingsAndProfileNeverBlocks:
     def test_settings_page_never_redirected_when_onboarding_incomplete(
         self, monkeypatch, client: TestClient
@@ -260,41 +234,6 @@ class TestGetFollowups:
         )
         result = db.get_followups(user_id=TEST_USER_ID)
         assert not any(r["company"] == "No Date Co" for r in result)
-
-
-class TestStatsFunnel:
-    def test_stats_shows_funnel_steps(self, client_with_data: TestClient) -> None:
-        r = client_with_data.get("/stats")
-        assert r.status_code == 200
-        assert "Entretien RH" in r.text
-        assert "Entretien tech" in r.text
-
-    def test_stats_shows_exit_statuses(self, client_with_data: TestClient) -> None:
-        r = client_with_data.get("/stats")
-        assert "Refusée" in r.text
-        assert "Abandonnée" in r.text
-
-    def test_build_funnel_computes_rate(self) -> None:
-        from db import build_funnel
-
-        by_status = {
-            "À envoyer": 10,
-            "Envoyée": 5,
-            "Relance": 0,
-            "Entretien RH": 2,
-            "Entretien tech": 1,
-            "Offre": 0,
-            "Acceptée": 0,
-            "Refusée": 1,
-            "Abandonnée": 2,
-        }
-        funnel, exits, max_count = build_funnel(by_status)
-        envoyee_step = next(s for s in funnel if s["status"] == "Envoyée")
-        assert envoyee_step["rate"] == 50.0
-        entretien_step = next(s for s in funnel if s["status"] == "Entretien RH")
-        assert entretien_step["rate"] is None
-        assert len(exits) == 2
-        assert exits[0]["status"] == "Refusée"
 
 
 class TestSettingsHfTokenValidation:
@@ -469,44 +408,3 @@ class TestSettings:
         r = authed_client.delete("/settings/hf-token")
         assert r.status_code == 200
         assert "Non configuré" in r.text
-
-
-class TestReportWidget:
-    def test_shows_no_report_message_when_none_exist(
-        self, client: TestClient, tmp_path, monkeypatch
-    ) -> None:
-        import app as dashboard_app
-
-        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
-        r = client.get("/stats")
-        assert r.status_code == 200
-        assert "Aucun rapport" in r.text
-
-    def test_shows_latest_report_content(
-        self, client: TestClient, tmp_path, monkeypatch
-    ) -> None:
-        import app as dashboard_app
-
-        report_file = tmp_path / "daily-2026-07-03.md"
-        report_file.write_text(
-            "# Daily Report\n\n**Total offers:** 5", encoding="utf-8"
-        )
-        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
-        r = client.get("/stats")
-        assert r.status_code == 200
-        assert "Total offers" in r.text
-        assert "2026-07-03" in r.text
-
-    def test_shows_most_recent_when_multiple_reports(
-        self, client: TestClient, tmp_path, monkeypatch
-    ) -> None:
-        import app as dashboard_app
-
-        (tmp_path / "daily-2026-07-01.md").write_text("Old report", encoding="utf-8")
-        (tmp_path / "daily-2026-07-03.md").write_text(
-            "New report 2026-07-03", encoding="utf-8"
-        )
-        monkeypatch.setattr(dashboard_app, "REPORTS_DIR", tmp_path)
-        r = client.get("/stats")
-        assert "New report" in r.text
-        assert "Old report" not in r.text

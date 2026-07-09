@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# In-process memory only: _status/_stage/_error are plain dicts, lost on
+# restart and not shared across replicas. Restarting the `api` container is
+# the documented way to kill a running prepare (see docs/frontend-migration-status.md).
 import asyncio
 import os
 from datetime import date as _date

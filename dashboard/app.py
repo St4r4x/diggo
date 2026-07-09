@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import mistune
 
 import api
 import llm
@@ -17,9 +16,8 @@ import user_data
 from auth import (
     CurrentUser,
     get_current_user,
-    require_onboarding_complete,
 )
-from db import VALID_STATUSES, build_funnel, open_db
+from db import open_db
 from env import load_env
 
 load_env()
@@ -28,27 +26,6 @@ _DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
 )
 TEMPLATES_DIR = Path(__file__).parent / "templates"
-REPORTS_DIR = Path(__file__).parent.parent / "reports"
-
-STATUS_COLORS: dict[str, str] = {
-    "À envoyer": "bg-gray-700 text-gray-200",
-    "Envoyée": "bg-blue-700 text-white",
-    "Relance": "bg-amber-600 text-white",
-    "Entretien RH": "bg-violet-700 text-white",
-    "Entretien tech": "bg-violet-900 text-white",
-    "Offre": "bg-emerald-700 text-white",
-    "Acceptée": "bg-emerald-700 text-white",
-    "Refusée": "bg-red-700 text-white",
-    "Abandonnée": "bg-red-900 text-white",
-}
-
-GRADE_COLORS: dict[str, str] = {
-    "A": "bg-green-600 text-white",
-    "B": "bg-green-700 text-white",
-    "C": "bg-yellow-600 text-white",
-    "D": "bg-orange-600 text-white",
-    "F": "bg-red-700 text-white",
-}
 
 
 @asynccontextmanager
@@ -61,45 +38,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
-templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
-
 app.include_router(api.router)
 
 
 # ── Protected routes ──────────────────────────────────────────────────────────
-
-
-@app.get("/stats", response_class=HTMLResponse)
-async def stats_page(
-    request: Request,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-) -> HTMLResponse:
-    db = request.app.state.db
-    user_id = current_user["sub"]
-    stats = db.get_stats(user_id=user_id)
-    funnel, exits, max_count = build_funnel(stats["by_status"])
-    report_files = list(REPORTS_DIR.glob("daily-*.md")) if REPORTS_DIR.is_dir() else []
-    latest_report_html: str | None = None
-    latest_report_date: str | None = None
-    if report_files:
-        latest = max(report_files, key=lambda p: p.name)
-        latest_report_date = latest.stem.replace("daily-", "")
-        latest_report_html = mistune.html(latest.read_text(encoding="utf-8"))
-    return templates.TemplateResponse(
-        request,
-        "stats.html",
-        {
-            "stats": stats,
-            "statuses": VALID_STATUSES,
-            "funnel": funnel,
-            "exits": exits,
-            "max_count": max_count,
-            "latest_report_html": latest_report_html,
-            "latest_report_date": latest_report_date,
-            "current_user": current_user,
-        },
-    )
 
 
 @app.get("/profile", response_class=HTMLResponse)

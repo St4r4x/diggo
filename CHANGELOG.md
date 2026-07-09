@@ -56,6 +56,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/db.py` — added `parse_description()`, moved from `dashboard/app.py`'s private `_parse_description` so both `app.py` and `api.py` can use it without a circular import
 - `proxy/nginx.conf` — added `location /candidatures` routing to `web`; the page is now fully served by the Next.js frontend
 - `dashboard/db.py` — added `build_funnel()`, moved from `dashboard/app.py`'s private `_build_funnel` so both `app.py` (still-live Jinja2 route) and `api.py` (new JSON route) can use it without a circular import
+- `proxy/nginx.conf` — added `location /stats` routing to `web`; the page is now fully served by the Next.js frontend
+- `frontend/components/candidatures/candidatures-client.tsx`, `scan-button.tsx`, `prepare-panel.tsx` — extracted the duplicated 401-redirect block (8 occurrences) into `frontend/lib/api-errors.ts`'s `redirectOnUnauthenticated()`, deferred from the Candidatures-mutations review
+- `dashboard/scan_state.py`, `dashboard/prepare_state.py` — added a module comment noting their state is in-process memory only (lost on restart, not shared across replicas), deferred from the Candidatures-prepare-flow review
 
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.
@@ -74,6 +77,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_dashboard_app.py` — deleted `TestScan` (tested the routes/globals removed above)
 - `dashboard/app.py` — deleted the Jinja2-rendered `offer_prepare` route (`POST /offers/{id}/prepare`) and its private `_group_skills_by_category`/`_MIN_OFFER_DESCRIPTION_LENGTH` helpers (moved into `dashboard/prepare_state.py`), now that the Candidatures detail panel's prepare flow is served by `POST`/`GET /api/offers/{id}/prepare*` instead. `dashboard/templates/partials/offer_detail.html` and `partials/offer_notes.html` — flagged with `TODO(sub-phase D)` comments since sub-phase B — are finally deleted, since `offer_prepare` was their last live renderer
 - `tests/test_dashboard_app.py` — deleted `TestOfferPrepare` (tested the route removed above), the last surviving test class covering a Jinja2-rendered Candidatures route
+- `dashboard/app.py`, `dashboard/templates/stats.html` — deleted the Jinja2-rendered `/stats` route and template, plus the now-dead `STATUS_COLORS`/`GRADE_COLORS` dicts (only ever used by that template), now that nginx routes `/stats` to `web`
+- `dashboard/templates/partials/offer_empty.html` — deleted, orphaned since Candidatures sub-phase B, unrelated to any single sub-phase's own scope, flagged at the Candidatures arc's close-out for whenever this area was next touched
 
 ## 2026-07-08
 

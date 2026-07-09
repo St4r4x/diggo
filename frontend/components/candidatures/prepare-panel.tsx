@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Offer, PrepareStatusResponse } from "@/lib/types";
+import { redirectOnUnauthenticated } from "@/lib/api-errors";
 
 const APPLY_STATUSES = ["À envoyer", "Envoyée", "Relance"];
 const INTERVIEW_STATUSES = ["Entretien RH", "Entretien tech", "Offre"];
@@ -11,10 +12,7 @@ async function fetchPrepareStatus(
   offerId: number,
 ): Promise<PrepareStatusResponse> {
   const res = await fetch(`/api/offers/${offerId}/prepare/status`);
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (!res.ok) throw new Error("failed to fetch prepare status");
   return res.json();
 }
@@ -28,10 +26,7 @@ async function startPrepare(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ skip_prep: skipPrep }),
   });
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (res.status === 422) {
     const body = await res.json();
     throw new Error(

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 import prepare_state
 import scan_state
@@ -192,3 +194,52 @@ async def get_prepare_status_route(
     if db.get_by_id(offer_id, user_id=user_id) is None:
         raise HTTPException(status_code=404, detail="Offer not found")
     return prepare_state.get_prepare_state(offer_id)
+
+
+def _download_offer_file(
+    request: Request, offer_id: int, current_user: CurrentUser, field: str
+) -> FileResponse:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    offer = db.get_by_id(offer_id, user_id=user_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    path_str = offer.get(field, "")
+    if not path_str:
+        raise HTTPException(status_code=404, detail="File not generated yet")
+    path = Path(path_str)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/pdf",
+        content_disposition_type="attachment",
+    )
+
+
+@router.get("/offers/{offer_id}/cv")
+async def download_cv_route(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> FileResponse:
+    return _download_offer_file(request, offer_id, current_user, "cv_path")
+
+
+@router.get("/offers/{offer_id}/cover-letter")
+async def download_cover_letter_route(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> FileResponse:
+    return _download_offer_file(request, offer_id, current_user, "cover_letter_path")
+
+
+@router.get("/offers/{offer_id}/prep-sheet")
+async def download_prep_sheet_route(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> FileResponse:
+    return _download_offer_file(request, offer_id, current_user, "prep_sheet_path")

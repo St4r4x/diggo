@@ -511,3 +511,88 @@ def test_prepare_state_isolated_per_offer_via_route(
     r_b = client_with_offers.get(f"/api/offers/{offer_b}/prepare/status")
     assert r_a.json()["status"] == "running"
     assert r_b.json()["status"] == "idle"
+
+
+def test_download_cv_returns_404_when_not_generated(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.get(f"/api/offers/{row['id']}/cv")
+    assert response.status_code == 404
+
+
+def test_download_cv_returns_404_for_missing_offer(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers/999/cv")
+    assert response.status_code == 404
+
+
+def test_download_cv_serves_file_when_present(client_with_offers, tmp_path) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db)
+    pdf_path = tmp_path / "cv-acme-2026-07-09.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake cv content")
+    db.update(offer_id, {"cv_path": str(pdf_path)}, user_id=MOCK_USER["sub"])
+
+    response = client_with_offers.get(f"/api/offers/{offer_id}/cv")
+
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4 fake cv content"
+    assert "attachment" in response.headers["content-disposition"]
+    assert "cv-acme-2026-07-09.pdf" in response.headers["content-disposition"]
+
+
+def test_download_cover_letter_serves_file_when_present(
+    client_with_offers, tmp_path
+) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db)
+    pdf_path = tmp_path / "cl-acme-2026-07-09.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake cl content")
+    db.update(offer_id, {"cover_letter_path": str(pdf_path)}, user_id=MOCK_USER["sub"])
+
+    response = client_with_offers.get(f"/api/offers/{offer_id}/cover-letter")
+
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4 fake cl content"
+
+
+def test_download_prep_sheet_serves_file_when_present(
+    client_with_offers, tmp_path
+) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db)
+    pdf_path = tmp_path / "prep-acme-2026-07-09.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake prep content")
+    db.update(offer_id, {"prep_sheet_path": str(pdf_path)}, user_id=MOCK_USER["sub"])
+
+    response = client_with_offers.get(f"/api/offers/{offer_id}/prep-sheet")
+
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4 fake prep content"
+
+
+def test_download_cv_returns_404_when_file_deleted_from_disk(
+    client_with_offers, tmp_path
+) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db)
+    pdf_path = tmp_path / "gone.pdf"
+    db.update(offer_id, {"cv_path": str(pdf_path)}, user_id=MOCK_USER["sub"])
+
+    response = client_with_offers.get(f"/api/offers/{offer_id}/cv")
+
+    assert response.status_code == 404
+
+
+def test_download_requires_auth(client) -> None:
+    response = client.get("/api/offers/1/cv")
+    assert response.status_code == 401

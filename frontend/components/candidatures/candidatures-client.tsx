@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
 import { OfferEditForm } from "@/components/candidatures/offer-edit-form";
+import { ScanButton } from "@/components/candidatures/scan-button";
 
 type Filters = {
   status: string;
@@ -226,6 +227,7 @@ export function CandidaturesClient() {
               <option value="70">≥ 70k€</option>
               <option value="80">≥ 80k€</option>
             </select>
+            <ScanButton />
           </div>
 
           <div className="flex-1 overflow-y-auto">

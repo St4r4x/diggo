@@ -37,3 +37,17 @@ export type OfferDetailResponse = {
   offer: Offer;
   description: ParsedDescription;
 };
+
+export type ScanResult = {
+  inserted: number;
+  skipped: number;
+  found: number;
+  scored: number;
+  abandoned: number;
+  error: string;
+};
+
+export type ScanStatusResponse = {
+  status: "idle" | "running" | "done" | "error";
+  result: ScanResult;
+};

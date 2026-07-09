@@ -40,6 +40,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/prepare_state.py` — per-offer prepare state (`start_prepare()`/`get_prepare_state()`), and `dashboard/api.py`'s `POST /api/offers/{offer_id}/prepare`/`GET /api/offers/{offer_id}/prepare/status`. The LLM+PDF pipeline (moved from the old `offer_prepare` route) now wraps each blocking call in `asyncio.to_thread(...)` so a 30-60s prepare run no longer freezes the whole server's event loop — the actual bug this sub-phase exists to fix, not just moving where the client waits
 - `dashboard/api.py` — `GET /api/offers/{offer_id}/cv`, `/cover-letter`, `/prep-sheet` download routes. These files were previously only ever displayed as a raw server-filesystem path in the UI — there was never an HTTP route to actually retrieve them; this fixes that pre-existing gap as part of making the migrated prepare flow usable
 - `frontend/components/candidatures/prepare-panel.tsx` — "Préparer candidature (IA)" trigger with live-stage polling (idle/running/done/error, 2s poll via TanStack Query's `refetchInterval`) for offers in `À envoyer`/`Envoyée`/`Relance`, and a "Préparer entretien" clipboard-copy button (no backend call) for offers in `Entretien RH`/`Entretien tech`/`Offre` — reproducing the former Jinja2 `offer_detail.html`'s action-button section on the design system. CV/cover-letter/prep-sheet fields in the detail panel's metadata list are now real download links instead of raw file-path text
+- `dashboard/api.py` — `GET /api/stats` (pipeline stats, funnel with conversion rates, latest daily report as HTML), the JSON API the migrated Stats page will consume
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
@@ -52,6 +53,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docker-compose.yml` — `web` service gets `INTERNAL_API_URL=http://api:8000`, used server-side by the new landing page's SSR auth check
 - `dashboard/db.py` — added `parse_description()`, moved from `dashboard/app.py`'s private `_parse_description` so both `app.py` and `api.py` can use it without a circular import
 - `proxy/nginx.conf` — added `location /candidatures` routing to `web`; the page is now fully served by the Next.js frontend
+- `dashboard/db.py` — added `build_funnel()`, moved from `dashboard/app.py`'s private `_build_funnel` so both `app.py` (still-live Jinja2 route) and `api.py` (new JSON route) can use it without a circular import
 
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.

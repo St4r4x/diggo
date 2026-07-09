@@ -58,6 +58,34 @@ _RESPONSE_STATUSES = {"Entretien RH", "Entretien tech", "Offre", "Acceptée", "R
 _INTERVIEW_STATUSES = {"Entretien RH", "Entretien tech", "Offre", "Acceptée"}
 _FOLLOW_UP_DAYS = 7
 
+_FUNNEL_STEPS = [
+    "À envoyer",
+    "Envoyée",
+    "Relance",
+    "Entretien RH",
+    "Entretien tech",
+    "Offre",
+    "Acceptée",
+]
+_EXIT_STEPS = ["Refusée", "Abandonnée"]
+
+
+def build_funnel(
+    by_status: dict[str, int],
+) -> tuple[list[dict], list[dict], int]:
+    """Return (funnel steps with conversion rates, exit steps, max bar count)."""
+    funnel: list[dict] = []
+    for i, s in enumerate(_FUNNEL_STEPS):
+        count = by_status.get(s, 0)
+        prev_count = by_status.get(_FUNNEL_STEPS[i - 1], 0) if i > 0 else None
+        rate = round(count / prev_count * 100, 1) if prev_count else None
+        funnel.append({"status": s, "count": count, "rate": rate})
+    exits = [{"status": s, "count": by_status.get(s, 0)} for s in _EXIT_STEPS]
+    all_counts = [s["count"] for s in funnel] + [s["count"] for s in exits]
+    max_count = max(all_counts) if any(all_counts) else 1
+    return funnel, exits, max_count
+
+
 _COLS = (
     "id",
     "company",

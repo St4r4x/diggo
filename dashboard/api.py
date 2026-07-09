@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+import mistune
 
 import prepare_state
 import scan_state
@@ -16,7 +17,9 @@ from auth import (
     set_auth_cookies,
     validate_access_token,
 )
-from db import VALID_STATUSES, parse_description
+from db import VALID_STATUSES, build_funnel, parse_description
+
+REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 router = APIRouter(prefix="/api")
 
@@ -243,3 +246,29 @@ async def download_prep_sheet_route(
     current_user: CurrentUser = Depends(require_onboarding_complete_api),
 ) -> FileResponse:
     return _download_offer_file(request, offer_id, current_user, "prep_sheet_path")
+
+
+@router.get("/stats")
+async def get_stats_route(
+    request: Request,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    stats = db.get_stats(user_id=user_id)
+    funnel, exits, max_count = build_funnel(stats["by_status"])
+    report_files = list(REPORTS_DIR.glob("daily-*.md")) if REPORTS_DIR.is_dir() else []
+    latest_report_html: str | None = None
+    latest_report_date: str | None = None
+    if report_files:
+        latest = max(report_files, key=lambda p: p.name)
+        latest_report_date = latest.stem.replace("daily-", "")
+        latest_report_html = mistune.html(latest.read_text(encoding="utf-8"))
+    return {
+        "stats": stats,
+        "funnel": funnel,
+        "exits": exits,
+        "max_count": max_count,
+        "latest_report_html": latest_report_html,
+        "latest_report_date": latest_report_date,
+    }

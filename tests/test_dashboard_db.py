@@ -237,6 +237,40 @@ class TestGetStats:
         assert stats["total"] == 1
 
 
+class TestBuildFunnel:
+    def test_computes_conversion_rate(self) -> None:
+        from db import build_funnel
+
+        by_status = {
+            "À envoyer": 10,
+            "Envoyée": 5,
+            "Relance": 0,
+            "Entretien RH": 2,
+            "Entretien tech": 1,
+            "Offre": 0,
+            "Acceptée": 0,
+            "Refusée": 1,
+            "Abandonnée": 2,
+        }
+        funnel, exits, max_count = build_funnel(by_status)
+        envoyee_step = next(s for s in funnel if s["status"] == "Envoyée")
+        assert envoyee_step["rate"] == 50.0
+        entretien_step = next(s for s in funnel if s["status"] == "Entretien RH")
+        assert entretien_step["rate"] is None
+        assert len(funnel) == 7
+        assert len(exits) == 2
+        assert exits[0]["status"] == "Refusée"
+        assert max_count == 10
+
+    def test_defaults_missing_statuses_to_zero(self) -> None:
+        from db import build_funnel
+
+        funnel, exits, max_count = build_funnel({})
+        assert all(s["count"] == 0 for s in funnel)
+        assert all(s["count"] == 0 for s in exits)
+        assert max_count == 1
+
+
 class TestValidStatuses:
     def test_is_list_with_correct_values(self) -> None:
         assert isinstance(VALID_STATUSES, list)

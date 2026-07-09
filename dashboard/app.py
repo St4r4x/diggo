@@ -19,7 +19,7 @@ from auth import (
     get_current_user,
     require_onboarding_complete,
 )
-from db import VALID_STATUSES, open_db
+from db import VALID_STATUSES, build_funnel, open_db
 from env import load_env
 
 load_env()
@@ -50,32 +50,6 @@ GRADE_COLORS: dict[str, str] = {
     "F": "bg-red-700 text-white",
 }
 
-_FUNNEL_STEPS = [
-    "À envoyer",
-    "Envoyée",
-    "Relance",
-    "Entretien RH",
-    "Entretien tech",
-    "Offre",
-    "Acceptée",
-]
-_EXIT_STEPS = ["Refusée", "Abandonnée"]
-
-
-def _build_funnel(
-    by_status: dict[str, int],
-) -> tuple[list[dict], list[dict], int]:
-    funnel: list[dict] = []
-    for i, s in enumerate(_FUNNEL_STEPS):
-        count = by_status.get(s, 0)
-        prev_count = by_status.get(_FUNNEL_STEPS[i - 1], 0) if i > 0 else None
-        rate = round(count / prev_count * 100, 1) if prev_count else None
-        funnel.append({"status": s, "count": count, "rate": rate})
-    exits = [{"status": s, "count": by_status.get(s, 0)} for s in _EXIT_STEPS]
-    all_counts = [s["count"] for s in funnel] + [s["count"] for s in exits]
-    max_count = max(all_counts) if any(all_counts) else 1
-    return funnel, exits, max_count
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -104,7 +78,7 @@ async def stats_page(
     db = request.app.state.db
     user_id = current_user["sub"]
     stats = db.get_stats(user_id=user_id)
-    funnel, exits, max_count = _build_funnel(stats["by_status"])
+    funnel, exits, max_count = build_funnel(stats["by_status"])
     report_files = list(REPORTS_DIR.glob("daily-*.md")) if REPORTS_DIR.is_dir() else []
     latest_report_html: str | None = None
     latest_report_date: str | None = None

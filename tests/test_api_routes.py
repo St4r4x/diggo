@@ -596,3 +596,49 @@ def test_download_cv_returns_404_when_file_deleted_from_disk(
 def test_download_requires_auth(client) -> None:
     response = client.get("/api/offers/1/cv")
     assert response.status_code == 401
+
+
+def test_get_stats_returns_200_with_computed_data(client_with_offers) -> None:
+    response = client_with_offers.get("/api/stats")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stats"]["total"] == 2
+    assert body["stats"]["by_status"]["À envoyer"] == 1
+    assert body["stats"]["by_status"]["Envoyée"] == 1
+    assert len(body["funnel"]) == 7
+    assert len(body["exits"]) == 2
+    assert body["max_count"] >= 1
+
+
+def test_get_stats_requires_auth(client) -> None:
+    response = client.get("/api/stats")
+    assert response.status_code == 401
+
+
+def test_get_stats_report_fields_null_when_no_reports(
+    client_with_offers, tmp_path, monkeypatch
+) -> None:
+    import api as api_module
+
+    monkeypatch.setattr(api_module, "REPORTS_DIR", tmp_path)
+    response = client_with_offers.get("/api/stats")
+    body = response.json()
+    assert body["latest_report_html"] is None
+    assert body["latest_report_date"] is None
+
+
+def test_get_stats_report_fields_populated_from_latest_file(
+    client_with_offers, tmp_path, monkeypatch
+) -> None:
+    import api as api_module
+
+    (tmp_path / "daily-2026-07-01.md").write_text("Old report", encoding="utf-8")
+    (tmp_path / "daily-2026-07-03.md").write_text(
+        "# New report\n\n**Total:** 2", encoding="utf-8"
+    )
+    monkeypatch.setattr(api_module, "REPORTS_DIR", tmp_path)
+    response = client_with_offers.get("/api/stats")
+    body = response.json()
+    assert body["latest_report_date"] == "2026-07-03"
+    assert "New report" in body["latest_report_html"]
+    assert "Old report" not in body["latest_report_html"]

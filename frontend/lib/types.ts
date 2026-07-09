@@ -51,3 +51,9 @@ export type ScanStatusResponse = {
   status: "idle" | "running" | "done" | "error";
   result: ScanResult;
 };
+
+export type PrepareStatusResponse = {
+  status: "idle" | "running" | "done" | "error";
+  stage: string;
+  error: string;
+};

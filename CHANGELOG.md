@@ -68,6 +68,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `tests/test_dashboard_app.py` — deleted `TestOfferEdit`, `TestOfferDelete`, `TestOfferStatus`, `TestOfferNotes` (tested the routes removed above); `TestOfferPrepare` and the `client_with_data`/`client_with_interview_offer` fixtures are untouched, still used elsewhere in this file
 - `dashboard/app.py` — deleted `_run_scan_task`, `_start_scan`, `scan_start`, `scan_status` (the Jinja2 `POST /scan/start`/`GET /scan/status` routes) and the `_scan_lock`/`app.state.scan_status`/`app.state.scan_result` global state they used, now fully replaced by `dashboard/scan_state.py` and `POST`/`GET /api/scan/*`. `dashboard/templates/partials/scan_status.html` deleted with them — unlike sub-phase B's cleanup, this template's only container (`index.html`) was already deleted in sub-phase A, so no other route depended on it
 - `tests/test_dashboard_app.py` — deleted `TestScan` (tested the routes/globals removed above)
+- `dashboard/app.py` — deleted the Jinja2-rendered `offer_prepare` route (`POST /offers/{id}/prepare`) and its private `_group_skills_by_category`/`_MIN_OFFER_DESCRIPTION_LENGTH` helpers (moved into `dashboard/prepare_state.py`), now that the Candidatures detail panel's prepare flow is served by `POST`/`GET /api/offers/{id}/prepare*` instead. `dashboard/templates/partials/offer_detail.html` and `partials/offer_notes.html` — flagged with `TODO(sub-phase D)` comments since sub-phase B — are finally deleted, since `offer_prepare` was their last live renderer
+- `tests/test_dashboard_app.py` — deleted `TestOfferPrepare` (tested the route removed above), the last surviving test class covering a Jinja2-rendered Candidatures route
 
 ## 2026-07-08
 

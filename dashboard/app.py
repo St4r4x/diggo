@@ -4,9 +4,8 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import mistune
@@ -20,7 +19,7 @@ from auth import (
     get_current_user,
     require_onboarding_complete,
 )
-from db import VALID_STATUSES, open_db, parse_description
+from db import VALID_STATUSES, open_db
 from env import load_env
 
 load_env()
@@ -61,7 +60,6 @@ _FUNNEL_STEPS = [
     "Acceptée",
 ]
 _EXIT_STEPS = ["Refusée", "Abandonnée"]
-_MIN_OFFER_DESCRIPTION_LENGTH = 300
 
 
 def _build_funnel(
@@ -77,13 +75,6 @@ def _build_funnel(
     all_counts = [s["count"] for s in funnel] + [s["count"] for s in exits]
     max_count = max(all_counts) if any(all_counts) else 1
     return funnel, exits, max_count
-
-
-def _group_skills_by_category(skills: list[dict[str, Any]]) -> dict[str, list[str]]:
-    grouped: dict[str, list[str]] = {}
-    for s in skills:
-        grouped.setdefault(s["category"], []).append(s["skill"])
-    return grouped
 
 
 @asynccontextmanager
@@ -103,153 +94,6 @@ app.include_router(api.router)
 
 
 # ── Protected routes ──────────────────────────────────────────────────────────
-
-
-@app.post("/offers/{offer_id}/prepare", response_class=HTMLResponse)
-async def offer_prepare(
-    request: Request,
-    offer_id: int,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-    skip_prep: bool = Form(False),
-) -> HTMLResponse:
-    from datetime import date as _date
-
-    from scripts.generate_cover_letter import build_cover_letter_context
-    from scripts.generate_cover_letter import generate_pdf as generate_cl_pdf
-    from scripts.generate_pdf import build_cv_context
-    from scripts.generate_pdf import generate_pdf as generate_cv_pdf
-    from scripts.generate_prep_sheet import build_prep_sheet_context
-    from scripts.generate_prep_sheet import generate_pdf as generate_prep_pdf
-
-    db = request.app.state.db
-    conn = db.conn
-    user_id = current_user["sub"]
-    offer = db.get_by_id(offer_id, user_id=user_id)
-    if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
-
-    def _error(message: str) -> HTMLResponse:
-        return templates.TemplateResponse(
-            request,
-            "partials/offer_detail.html",
-            {
-                "offer": offer,
-                "statuses": VALID_STATUSES,
-                "parsed_desc": parse_description(offer.get("description", "")),
-                "prep_error": message,
-            },
-        )
-
-    if len(offer.get("description", "")) < _MIN_OFFER_DESCRIPTION_LENGTH:
-        return _error(
-            "Description trop courte pour préparer la candidature. "
-            "Complète-la via les notes ou l'édition de l'offre avant de réessayer."
-        )
-
-    hf_token = user_data.get_hf_token(conn, user_id)
-    if not hf_token:
-        return _error(
-            "Ajoute ton token Hugging Face dans les paramètres avant de préparer "
-            "une candidature."
-        )
-
-    try:
-        analysis = llm.analyze_offer(hf_token, offer)
-        cv_lang = "en" if analysis.requires_english_cv else "fr"
-        cv = user_data.get_cv(conn, user_id, lang=cv_lang)
-        profile = user_data.get_profile(conn, user_id)
-        cv_rewrite = llm.rewrite_cv_summary(hf_token, profile, cv, analysis)
-        cover_letter_draft = llm.write_cover_letter(
-            hf_token, profile, cv, offer, analysis
-        )
-        prep_draft = (
-            None
-            if skip_prep
-            else llm.generate_prep_questions(hf_token, offer, analysis)
-        )
-    except (llm.LLMError, llm.GroundingError) as exc:
-        return _error(f"Échec de la préparation IA : {exc}")
-
-    today = str(_date.today())
-
-    try:
-        cv_context = build_cv_context(
-            name=profile["name"],
-            title=profile["title"],
-            email=profile["email"],
-            phone=profile["phone"],
-            location=profile["location"],
-            summary=cv_rewrite.summary,
-            experience=cv["experience"],
-            skill_categories=_group_skills_by_category(cv["skills"]),
-            highlighted_skills=cv_rewrite.highlighted_skills,
-            education=cv["education"],
-            languages=[],
-            linkedin=profile["linkedin"],
-            github=profile["github"],
-            certifications=cv["certifications"],
-        )
-        cv_path = generate_cv_pdf(
-            cv_context, offer=offer["company"], output_date=today, lang=cv_lang
-        )
-
-        recipient = (
-            "Madame, Monsieur,"
-            if analysis.offer_language == "fr"
-            else "Dear Hiring Team,"
-        )
-        cl_context = build_cover_letter_context(
-            name=profile["name"],
-            title=profile["title"],
-            email=profile["email"],
-            phone=profile["phone"],
-            location=profile["location"],
-            date_str=today,
-            company=offer["company"],
-            role=offer["role"],
-            recipient=recipient,
-            paragraphs=cover_letter_draft.paragraphs,
-            lang=analysis.offer_language,
-        )
-        cl_path = generate_cl_pdf(cl_context, offer=offer["company"], output_date=today)
-
-        prep_path = None
-        if prep_draft is not None:
-            prep_context = build_prep_sheet_context(
-                company=offer["company"],
-                role=offer["role"],
-                date_str=today,
-                company_summary=prep_draft.company_summary,
-                tech_stack=prep_draft.tech_stack,
-                questions=prep_draft.questions,
-            )
-            prep_path = generate_prep_pdf(
-                prep_context, offer=offer["company"], output_date=today
-            )
-    except Exception as exc:
-        # PDF rendering (WeasyPrint/Jinja2) can fail in ways we can't enumerate up
-        # front; the design spec requires any rendering failure to surface as a
-        # clear error, not a 500 - see docs/superpowers/specs/2026-07-06-llm-migration-design.md.
-        return _error(f"Échec de la génération des PDF : {exc}")
-
-    offer = db.update(
-        offer_id,
-        {
-            "cv_path": str(cv_path),
-            "cover_letter_path": str(cl_path),
-            "prep_sheet_path": str(prep_path) if prep_path else "",
-        },
-        user_id=user_id,
-    )
-    return templates.TemplateResponse(
-        request,
-        "partials/offer_detail.html",
-        {
-            "offer": offer,
-            "statuses": VALID_STATUSES,
-            "parsed_desc": parse_description(offer.get("description", "")),
-        },
-    )
 
 
 @app.get("/stats", response_class=HTMLResponse)

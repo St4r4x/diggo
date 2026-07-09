@@ -46,6 +46,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/api.py` — `GET /api/profile` (contact info, résumé, FR/EN CV, onboarding state), the JSON API the migrated Profile page will consume. Gated by `get_current_user_api` only — no onboarding-completion requirement, since Profile is where onboarding gets completed
 - `frontend/app/profile/page.tsx`, `frontend/components/profile/profile-client.tsx` — the Profile page (contact, résumé, FR/EN CV with experience/skills/certifications/education), reproducing the former Jinja2 `profile.html`'s content on the design system as always-visible cards instead of the old collapsible accordion
 - `frontend/components/onboarding-banner.tsx` — shared onboarding-progress banner, extracted from the former Jinja2 `partials/onboarding_banner.html`; reused by the future Settings migration the same way `dashboard-nav.tsx` became shared infrastructure during Candidatures-A
+- `dashboard/api.py` — `PATCH /api/profile/contact`, `PATCH /api/profile/text`, `PUT /api/profile/cv/meta` — the first 3 of 8 Profile mutation routes, replicating the existing Jinja2 routes' load→mutate→save pattern for contact/résumé and the direct upsert for CV summary
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

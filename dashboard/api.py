@@ -295,3 +295,57 @@ async def get_profile_route(
         "cv_en": cv_en,
         "onboarding": onboarding,
     }
+
+
+@router.patch("/profile/contact")
+async def update_profile_contact(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    contact: dict = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    existing = profile_parser.load_profile(conn, user_id)
+    existing["contact"] = {
+        "name": contact.get("name", ""),
+        "title": contact.get("title", ""),
+        "email": contact.get("email", ""),
+        "phone": contact.get("phone", ""),
+        "location": contact.get("location", ""),
+        "linkedin": contact.get("linkedin", ""),
+        "github": contact.get("github", ""),
+    }
+    profile_parser.save_profile(conn, user_id, existing)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.patch("/profile/text")
+async def update_profile_text(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    body: dict = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    existing = profile_parser.load_profile(conn, user_id)
+    existing["profile_md"] = body.get("profile_md", "")
+    profile_parser.save_profile(conn, user_id, existing)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/meta")
+async def update_profile_cv_meta(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Query("fr"),
+    body: dict = Body(...),
+) -> dict:
+    if lang not in ("fr", "en"):
+        lang = "fr"
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_cv_meta(conn, user_id, lang, body.get("summary", ""))
+    conn.commit()
+    return {"ok": True}

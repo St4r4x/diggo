@@ -224,6 +224,44 @@ def client_with_profile(monkeypatch):
     dashboard_app.app.dependency_overrides.pop(get_current_user_api, None)
 
 
+@pytest.fixture
+def client_with_profile_mutations(monkeypatch):
+    import app as dashboard_app
+    import profile_parser
+    import user_data
+    from auth import get_current_user_api
+    from unittest.mock import MagicMock
+
+    mocks = {
+        "load_profile": MagicMock(return_value=dict(FAKE_PROFILE)),
+        "save_profile": MagicMock(),
+        "save_cv_meta": MagicMock(),
+        "save_experience": MagicMock(),
+        "delete_experience": MagicMock(),
+        "save_skills": MagicMock(),
+        "save_certifications": MagicMock(),
+        "save_education": MagicMock(),
+    }
+    monkeypatch.setattr(profile_parser, "load_profile", mocks["load_profile"])
+    monkeypatch.setattr(profile_parser, "save_profile", mocks["save_profile"])
+    monkeypatch.setattr(user_data, "save_cv_meta", mocks["save_cv_meta"])
+    monkeypatch.setattr(user_data, "save_experience", mocks["save_experience"])
+    monkeypatch.setattr(user_data, "delete_experience", mocks["delete_experience"])
+    monkeypatch.setattr(user_data, "save_skills", mocks["save_skills"])
+    monkeypatch.setattr(user_data, "save_certifications", mocks["save_certifications"])
+    monkeypatch.setattr(user_data, "save_education", mocks["save_education"])
+
+    mock_conn = MagicMock()
+    mock_db = MagicMock()
+    mock_db.conn = mock_conn
+    dashboard_app.app.state.db = mock_db
+    dashboard_app.app.dependency_overrides[get_current_user_api] = lambda: MOCK_USER
+
+    yield TestClient(dashboard_app.app), mocks
+
+    dashboard_app.app.dependency_overrides.pop(get_current_user_api, None)
+
+
 def test_health_returns_ok_without_auth(client) -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -757,3 +795,73 @@ def test_get_profile_succeeds_without_completed_onboarding(
     response = client_with_profile.get("/api/profile")
     assert response.status_code == 200
     assert response.json()["onboarding"]["is_complete"] is False
+
+
+def test_patch_profile_contact_saves_and_returns_ok(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    response = client.patch(
+        "/api/profile/contact",
+        json={
+            "name": "New Name",
+            "title": "ML Eng",
+            "email": "new@test.com",
+            "phone": "",
+            "location": "Lyon",
+            "linkedin": "",
+            "github": "",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    mocks["load_profile"].assert_called_once()
+    saved_data = mocks["save_profile"].call_args[0][2]
+    assert saved_data["contact"]["name"] == "New Name"
+    assert saved_data["contact"]["location"] == "Lyon"
+
+
+def test_patch_profile_contact_requires_auth(client) -> None:
+    response = client.patch("/api/profile/contact", json={})
+    assert response.status_code == 401
+
+
+def test_patch_profile_text_saves_profile_md(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    response = client.patch(
+        "/api/profile/text", json={"profile_md": "Updated résumé text."}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    saved_data = mocks["save_profile"].call_args[0][2]
+    assert saved_data["profile_md"] == "Updated résumé text."
+
+
+def test_patch_profile_text_requires_auth(client) -> None:
+    response = client.patch("/api/profile/text", json={"profile_md": "x"})
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_meta_saves_summary(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    response = client.put(
+        "/api/profile/cv/meta?lang=en", json={"summary": "New summary."}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    call_args = mocks["save_cv_meta"].call_args[0]
+    assert call_args[2] == "en"
+    assert call_args[3] == "New summary."
+
+
+def test_put_profile_cv_meta_invalid_lang_falls_back_to_fr(
+    client_with_profile_mutations,
+) -> None:
+    client, mocks = client_with_profile_mutations
+    response = client.put("/api/profile/cv/meta?lang=de", json={"summary": "x"})
+    assert response.status_code == 200
+    call_args = mocks["save_cv_meta"].call_args[0]
+    assert call_args[2] == "fr"
+
+
+def test_put_profile_cv_meta_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/meta", json={"summary": "x"})
+    assert response.status_code == 401

@@ -85,3 +85,71 @@ export type StatsResponse = {
   latest_report_html: string | null;
   latest_report_date: string | null;
 };
+
+export type ProfileContact = {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin: string;
+  github: string;
+};
+
+export type ProfileInfo = {
+  contact: ProfileContact;
+  profile_md: string;
+};
+
+export type CvExperience = {
+  id: number;
+  title: string;
+  company: string;
+  type: string;
+  period: string;
+  sort_order: number;
+  bullets: string[];
+};
+
+export type CvSkill = {
+  id: number;
+  category: string;
+  skill: string;
+  sort_order: number;
+};
+
+export type CvCertification = {
+  id: number;
+  name: string;
+  issuer: string;
+  year: number | null;
+};
+
+export type CvEducation = {
+  id: number;
+  degree: string;
+  school: string;
+  year: number | null;
+};
+
+export type Cv = {
+  meta: { summary: string };
+  experience: CvExperience[];
+  skills: CvSkill[];
+  certifications: CvCertification[];
+  education: CvEducation[];
+};
+
+export type OnboardingState = {
+  is_complete: boolean;
+  profile_complete: boolean;
+  search_complete: boolean;
+  hf_token_complete: boolean;
+};
+
+export type ProfileResponse = {
+  profile: ProfileInfo;
+  cv: Cv;
+  cv_en: Cv;
+  onboarding: OnboardingState;
+};

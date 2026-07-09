@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 import psycopg2.extensions
 import yaml
 
@@ -193,7 +193,10 @@ def get_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> str | No
         row = cur.fetchone()
     if row is None or row[0] is None:
         return None
-    return _fernet().decrypt(bytes(row[0])).decode()
+    try:
+        return _fernet().decrypt(bytes(row[0])).decode()
+    except InvalidToken:
+        return None
 
 
 def save_hf_token(

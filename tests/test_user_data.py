@@ -173,6 +173,15 @@ def test_delete_hf_token_clears_it(conn, monkeypatch):
     assert user_data.get_hf_token(conn, USER_A) is None
 
 
+def test_hf_token_undecryptable_with_current_key_returns_none(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_hf_token(conn, USER_A, "hf_secret123")
+    conn.commit()
+
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    assert user_data.get_hf_token(conn, USER_A) is None
+
+
 _CREATE_ATS_TARGETS = """
 CREATE TEMP TABLE user_ats_targets (
     id SERIAL PRIMARY KEY,

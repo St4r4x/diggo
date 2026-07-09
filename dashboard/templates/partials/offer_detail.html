@@ -1,3 +1,10 @@
+<!-- TODO(sub-phase D, offer_prepare migration): the hx-post/hx-get/hx-delete
+     targets below (/offers/{id}/status, /offers/{id}/edit, /offers/{id}) were
+     deleted in sub-phase B (candidatures mutations) — status change, "Modifier",
+     and "Supprimer" now 404 if this template is ever rendered live again.
+     Currently inert (only offer_prepare renders this, and nothing reaches
+     offer_prepare from the live UI) — rebuild these against /api/offers before
+     reusing this template, don't just re-point the URLs. -->
 <div class="w-full h-full flex flex-col">
 
   <!-- Header — pleine largeur -->

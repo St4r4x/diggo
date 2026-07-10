@@ -11,6 +11,7 @@ import { CvMetaSection } from "@/components/profile/cv-meta-section";
 import { CvSkillsSection } from "@/components/profile/cv-skills-section";
 import { CvCertificationsSection } from "@/components/profile/cv-certifications-section";
 import { CvEducationSection } from "@/components/profile/cv-education-section";
+import { CvExperienceSection } from "@/components/profile/cv-experience-section";
 
 async function fetchProfile(): Promise<ProfileResponse> {
   const res = await fetch("/api/profile");
@@ -85,31 +86,7 @@ export function ProfileClient() {
           </div>
           <div className="space-y-6">
             <CvMetaSection key={lang} summary={cv.meta.summary} lang={lang} />
-            <div>
-              <p className="text-sm font-semibold mb-2">Expériences</p>
-              {cv.experience.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucune expérience.</p>
-              )}
-              <div className="space-y-3">
-                {cv.experience.map((exp) => (
-                  <div key={exp.id} className="rounded-lg p-3 bg-background border border-border">
-                    <p className="text-sm font-medium">
-                      {exp.title} — {exp.company}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {exp.type} · {exp.period}
-                    </p>
-                    <ul className="list-disc pl-4 space-y-0.5">
-                      {exp.bullets.map((b, i) => (
-                        <li key={i} className="text-sm text-muted-foreground">
-                          {b}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CvExperienceSection key={lang} experience={cv.experience} lang={lang} />
             <CvSkillsSection key={lang} skills={cv.skills} lang={lang} />
             <CvEducationSection key={lang} education={cv.education} lang={lang} />
             <CvCertificationsSection certifications={cv.certifications} />

@@ -12,6 +12,9 @@ import { CvSkillsSection } from "@/components/profile/cv-skills-section";
 import { CvCertificationsSection } from "@/components/profile/cv-certifications-section";
 import { CvEducationSection } from "@/components/profile/cv-education-section";
 import { CvExperienceSection } from "@/components/profile/cv-experience-section";
+import { CvProjectsSection } from "@/components/profile/cv-projects-section";
+import { CvLanguagesSection } from "@/components/profile/cv-languages-section";
+import { CvHobbiesSection } from "@/components/profile/cv-hobbies-section";
 
 async function fetchProfile(): Promise<ProfileResponse> {
   const res = await fetch("/api/profile");
@@ -90,6 +93,9 @@ export function ProfileClient() {
             <CvSkillsSection key={lang} skills={cv.skills} lang={lang} />
             <CvEducationSection key={lang} education={cv.education} lang={lang} />
             <CvCertificationsSection certifications={cv.certifications} />
+            <CvProjectsSection key={lang} projects={cv.projects} lang={lang} />
+            <CvLanguagesSection key={lang} languages={cv.languages} lang={lang} />
+            <CvHobbiesSection key={lang} hobbies={cv.hobbies} lang={lang} />
           </div>
         </div>
       </div>

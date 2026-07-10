@@ -346,12 +346,32 @@ def _migrate_cv_from_files(lang: str = "fr") -> dict[str, Any] | None:
         }
         for e in data.get("education", [])
     ]
+    projects = [
+        {
+            "name": str(p.get("name", "")),
+            "stack": [str(s) for s in p.get("stack", [])],
+            "desc": str(p.get("desc", "")),
+            "sort_order": i,
+        }
+        for i, p in enumerate(data.get("projects", []))
+    ]
+    languages = [
+        {"name": str(lang_name), "sort_order": i}
+        for i, lang_name in enumerate(data.get("languages", []))
+    ]
+    hobbies = [
+        {"name": str(hobby), "sort_order": i}
+        for i, hobby in enumerate(data.get("hobbies", []))
+    ]
     return {
         "summary": str(data.get("summary", "")),
         "experience": experience,
         "skills": skills,
         "certifications": certifications,
         "education": education,
+        "projects": projects,
+        "languages": languages,
+        "hobbies": hobbies,
     }
 
 
@@ -418,8 +438,42 @@ def get_cv(
             {"id": r[0], "degree": r[1], "school": r[2], "year": r[3]}
             for r in cur.fetchall()
         ]
+        cur.execute(
+            'SELECT id, name, stack, "desc", sort_order FROM user_projects'
+            " WHERE user_id = %s AND lang = %s ORDER BY sort_order",
+            (user_id, lang),
+        )
+        projects = [
+            {"id": r[0], "name": r[1], "stack": r[2], "desc": r[3], "sort_order": r[4]}
+            for r in cur.fetchall()
+        ]
+        cur.execute(
+            "SELECT id, name, sort_order FROM user_languages"
+            " WHERE user_id = %s AND lang = %s ORDER BY sort_order",
+            (user_id, lang),
+        )
+        languages = [
+            {"id": r[0], "name": r[1], "sort_order": r[2]} for r in cur.fetchall()
+        ]
+        cur.execute(
+            "SELECT id, name, sort_order FROM user_hobbies"
+            " WHERE user_id = %s AND lang = %s ORDER BY sort_order",
+            (user_id, lang),
+        )
+        hobbies = [
+            {"id": r[0], "name": r[1], "sort_order": r[2]} for r in cur.fetchall()
+        ]
 
-    if not (meta_row or experience or skills or certifications or education):
+    if not (
+        meta_row
+        or experience
+        or skills
+        or certifications
+        or education
+        or projects
+        or languages
+        or hobbies
+    ):
         migrated = _migrate_cv_from_files(lang)
         if migrated:
             save_cv_meta(conn, user_id, lang, migrated["summary"])
@@ -427,6 +481,9 @@ def get_cv(
             save_skills(conn, user_id, lang, migrated["skills"])
             save_certifications(conn, user_id, migrated["certifications"])
             save_education(conn, user_id, lang, migrated["education"])
+            save_projects(conn, user_id, lang, migrated["projects"])
+            save_languages(conn, user_id, lang, migrated["languages"])
+            save_hobbies(conn, user_id, lang, migrated["hobbies"])
             conn.commit()
             return get_cv(conn, user_id, lang)
 
@@ -436,6 +493,9 @@ def get_cv(
         "skills": skills,
         "certifications": certifications,
         "education": education,
+        "projects": projects,
+        "languages": languages,
+        "hobbies": hobbies,
     }
 
 
@@ -575,4 +635,72 @@ def save_education(
                     entry.get("school", ""),
                     entry.get("year"),
                 ),
+            )
+
+
+def save_projects(
+    conn: psycopg2.extensions.connection,
+    user_id: str,
+    lang: str,
+    entries: list[dict[str, Any]],
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_projects WHERE user_id = %s AND lang = %s",
+            (user_id, lang),
+        )
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            cur.execute(
+                'INSERT INTO user_projects (user_id, lang, name, stack, "desc", sort_order)'
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    user_id,
+                    lang,
+                    entry.get("name", ""),
+                    entry.get("stack", []),
+                    entry.get("desc", ""),
+                    entry.get("sort_order", 0),
+                ),
+            )
+
+
+def save_languages(
+    conn: psycopg2.extensions.connection,
+    user_id: str,
+    lang: str,
+    entries: list[dict[str, Any]],
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_languages WHERE user_id = %s AND lang = %s",
+            (user_id, lang),
+        )
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            cur.execute(
+                "INSERT INTO user_languages (user_id, lang, name, sort_order) VALUES (%s, %s, %s, %s)",
+                (user_id, lang, entry.get("name", ""), entry.get("sort_order", 0)),
+            )
+
+
+def save_hobbies(
+    conn: psycopg2.extensions.connection,
+    user_id: str,
+    lang: str,
+    entries: list[dict[str, Any]],
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_hobbies WHERE user_id = %s AND lang = %s",
+            (user_id, lang),
+        )
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            cur.execute(
+                "INSERT INTO user_hobbies (user_id, lang, name, sort_order) VALUES (%s, %s, %s, %s)",
+                (user_id, lang, entry.get("name", ""), entry.get("sort_order", 0)),
             )

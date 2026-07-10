@@ -28,9 +28,10 @@ export function CvMetaSection({ summary, lang }: { summary: string; lang: "fr" |
   return (
     <div>
       <EditableSectionHeader
-        title="Résumé"
+        title="Résumé (CV)"
         isEditing={isEditing}
         showSuccess={mutation.isSuccess && !isEditing}
+        errorMessage={mutation.isError ? mutation.error.message : undefined}
         onToggle={() => {
           mutation.reset();
           if (!isEditing) setDraft(summary);

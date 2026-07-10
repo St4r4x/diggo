@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type FieldConfig = { key: string; label: string; type?: "text" | "number" };
 type Row = Record<string, string>;
+type KeyedRow = { key: number; row: Row };
 
 export function EditableListForm({
   entries,
@@ -18,17 +19,22 @@ export function EditableListForm({
   onSave: (rows: Row[]) => void;
   onCancel: () => void;
 }) {
-  const [rows, setRows] = useState<Row[]>(entries);
+  const nextKey = useRef(entries.length);
+  const [rows, setRows] = useState<KeyedRow[]>(
+    entries.map((row, i) => ({ key: i, row })),
+  );
 
-  function updateRow(index: number, key: string, value: string) {
-    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  function updateRow(index: number, fieldKey: string, value: string) {
+    setRows((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, row: { ...r.row, [fieldKey]: value } } : r)),
+    );
   }
 
   return (
     <div className="flex flex-col gap-2">
-      {rows.map((row, i) => (
+      {rows.map(({ key, row }, i) => (
         <div
-          key={i}
+          key={key}
           className="flex gap-2 items-end rounded-lg p-2 bg-background border border-border"
         >
           {fields.map((f) => (
@@ -53,7 +59,9 @@ export function EditableListForm({
       ))}
       <button
         type="button"
-        onClick={() => setRows((prev) => [...prev, { ...emptyEntry }])}
+        onClick={() =>
+          setRows((prev) => [...prev, { key: nextKey.current++, row: { ...emptyEntry } }])
+        }
         className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground self-start"
       >
         + Ajouter
@@ -61,7 +69,7 @@ export function EditableListForm({
       <div className="flex gap-2 mt-1">
         <button
           type="button"
-          onClick={() => onSave(rows)}
+          onClick={() => onSave(rows.map((r) => r.row))}
           className="text-xs px-3 py-1.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90"
         >
           Enregistrer

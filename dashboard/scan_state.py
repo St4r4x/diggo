@@ -22,7 +22,7 @@ _result: dict[str, dict[str, Any]] = {}
 def get_scan_state(user_id: str) -> dict[str, Any]:
     return {
         "status": _status.get(user_id, "idle"),
-        "result": _result.get(user_id, _EMPTY_RESULT),
+        "result": dict(_result.get(user_id, _EMPTY_RESULT)),
     }
 
 

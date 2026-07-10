@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
+import time
 
 import jwt
 import user_data
@@ -10,20 +12,33 @@ _COOKIE_SESSION = "session"
 _COOKIE_REFRESH = "refresh"
 _COOKIE_MAX_AGE_SESSION = 3600
 _COOKIE_MAX_AGE_REFRESH = 604800
+_JWKS_RETRY_INTERVAL_SECONDS = 60
 
 CurrentUser = dict
 
 _DEV_USER: CurrentUser = {"sub": "dev-user-local", "email": "arnaud@local"}
 _DEV_AUTO_LOGIN: bool = os.getenv("DEV_AUTO_LOGIN") == "true"
 
+if _DEV_AUTO_LOGIN and os.getenv("COOKIE_SECURE", "false").lower() == "true":
+    raise RuntimeError(
+        "DEV_AUTO_LOGIN=true with COOKIE_SECURE=true — refusing to start with "
+        "auth bypassed on what looks like a production config"
+    )
+
+logger = logging.getLogger(__name__)
+
 # Cached JWKS client — created lazily so tests can set env vars first.
 _jwks_client: jwt.PyJWKClient | None = None
-_jwks_unavailable: bool = False
+# Timestamp until which JWKS lookups are skipped after a fetch failure, so a
+# transient network blip doesn't fall back to HS256 for the rest of the
+# process's life. Only network/fetch errors set this — a signing-key mismatch
+# (bad/expired token) must not disable JWKS for every other request.
+_jwks_unavailable_until: float = 0.0
 
 
 def _get_jwks_client() -> jwt.PyJWKClient | None:
-    global _jwks_client, _jwks_unavailable
-    if _jwks_unavailable:
+    global _jwks_client
+    if time.time() < _jwks_unavailable_until:
         return None
     if _jwks_client is not None:
         return _jwks_client
@@ -36,6 +51,7 @@ def _get_jwks_client() -> jwt.PyJWKClient | None:
 
 def _decode_token(token: str) -> dict:
     """Decode a Supabase JWT using JWKS (ES256) with HS256 fallback for tests."""
+    global _jwks_unavailable_until
     client = _get_jwks_client()
     if client is not None:
         try:
@@ -46,8 +62,14 @@ def _decode_token(token: str) -> dict:
                 algorithms=["ES256", "RS256", "HS256"],
                 audience="authenticated",
             )
+        except jwt.PyJWKClientConnectionError:
+            logger.warning(
+                "JWKS endpoint unreachable, retrying in %ds",
+                _JWKS_RETRY_INTERVAL_SECONDS,
+            )
+            _jwks_unavailable_until = time.time() + _JWKS_RETRY_INTERVAL_SECONDS
         except jwt.PyJWKClientError:
-            _jwks_unavailable = True  # skip future JWKS attempts until restart
+            pass  # no matching signing key for this token — token itself is invalid
 
     # HS256 fallback (used in tests where SUPABASE_URL is not set)
     secret = os.getenv("SUPABASE_JWT_SECRET", "")

@@ -1,4 +1,4 @@
-"""Shared data models for career-ops-fr portal scanning."""
+"""Shared data models for diggo portal scanning."""
 
 from __future__ import annotations
 

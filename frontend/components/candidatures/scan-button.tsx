@@ -63,12 +63,17 @@ export function ScanButton() {
 
   if (status === "error") {
     return (
-      <button
-        onClick={() => startMutation.mutate()}
-        className="w-full text-sm px-3 py-2 rounded-lg font-medium bg-red-900 text-red-200 hover:bg-red-800"
-      >
-        ✗ Erreur — Réessayer
-      </button>
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={() => startMutation.mutate()}
+          className="w-full text-sm px-3 py-2 rounded-lg font-medium bg-red-900 text-red-200 hover:bg-red-800"
+        >
+          ✗ Erreur — Réessayer
+        </button>
+        {startMutation.isError && (
+          <p className="text-xs text-destructive">{startMutation.error.message}</p>
+        )}
+      </div>
     );
   }
 

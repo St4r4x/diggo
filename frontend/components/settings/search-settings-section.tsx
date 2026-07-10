@@ -187,6 +187,9 @@ export function SearchSettingsSection({
             Enregistrer
           </button>
           {mutation.isSuccess && <span className="text-sm text-primary">✓ Enregistré</span>}
+          {mutation.isError && (
+            <span className="text-sm text-destructive">{mutation.error.message}</span>
+          )}
         </div>
       </form>
     </div>

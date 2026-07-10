@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CvExperience } from "@/lib/types";
 
 export type ExperienceRow = {
@@ -11,13 +11,20 @@ export type ExperienceRow = {
   bullets: string[];
 };
 
-function toRow(exp: CvExperience): ExperienceRow {
+type KeyedBullet = { key: number; value: string };
+type KeyedRow = { key: number; row: ExperienceRow; bullets: KeyedBullet[] };
+
+function toKeyedRow(exp: CvExperience, key: number): KeyedRow {
   return {
-    title: exp.title,
-    company: exp.company,
-    type: exp.type,
-    period: exp.period,
-    bullets: exp.bullets,
+    key,
+    row: {
+      title: exp.title,
+      company: exp.company,
+      type: exp.type,
+      period: exp.period,
+      bullets: exp.bullets,
+    },
+    bullets: exp.bullets.map((value, i) => ({ key: i, value })),
   };
 }
 
@@ -30,17 +37,28 @@ export function ExperienceEditForm({
   onSave: (rows: ExperienceRow[]) => void;
   onCancel: () => void;
 }) {
-  const [rows, setRows] = useState<ExperienceRow[]>(experience.map(toRow));
+  const nextRowKey = useRef(experience.length);
+  const nextBulletKey = useRef(
+    Math.max(0, ...experience.map((exp) => exp.bullets.length)),
+  );
+  const [rows, setRows] = useState<KeyedRow[]>(
+    experience.map((exp, i) => toKeyedRow(exp, i)),
+  );
 
   function updateRow(index: number, patch: Partial<ExperienceRow>) {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    setRows((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, row: { ...r.row, ...patch } } : r)),
+    );
   }
 
   function updateBullet(rowIndex: number, bulletIndex: number, value: string) {
     setRows((prev) =>
       prev.map((r, i) =>
         i === rowIndex
-          ? { ...r, bullets: r.bullets.map((b, bi) => (bi === bulletIndex ? value : b)) }
+          ? {
+              ...r,
+              bullets: r.bullets.map((b, bi) => (bi === bulletIndex ? { ...b, value } : b)),
+            }
           : r,
       ),
     );
@@ -48,7 +66,11 @@ export function ExperienceEditForm({
 
   function addBullet(rowIndex: number) {
     setRows((prev) =>
-      prev.map((r, i) => (i === rowIndex ? { ...r, bullets: [...r.bullets, ""] } : r)),
+      prev.map((r, i) =>
+        i === rowIndex
+          ? { ...r, bullets: [...r.bullets, { key: nextBulletKey.current++, value: "" }] }
+          : r,
+      ),
     );
   }
 
@@ -64,9 +86,9 @@ export function ExperienceEditForm({
 
   return (
     <div className="flex flex-col gap-3">
-      {rows.map((row, i) => (
+      {rows.map(({ key, row, bullets }, i) => (
         <div
-          key={i}
+          key={key}
           className="rounded-lg p-3 bg-background border border-border flex flex-col gap-2"
         >
           <div className="grid grid-cols-2 gap-2">
@@ -106,10 +128,10 @@ export function ExperienceEditForm({
           <div>
             <p className="text-xs text-primary mb-1">Points clés</p>
             <div className="flex flex-col gap-1">
-              {row.bullets.map((b, bi) => (
-                <div key={bi} className="flex gap-1">
+              {bullets.map((b, bi) => (
+                <div key={b.key} className="flex gap-1">
                   <input
-                    value={b}
+                    value={b.value}
                     onChange={(e) => updateBullet(i, bi, e.target.value)}
                     className="flex-1 text-sm rounded px-2 py-1 bg-card border border-border text-foreground"
                   />
@@ -145,7 +167,11 @@ export function ExperienceEditForm({
         onClick={() =>
           setRows((prev) => [
             ...prev,
-            { title: "", company: "", type: "", period: "", bullets: [] },
+            {
+              key: nextRowKey.current++,
+              row: { title: "", company: "", type: "", period: "", bullets: [] },
+              bullets: [],
+            },
           ])
         }
         className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground self-start"
@@ -155,7 +181,9 @@ export function ExperienceEditForm({
       <div className="flex gap-2 mt-1">
         <button
           type="button"
-          onClick={() => onSave(rows)}
+          onClick={() =>
+            onSave(rows.map((r) => ({ ...r.row, bullets: r.bullets.map((b) => b.value) })))
+          }
           className="text-xs px-3 py-1.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90"
         >
           Enregistrer

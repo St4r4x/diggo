@@ -284,16 +284,10 @@ class TestNewSignals:
 _SALARY_BASE = "python docker mlops fastapi. " + "lorem ipsum dolor sit amet " * 12
 
 
-_SALARY_BASE = "python docker mlops fastapi. " + "lorem ipsum dolor sit amet " * 12
-
-
 class TestSalaryNormalized:
     def test_13th_month_raises_package_into_range(self) -> None:
         # 3500 × 13 = 45500 → in range [40k-55k] → salary tag present, score better than out-of-range
         desc_13 = _SALARY_BASE + " Salaire 3500€/mois + 13ème mois"
-        desc_out = (
-            _SALARY_BASE + " Salaire 3500€/mois"
-        )  # 3500×12=42000, still in range – use 100k
         desc_out2 = _SALARY_BASE + " Rémunération 100k€"
         offer_13 = _offer_with_desc(description=desc_13)
         offer_out = _offer_with_desc(description=desc_out2)

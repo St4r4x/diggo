@@ -295,6 +295,29 @@ CREATE TEMP TABLE user_education (
     degree TEXT NOT NULL DEFAULT '',
     school TEXT NOT NULL DEFAULT '',
     year INT
+);
+CREATE TEMP TABLE user_projects (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    stack TEXT[] NOT NULL DEFAULT '{}',
+    "desc" TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TEMP TABLE user_languages (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TEMP TABLE user_hobbies (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0
 )
 """
 
@@ -320,6 +343,9 @@ def test_get_cv_empty(conn_with_cv):
     assert cv["skills"] == []
     assert cv["certifications"] == []
     assert cv["education"] == []
+    assert cv["projects"] == []
+    assert cv["languages"] == []
+    assert cv["hobbies"] == []
 
 
 def test_save_and_get_cv_meta(conn_with_cv):
@@ -407,6 +433,79 @@ def test_save_education(conn_with_cv):
     user_data.save_education(conn_with_cv, USER_A, "fr", entries)
     cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
     assert cv["education"][0]["degree"] == "MSc AI"
+
+
+def test_save_projects(conn_with_cv):
+    entries = [
+        {
+            "name": "Kaggle Watson",
+            "stack": ["PyTorch", "DeBERTa-v3"],
+            "desc": "Multilingual NLI",
+            "sort_order": 0,
+        }
+    ]
+    user_data.save_projects(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["projects"][0]["name"] == "Kaggle Watson"
+    assert cv["projects"][0]["stack"] == ["PyTorch", "DeBERTa-v3"]
+    assert cv["projects"][0]["desc"] == "Multilingual NLI"
+
+
+def test_save_projects_replaces_existing(conn_with_cv):
+    user_data.save_projects(
+        conn_with_cv, USER_A, "fr", [{"name": "Old", "stack": [], "desc": ""}]
+    )
+    user_data.save_projects(
+        conn_with_cv, USER_A, "fr", [{"name": "New", "stack": [], "desc": ""}]
+    )
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert len(cv["projects"]) == 1
+    assert cv["projects"][0]["name"] == "New"
+
+
+def test_save_languages(conn_with_cv):
+    entries = [
+        {"name": "Français (natif)", "sort_order": 0},
+        {"name": "Anglais (professionnel)", "sort_order": 1},
+    ]
+    user_data.save_languages(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert [lang["name"] for lang in cv["languages"]] == [
+        "Français (natif)",
+        "Anglais (professionnel)",
+    ]
+
+
+def test_save_hobbies(conn_with_cv):
+    entries = [{"name": "Tennis", "sort_order": 0}]
+    user_data.save_hobbies(conn_with_cv, USER_A, "fr", entries)
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["hobbies"][0]["name"] == "Tennis"
+
+
+def test_migrate_cv_from_files_includes_projects_languages_hobbies(
+    conn_with_cv, monkeypatch
+):
+    monkeypatch.setattr(
+        user_data,
+        "_migrate_cv_from_files",
+        lambda lang="fr": {
+            "summary": "",
+            "experience": [],
+            "skills": [],
+            "certifications": [],
+            "education": [],
+            "projects": [
+                {"name": "Proj", "stack": ["Python"], "desc": "d", "sort_order": 0}
+            ],
+            "languages": [{"name": "Français", "sort_order": 0}],
+            "hobbies": [{"name": "Cinéma", "sort_order": 0}],
+        },
+    )
+    cv = user_data.get_cv(conn_with_cv, USER_A, lang="fr")
+    assert cv["projects"][0]["name"] == "Proj"
+    assert cv["languages"][0]["name"] == "Français"
+    assert cv["hobbies"][0]["name"] == "Cinéma"
 
 
 _CREATE_ONBOARDING_TABLES = (

@@ -39,6 +39,17 @@ _SAMPLE_CV = {
     "skills": [{"id": 1, "category": "ML", "skill": "PyTorch", "sort_order": 0}],
     "certifications": [],
     "education": [],
+    "projects": [
+        {
+            "id": 1,
+            "name": "Kaggle Watson",
+            "stack": ["PyTorch"],
+            "desc": "NLI",
+            "sort_order": 0,
+        }
+    ],
+    "languages": [{"id": 1, "name": "Français (natif)", "sort_order": 0}],
+    "hobbies": [{"id": 1, "name": "Tennis", "sort_order": 0}],
 }
 
 _SAMPLE_PROFILE = {
@@ -254,6 +265,35 @@ def test_run_prepare_success_writes_all_three_paths(
     assert offer["cv_path"] == str(tmp_path / "cv.pdf")
     assert offer["cover_letter_path"] == str(tmp_path / "cl.pdf")
     assert offer["prep_sheet_path"] == str(tmp_path / "prep.pdf")
+
+
+def test_run_prepare_cv_context_includes_projects_languages_hobbies(
+    prepared_db, monkeypatch, tmp_path
+) -> None:
+    prepare_state._status.clear()
+    offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
+    _patch_phases(monkeypatch)
+    captured_ctx = {}
+
+    def _capture_cv_pdf(ctx, **kw):
+        captured_ctx.update(ctx)
+        return tmp_path / "cv.pdf"
+
+    monkeypatch.setattr("scripts.generate_pdf.generate_pdf", _capture_cv_pdf)
+    monkeypatch.setattr(
+        "scripts.generate_cover_letter.generate_pdf",
+        lambda ctx, **kw: tmp_path / "cl.pdf",
+    )
+    monkeypatch.setattr(
+        "scripts.generate_prep_sheet.generate_pdf",
+        lambda ctx, **kw: tmp_path / "prep.pdf",
+    )
+
+    asyncio.run(prepare_state._run_prepare(offer_id, USER_A, skip_prep=False))
+
+    assert captured_ctx["projects"] == _SAMPLE_CV["projects"]
+    assert captured_ctx["languages"] == ["Français (natif)"]
+    assert captured_ctx["hobbies"] == ["Tennis"]
 
 
 def test_run_prepare_skip_prep_leaves_prep_sheet_path_empty(

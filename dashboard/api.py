@@ -425,6 +425,48 @@ async def update_profile_cv_education(
     return {"ok": True}
 
 
+@router.put("/profile/cv/projects")
+async def update_profile_cv_projects(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Depends(_lang_query),
+    entries: list = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_projects(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/languages")
+async def update_profile_cv_languages(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Depends(_lang_query),
+    entries: list = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_languages(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/hobbies")
+async def update_profile_cv_hobbies(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Depends(_lang_query),
+    entries: list = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_hobbies(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}
+
+
 @router.get("/settings")
 async def get_settings_route(
     request: Request,

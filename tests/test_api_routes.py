@@ -257,6 +257,9 @@ def client_with_profile_mutations(monkeypatch):
         "save_skills": MagicMock(),
         "save_certifications": MagicMock(),
         "save_education": MagicMock(),
+        "save_projects": MagicMock(),
+        "save_languages": MagicMock(),
+        "save_hobbies": MagicMock(),
     }
     monkeypatch.setattr(profile_parser, "load_profile", mocks["load_profile"])
     monkeypatch.setattr(profile_parser, "save_profile", mocks["save_profile"])
@@ -266,6 +269,9 @@ def client_with_profile_mutations(monkeypatch):
     monkeypatch.setattr(user_data, "save_skills", mocks["save_skills"])
     monkeypatch.setattr(user_data, "save_certifications", mocks["save_certifications"])
     monkeypatch.setattr(user_data, "save_education", mocks["save_education"])
+    monkeypatch.setattr(user_data, "save_projects", mocks["save_projects"])
+    monkeypatch.setattr(user_data, "save_languages", mocks["save_languages"])
+    monkeypatch.setattr(user_data, "save_hobbies", mocks["save_hobbies"])
 
     mock_conn = MagicMock()
     mock_db = MagicMock()
@@ -1016,6 +1022,53 @@ def test_put_profile_cv_education_saves_entries(client_with_profile_mutations) -
 
 def test_put_profile_cv_education_requires_auth(client) -> None:
     response = client.put("/api/profile/cv/education", json=[])
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_projects_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [
+        {"name": "Kaggle Watson", "stack": ["PyTorch"], "desc": "NLI", "sort_order": 0}
+    ]
+    response = client.put("/api/profile/cv/projects?lang=fr", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_projects"].call_args[0]
+    assert call_args[2] == "fr"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_projects_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/projects", json=[])
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_languages_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [{"name": "Français (natif)", "sort_order": 0}]
+    response = client.put("/api/profile/cv/languages?lang=fr", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_languages"].call_args[0]
+    assert call_args[2] == "fr"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_languages_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/languages", json=[])
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_hobbies_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [{"name": "Tennis", "sort_order": 0}]
+    response = client.put("/api/profile/cv/hobbies?lang=fr", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_hobbies"].call_args[0]
+    assert call_args[2] == "fr"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_hobbies_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/hobbies", json=[])
     assert response.status_code == 401
 
 

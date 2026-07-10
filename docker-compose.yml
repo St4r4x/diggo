@@ -8,7 +8,6 @@ services:
       - ./reports:/app/reports
       - ./output:/app/output
       - ./config:/app/config:ro
-      - ./dashboard/templates:/app/dashboard/templates:ro
     env_file: .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -55,6 +54,12 @@ services:
         condition: service_healthy
       web:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   pipeline:

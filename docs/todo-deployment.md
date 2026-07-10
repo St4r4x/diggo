@@ -1,4 +1,4 @@
-# Deployment TODO — career-ops-fr SaaS
+# Deployment TODO — diggo SaaS
 
 Audit date: 2026-07-03
 Target: multi-user hosted deployment (replace Claude Code CLI with server-side LLM)
@@ -180,7 +180,7 @@ Items are ordered by dependency: nothing in a later group can be done before the
 - [ ] Limites par route : `/scan/start` → 1 req/heure/user ; `/offers/{id}/prepare` → 10 req/heure/user ; login → 5 tentatives/15min/IP
 
 **CORS**
-- [ ] Configurer `CORSMiddleware` avec `allow_origins=[os.getenv("ALLOWED_ORIGINS")]` — pas de `*` en prod
+- [x] Configurer `CORSMiddleware` avec `allow_origins=[os.getenv("ALLOWED_ORIGINS")]` — pas de `*` en prod (`dashboard/app.py`)
 - [ ] HTTPS redirect middleware en prod (`HTTPSRedirectMiddleware`)
 
 **Validation des entrées**

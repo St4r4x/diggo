@@ -37,6 +37,7 @@ export function CvCertificationsSection({
         title="Certifications"
         isEditing={isEditing}
         showSuccess={mutation.isSuccess && !isEditing}
+        errorMessage={mutation.isError ? mutation.error.message : undefined}
         onToggle={() => {
           mutation.reset();
           setIsEditing((v) => !v);

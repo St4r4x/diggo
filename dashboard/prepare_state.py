@@ -107,10 +107,12 @@ async def _run_prepare(offer_id: int, user_id: str, skip_prep: bool) -> None:
                 skill_categories=_group_skills_by_category(cv["skills"]),
                 highlighted_skills=cv_rewrite.highlighted_skills,
                 education=cv["education"],
-                languages=[],
+                languages=[lang["name"] for lang in cv["languages"]],
                 linkedin=profile["linkedin"],
                 github=profile["github"],
                 certifications=cv["certifications"],
+                projects=cv["projects"],
+                hobbies=[hobby["name"] for hobby in cv["hobbies"]],
             )
             cv_path = await asyncio.to_thread(
                 generate_cv_pdf,

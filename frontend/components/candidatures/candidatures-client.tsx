@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
-import { redirectOnUnauthenticated } from "@/lib/api-errors";
+import {
+  redirectOnUnauthenticated,
+  redirectOnOnboardingIncomplete,
+} from "@/lib/api-errors";
 import { OfferEditForm } from "@/components/candidatures/offer-edit-form";
 import { ScanButton } from "@/components/candidatures/scan-button";
 import { PreparePanel } from "@/components/candidatures/prepare-panel";
@@ -24,11 +27,7 @@ async function fetchOffers(filters: Filters): Promise<OffersResponse> {
   if (filters.sal_min) params.set("sal_min", filters.sal_min);
   const res = await fetch(`/api/offers?${params.toString()}`);
   redirectOnUnauthenticated(res);
-  if (res.status === 403) {
-    const body = await res.json();
-    window.location.href = body.detail?.redirect ?? "/profile";
-    throw new Error("onboarding incomplete");
-  }
+  await redirectOnOnboardingIncomplete(res);
   if (!res.ok) throw new Error("failed to fetch offers");
   return res.json();
 }
@@ -101,11 +100,16 @@ export function CandidaturesClient() {
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
-    mutationFn: (fields: Record<string, unknown>) =>
-      patchOffer(selectedId as number, fields),
-    onSuccess: () => {
+    mutationFn: ({
+      id,
+      fields,
+    }: {
+      id: number;
+      fields: Record<string, unknown>;
+    }) => patchOffer(id, fields),
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["offers"] });
-      queryClient.invalidateQueries({ queryKey: ["offer", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["offer", id] });
     },
   });
 
@@ -134,8 +138,9 @@ export function CandidaturesClient() {
 
   useEffect(() => {
     if (!detail || notesInput === detail.offer.notes) return;
+    const id = detail.offer.id;
     const timeoutId = setTimeout(() => {
-      updateMutation.mutate({ notes: notesInput });
+      updateMutation.mutate({ id, fields: { notes: notesInput } });
     }, 800);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -330,11 +335,22 @@ export function CandidaturesClient() {
                 </div>
               </div>
 
+              {(updateMutation.isError || deleteMutation.isError) && (
+                <p className="text-xs text-destructive mb-2 shrink-0">
+                  {(updateMutation.error ?? deleteMutation.error)?.message}
+                </p>
+              )}
+
               <div className="flex flex-wrap gap-1.5 mb-4 shrink-0">
                 {statuses.map((s) => (
                   <button
                     key={s}
-                    onClick={() => updateMutation.mutate({ status: s })}
+                    onClick={() =>
+                      updateMutation.mutate({
+                        id: detail.offer.id,
+                        fields: { status: s },
+                      })
+                    }
                     disabled={s === detail.offer.status}
                     className={`text-xs px-2 py-1 rounded font-medium disabled:opacity-40 disabled:cursor-default ${statusColor(s)}`}
                   >
@@ -353,7 +369,7 @@ export function CandidaturesClient() {
                     <OfferEditForm
                       offer={detail.offer}
                       onSave={(fields) => {
-                        updateMutation.mutate(fields);
+                        updateMutation.mutate({ id: detail.offer.id, fields });
                         setIsEditing(false);
                       }}
                       onCancel={() => setIsEditing(false)}

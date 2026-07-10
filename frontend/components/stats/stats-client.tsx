@@ -3,16 +3,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { StatsResponse } from "@/lib/types";
 import { statusColor } from "@/lib/status-colors";
-import { redirectOnUnauthenticated } from "@/lib/api-errors";
+import {
+  redirectOnUnauthenticated,
+  redirectOnOnboardingIncomplete,
+} from "@/lib/api-errors";
 
 async function fetchStats(): Promise<StatsResponse> {
   const res = await fetch("/api/stats");
   redirectOnUnauthenticated(res);
-  if (res.status === 403) {
-    const body = await res.json();
-    window.location.href = body.detail?.redirect ?? "/profile";
-    throw new Error("onboarding incomplete");
-  }
+  await redirectOnOnboardingIncomplete(res);
   if (!res.ok) throw new Error("failed to fetch stats");
   return res.json();
 }

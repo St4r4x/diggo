@@ -31,6 +31,7 @@ export function SummarySection({ profileMd }: { profileMd: string }) {
         title="Résumé"
         isEditing={isEditing}
         showSuccess={mutation.isSuccess && !isEditing}
+        errorMessage={mutation.isError ? mutation.error.message : undefined}
         onToggle={() => {
           mutation.reset();
           if (!isEditing) setDraft(profileMd);

@@ -47,6 +47,13 @@ export function CvExperienceSection({
         title="Expériences"
         isEditing={isEditing}
         showSuccess={saveMutation.isSuccess && !isEditing}
+        errorMessage={
+          saveMutation.isError
+            ? saveMutation.error.message
+            : deleteMutation.isError
+              ? deleteMutation.error.message
+              : undefined
+        }
         onToggle={() => {
           saveMutation.reset();
           setIsEditing((v) => !v);

@@ -24,7 +24,7 @@
   --color-primary-foreground: rgb(var(--accent-foreground));
   --color-secondary: rgb(var(--surface));
   --color-secondary-foreground: rgb(var(--foreground));
-  --color-muted: rgb(var(--surface));
+  --color-muted: rgb(var(--border));
   --color-muted-foreground: rgb(var(--foreground));
   --color-accent: rgb(var(--accent));
   --color-accent-foreground: rgb(var(--accent-foreground));

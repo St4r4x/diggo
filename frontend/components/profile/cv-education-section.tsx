@@ -41,6 +41,7 @@ export function CvEducationSection({
         title="Formation"
         isEditing={isEditing}
         showSuccess={mutation.isSuccess && !isEditing}
+        errorMessage={mutation.isError ? mutation.error.message : undefined}
         onToggle={() => {
           mutation.reset();
           setIsEditing((v) => !v);

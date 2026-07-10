@@ -53,6 +53,11 @@ export function AtsTargetsSection({ atsTargets }: { atsTargets: AtsTarget[] }) {
   return (
     <div className="rounded-xl p-6 bg-card border border-border">
       <h2 className="text-lg font-semibold mb-4">ATS Targets</h2>
+      {(addMutation.isError || deleteMutation.isError) && (
+        <p className="text-sm text-destructive mb-3">
+          {(addMutation.error ?? deleteMutation.error)?.message}
+        </p>
+      )}
       {atsTargets.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aucune cible ATS configurée.</p>
       ) : (

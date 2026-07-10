@@ -50,7 +50,7 @@ Step 5 uses Claude Code to generate PDFs for a specific offer.
 git clone https://github.com/St4r4x/diggo.git
 cd diggo
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 playwright install chromium
 ```
 
@@ -180,6 +180,12 @@ claude --system-prompt "$(cat modes/prepare-candidature.md)" "Prépare la candid
 
 # Interview prep sheet only (interview statuses: Entretien RH / Entretien tech / Offre)
 claude --system-prompt "$(cat modes/prepare-entretien.md)" "Prépare l'entretien pour l'offre ID <id>"
+
+# Cover letter only, without the rest of the prepare-candidature pipeline
+claude --system-prompt "$(cat modes/generate-cover-letter.md)" "Écris la lettre de motivation pour l'offre ID <id>"
+
+# Rescore all existing offers after changing config/settings.yaml
+claude --system-prompt "$(cat modes/rescore-offers.md)"
 ```
 
 `prepare-candidature` phases (when run manually without `--no-prep`):

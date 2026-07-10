@@ -1,4 +1,4 @@
-# career-ops-fr — Claude Code instructions
+# diggo — Claude Code instructions
 
 ## Documentation maintenance
 

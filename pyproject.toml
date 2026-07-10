@@ -1,0 +1,4 @@
+[tool.ruff.lint.per-file-ignores]
+# load_dotenv() must run before importing modules that read env vars at import time.
+"scripts/import_offers.py" = ["E402"]
+"scripts/rescore.py" = ["E402"]

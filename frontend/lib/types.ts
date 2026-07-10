@@ -132,12 +132,35 @@ export type CvEducation = {
   year: number | null;
 };
 
+export type CvProject = {
+  id: number;
+  name: string;
+  stack: string[];
+  desc: string;
+  sort_order: number;
+};
+
+export type CvLanguage = {
+  id: number;
+  name: string;
+  sort_order: number;
+};
+
+export type CvHobby = {
+  id: number;
+  name: string;
+  sort_order: number;
+};
+
 export type Cv = {
   meta: { summary: string };
   experience: CvExperience[];
   skills: CvSkill[];
   certifications: CvCertification[];
   education: CvEducation[];
+  projects: CvProject[];
+  languages: CvLanguage[];
+  hobbies: CvHobby[];
 };
 
 export type OnboardingState = {

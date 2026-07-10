@@ -1,9 +1,41 @@
 # Changelog
 
-All notable changes to career-ops-fr are documented here.
+All notable changes to diggo are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+
+## [Unreleased]
+
+### Fixed
+- `frontend/components/candidatures/candidatures-client.tsx` — `updateMutation` read `selectedId` at mutate-time instead of capturing the offer id when scheduled; switching offers within the 800ms notes-autosave debounce window wrote the previous offer's notes onto the newly selected one. The mutation now takes an explicit `{id, fields}` payload captured at schedule time.
+- `dashboard/auth.py` — a single transient JWKS network failure (`PyJWKClientConnectionError`) permanently disabled JWKS verification for the process's lifetime, silently downgrading every future request to the HS256 test-only fallback. Replaced the permanent latch with a 60s retry window, and stopped a signing-key mismatch (bad/expired token) from tripping it at all — only network/fetch errors do now.
+- `dashboard/scan_state.py` — `get_scan_state()` returned the shared `_EMPTY_RESULT` dict by reference for idle users instead of a copy; a future mutating caller could have corrupted the shared default for every user
+- `frontend/components/profile/editable-list-form.tsx`, `experience-edit-form.tsx` — used array index as React `key` on editable add/remove lists (skills, certifications, education, experience bullets), causing focus/cursor jumps on a mid-list delete; rows and bullets now carry a stable identity independent of position
+- `frontend/app/globals.css` — `--color-muted` aliased the same value as `--color-card`, making the funnel/status bar track on `/stats` nearly invisible against its card background; now aliases `--border` instead
+- Missing `onError` feedback on several mutations (`scan-button.tsx`, `candidatures-client.tsx`'s update/delete, `search-settings-section.tsx`, `ats-targets-section.tsx`'s add/delete, and the 7 Profile edit sections via `EditableSectionHeader`) — a failed save previously failed silently with no UI feedback
+- `tests/test_pre_filter.py` — removed a duplicated `_SALARY_BASE` definition and a dead `desc_out` variable left over from a since-changed assertion
+- Generated CV PDFs were missing the Projects, Languages, and Hobbies sections: the DB-backed CV migration never created tables for them, and `dashboard/prepare_state.py` passed `languages=[]` hardcoded and no `hobbies`/`projects` at all to `build_cv_context()`. Added `user_projects`/`user_languages`/`user_hobbies` tables (`alembic/versions/0006_cv_projects_languages_hobbies.py`), `user_data.py` get/save functions with file-based migration support, `PUT /api/profile/cv/{projects,languages,hobbies}` routes, and wired the 3 fields into `prepare_state.py`'s PDF context build
+
+### Added
+- `frontend/components/profile/cv-projects-section.tsx`, `cv-languages-section.tsx`, `cv-hobbies-section.tsx` — edit UI for the 3 new CV sections on `/profile`, following the existing `cv-education-section.tsx` pattern
+- `dashboard/app.py` — wired up `CORSMiddleware` using `ALLOWED_ORIGINS` (already documented in `.env.example` but never mounted)
+- `dashboard/auth.py` — refuse to start if `DEV_AUTO_LOGIN=true` alongside `COOKIE_SECURE=true`, so an auth bypass can't silently ship on a production-looking config
+- `frontend/lib/api-errors.ts` — `redirectOnOnboardingIncomplete()`, extracted from the near-identical 403-handling block duplicated in `candidatures-client.tsx` and `stats-client.tsx`
+- `frontend/components/profile/editable-section-header.tsx` — `errorMessage` prop, shared error display for all 7 Profile edit sections
+- `.github/workflows/ci.yml` — first CI pipeline for this repo: spins up a Postgres service container, installs WeasyPrint's system deps, runs `ruff check` and the `pytest` suite on every push/PR to `master`
+- `requirements-dev.txt` — test-only deps (`pytest`, `pytest-asyncio`, `pytest-httpx`) split out of `requirements.txt`, which now only lists runtime deps installed into the production Docker image
+- `pyproject.toml` — per-file `ruff` ignores for the two scripts (`import_offers.py`, `rescore.py`) whose `load_dotenv()`-before-import ordering is intentional
+- README: documented the two previously-unlisted Claude Code modes, `generate-cover-letter` and `rescore-offers`
+
+### Changed
+- `docker-compose.yml` — `proxy` now has a healthcheck (`wget` against `/api/health` through nginx), matching `api`/`web`; removed the `./dashboard/templates` bind mount, a leftover from the deleted Jinja2 templates
+- `supabase/config.toml`, `CLAUDE.md`, `scripts/models.py`, `docs/todo-deployment.md` — renamed lingering `career-ops-fr` references to `diggo`
+- `README.md` — local dev setup now installs `requirements-dev.txt` (adds pytest for contributors) instead of `requirements.txt`
+
+### Removed
+- `run_daily.sh` — dead duplicate of `entrypoint.sh`'s `pipeline` mode (`daily_report.py` → `import_offers.py`), superseded by `docker compose --profile manual run pipeline` and unreferenced anywhere
+- Untracked 7 files under `docs/superpowers/plans/` that predated the `.gitignore` rule excluding that directory (kept on disk, just no longer committed) — brings them in line with the other 18 already-gitignored plan files
 
 ## [0.11.0] — 2026-07-10
 

@@ -64,7 +64,11 @@ export function CvExperienceSection({
         <ExperienceEditForm
           experience={experience}
           onSave={(rows) => {
-            saveMutation.mutate(rows.filter((r) => r.title.trim() || r.company.trim()));
+            saveMutation.mutate(
+              rows
+                .filter((r) => r.title.trim() || r.company.trim())
+                .map((r, i) => ({ ...r, sort_order: i })),
+            );
             setIsEditing(false);
           }}
           onCancel={() => setIsEditing(false)}

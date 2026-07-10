@@ -84,7 +84,7 @@ export function ProfileClient() {
             </div>
           </div>
           <div className="space-y-6">
-            <CvMetaSection summary={cv.meta.summary} lang={lang} />
+            <CvMetaSection key={lang} summary={cv.meta.summary} lang={lang} />
             <div>
               <p className="text-sm font-semibold mb-2">Expériences</p>
               {cv.experience.length === 0 && (
@@ -110,8 +110,8 @@ export function ProfileClient() {
                 ))}
               </div>
             </div>
-            <CvSkillsSection skills={cv.skills} lang={lang} />
-            <CvEducationSection education={cv.education} lang={lang} />
+            <CvSkillsSection key={lang} skills={cv.skills} lang={lang} />
+            <CvEducationSection key={lang} education={cv.education} lang={lang} />
             <CvCertificationsSection certifications={cv.certifications} />
           </div>
         </div>

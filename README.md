@@ -1,4 +1,4 @@
-# Diggo · v0.2
+# Diggo · v0.11
 
 Automated AI/ML job search pipeline for the French market — scraping, scoring, dashboard, and AI-assisted application generation (CV PDF, cover letter, interview prep sheet).
 
@@ -47,8 +47,8 @@ Step 5 uses Claude Code to generate PDFs for a specific offer.
 ### 1. Clone and set up
 
 ```bash
-git clone https://github.com/St4r4x/career-ops-fr.git
-cd career-ops-fr
+git clone https://github.com/St4r4x/diggo.git
+cd diggo
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
@@ -132,13 +132,12 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 
 | Route | Description |
 |-------|-------------|
-| `/candidatures` | Offer list with filters and a read-only detail panel — served by the Next.js frontend (`web`); shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
-| `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget — served by the Next.js frontend (`web`) |
-| `/profile` | Profile editor — contact info, résumé, and CV editor (FR/EN tabs, editable) — served by the Next.js frontend (`web`) |
-| `/settings` | Preferences — search keywords, active portals picker (flags portals that require registration), salary range, target companies, ATS targets CRUD, Hugging Face API token — served by the Next.js frontend (`web`) |
-| `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |
+| `/candidatures` | Offer list with filters and a detail panel — status quick-change, notes autosave, edit form, delete, scan trigger, and "Préparer candidature"/"Préparer entretien" actions; shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
+| `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
+| `/profile` | Profile editor — contact info, résumé, and CV editor (FR/EN tabs, editable) |
+| `/settings` | Preferences — search keywords, active portals picker (flags portals that require registration), salary range, target companies, ATS targets CRUD, Hugging Face API token |
 
-Status changes, notes, and the "Préparer candidature"/"Préparer entretien" action commands are implemented as backend routes (`POST /offers/{offer_id}`, `/status`, `/notes`, `/prepare`) but not yet reachable from the migrated `/candidatures` page's UI — pending a later sub-phase.
+Every page above is served by the Next.js frontend (`web`), backed by the FastAPI JSON API under `/api/*` (`dashboard/api.py`). `POST /api/offers/{offer_id}/prepare` runs the LLM pipeline: analyzes the offer, rewrites the CV summary, writes the cover letter, generates the interview prep sheet, and renders all three as PDFs.
 
 ---
 
@@ -259,6 +258,7 @@ scripts/
   rescore.py                Rescore all existing DB offers (use after changing settings)
   liveness.py               HTTP-first liveness checker (APEC internal API aware)
   dedup.py                  Accent-insensitive deduplication
+  description_parser.py     Parse raw job description text into structured fields per portal
   daily_report.py           Markdown digest generation
   generate_pdf.py           CV PDF generation (WeasyPrint + Jinja2, FR/EN)
   generate_cover_letter.py  Cover letter PDF generation
@@ -266,21 +266,29 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/stats, /profile, /settings, /scan/*, /offers/*)
-  api.py                    JSON API router under /api/* (health, me, auth/session — consumed by the Next.js frontend)
+  app.py                    FastAPI app entrypoint — mounts api.py's router, nothing else
+  api.py                    JSON API router under /api/* (auth, offers, scan, prepare, stats, profile, settings — consumed by the Next.js frontend)
   auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
   db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)
   user_data.py              Per-user data access layer (profile, settings, ATS targets, CV tables)
   profile_parser.py         Profile load/save — delegates to user_data (DB); file fallback for migration
-  templates/
-    base.html               Layout with nav (user email + logout)
-    partials/               HTMX partial templates
+  scan_state.py             Per-user in-process scan state (start/poll)
+  prepare_state.py          Per-offer in-process prepare state (start/poll)
+  llm.py                    LLM client + phase functions for server-side candidature prep (Hugging Face Inference Providers)
   data/                     (gitignored)
+
+frontend/
+  app/                       Next.js App Router pages (/, /login, /signup, /auth/*, /candidatures, /stats, /profile, /settings)
+  components/                Page-specific UI (candidatures/, profile/, settings/, stats/) + shared (dashboard-nav, theme-toggle, ui/)
+  lib/                       Shared client helpers — supabase.ts, session.ts, types.ts, status-colors.ts, api-errors.ts
+
+proxy/
+  nginx.conf                 Reverse proxy — routes /api/* to `api`, everything else to `web`
 
 supabase/
   config.toml               Supabase CLI local config (auth, DB, redirects)
 
-migrations/                 Alembic migrations (PostgreSQL schema)
+alembic/                    Alembic migrations (PostgreSQL schema)
 
 templates/
   cv-fr/                    French CV template (HTML + CSS)

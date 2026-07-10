@@ -61,7 +61,7 @@ FAKE_ONBOARDING = {
     "is_complete": True,
     "profile_complete": True,
     "search_complete": True,
-    "hf_token_complete": True,
+    "llm_provider_complete": True,
 }
 
 FAKE_SETTINGS = {
@@ -298,24 +298,28 @@ def client_with_settings(monkeypatch):
         "get_ats_targets": MagicMock(return_value=list(FAKE_ATS_TARGETS)),
         "add_ats_target": MagicMock(return_value=2),
         "delete_ats_target": MagicMock(),
-        "get_hf_token": MagicMock(return_value=None),
-        "save_hf_token": MagicMock(),
-        "delete_hf_token": MagicMock(),
+        "get_llm_providers": MagicMock(return_value=[]),
+        "save_llm_provider": MagicMock(),
+        "delete_llm_provider": MagicMock(),
+        "reorder_llm_providers": MagicMock(),
         "get_onboarding_state": MagicMock(return_value=dict(FAKE_ONBOARDING)),
-        "validate_hf_token": MagicMock(return_value=None),
+        "validate_provider_key": MagicMock(return_value=None),
     }
     monkeypatch.setattr(user_data, "get_settings", mocks["get_settings"])
     monkeypatch.setattr(user_data, "save_settings", mocks["save_settings"])
     monkeypatch.setattr(user_data, "get_ats_targets", mocks["get_ats_targets"])
     monkeypatch.setattr(user_data, "add_ats_target", mocks["add_ats_target"])
     monkeypatch.setattr(user_data, "delete_ats_target", mocks["delete_ats_target"])
-    monkeypatch.setattr(user_data, "get_hf_token", mocks["get_hf_token"])
-    monkeypatch.setattr(user_data, "save_hf_token", mocks["save_hf_token"])
-    monkeypatch.setattr(user_data, "delete_hf_token", mocks["delete_hf_token"])
+    monkeypatch.setattr(user_data, "get_llm_providers", mocks["get_llm_providers"])
+    monkeypatch.setattr(user_data, "save_llm_provider", mocks["save_llm_provider"])
+    monkeypatch.setattr(user_data, "delete_llm_provider", mocks["delete_llm_provider"])
+    monkeypatch.setattr(
+        user_data, "reorder_llm_providers", mocks["reorder_llm_providers"]
+    )
     monkeypatch.setattr(
         user_data, "get_onboarding_state", mocks["get_onboarding_state"]
     )
-    monkeypatch.setattr(llm, "validate_hf_token", mocks["validate_hf_token"])
+    monkeypatch.setattr(llm, "validate_provider_key", mocks["validate_provider_key"])
 
     mock_conn = MagicMock()
     mock_db = MagicMock()
@@ -621,8 +625,13 @@ def test_prepare_start_rejects_thin_description(client_with_offers) -> None:
     assert response.json()["detail"]["error"] == "description_too_short"
 
 
-def test_prepare_start_rejects_missing_hf_token(client_with_offers) -> None:
+def test_prepare_start_rejects_missing_hf_token(
+    client_with_offers, monkeypatch
+) -> None:
     import app as dashboard_app
+    import user_data
+
+    monkeypatch.setattr(user_data, "get_llm_providers", lambda conn, uid: [])
 
     db = dashboard_app.app.state.db
     offer_id = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
@@ -639,7 +648,14 @@ def test_prepare_start_succeeds_and_returns_running(
 
     db = dashboard_app.app.state.db
     offer_id = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
-    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [{"provider": "huggingface", "sort_order": 0}],
+    )
+    monkeypatch.setattr(
+        user_data, "get_llm_provider_key", lambda conn, uid, provider: "test-hf-token"
+    )
     monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
 
     response = client_with_offers.post(f"/api/offers/{offer_id}/prepare")
@@ -679,7 +695,14 @@ def test_prepare_state_isolated_per_offer_via_route(
     db = dashboard_app.app.state.db
     offer_a = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
     offer_b = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
-    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [{"provider": "huggingface", "sort_order": 0}],
+    )
+    monkeypatch.setattr(
+        user_data, "get_llm_provider_key", lambda conn, uid, provider: "test-hf-token"
+    )
     monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
 
     client_with_offers.post(f"/api/offers/{offer_a}/prepare")
@@ -855,7 +878,7 @@ def test_get_profile_succeeds_without_completed_onboarding(
             "is_complete": False,
             "profile_complete": False,
             "search_complete": False,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     response = client_with_profile.get("/api/profile")
@@ -1074,12 +1097,15 @@ def test_put_profile_cv_hobbies_requires_auth(client) -> None:
 
 def test_get_settings_returns_200_with_data(client_with_settings) -> None:
     client, mocks = client_with_settings
+    mocks["get_llm_providers"].return_value = [
+        {"provider": "huggingface", "sort_order": 0}
+    ]
     response = client.get("/api/settings")
     assert response.status_code == 200
     body = response.json()
     assert body["settings"] == FAKE_SETTINGS
     assert body["ats_targets"] == FAKE_ATS_TARGETS
-    assert body["hf_token_set"] is False
+    assert body["llm_providers"] == [{"provider": "huggingface", "sort_order": 0}]
     assert body["onboarding"] == FAKE_ONBOARDING
     portal_ids = {p["id"] for p in body["available_portals"]}
     assert "apec" in portal_ids
@@ -1153,54 +1179,99 @@ def test_delete_settings_ats_requires_auth(client) -> None:
     assert response.status_code == 401
 
 
-def test_post_settings_hf_token_saves_valid_token(client_with_settings) -> None:
+def test_put_llm_provider_saves_valid_key(client_with_settings) -> None:
     client, mocks = client_with_settings
-    response = client.post(
-        "/api/settings/hf-token", json={"hf_token": "hf_valid_token_123"}
+    mocks["get_llm_providers"].return_value = [
+        {"provider": "huggingface", "sort_order": 0}
+    ]
+    response = client.put(
+        "/api/settings/llm-providers/huggingface",
+        json={"api_key": "hf_valid_token_123"},
     )
     assert response.status_code == 200
-    assert response.json() == {"hf_token_set": True}
-    mocks["validate_hf_token"].assert_called_once_with("hf_valid_token_123")
-    call_args = mocks["save_hf_token"].call_args[0]
-    assert call_args[2] == "hf_valid_token_123"
+    assert response.json() == {
+        "llm_providers": [{"provider": "huggingface", "sort_order": 0}]
+    }
+    mocks["validate_provider_key"].assert_called_once_with(
+        "huggingface", "hf_valid_token_123"
+    )
+    call_args = mocks["save_llm_provider"].call_args[0]
+    assert call_args[2] == "huggingface"
+    assert call_args[3] == "hf_valid_token_123"
 
 
-def test_post_settings_hf_token_rejects_invalid_token(client_with_settings) -> None:
+def test_put_llm_provider_rejects_invalid_key(client_with_settings) -> None:
     import llm
 
     client, mocks = client_with_settings
-    mocks["validate_hf_token"].side_effect = llm.LLMError(
-        "Token invalide — vérifie que le copier-coller est complet."
+    mocks["validate_provider_key"].side_effect = llm.LLMError(
+        "Clé invalide — vérifie que le copier-coller est complet."
     )
-    response = client.post("/api/settings/hf-token", json={"hf_token": "hf_bad_token"})
+    response = client.put(
+        "/api/settings/llm-providers/huggingface", json={"api_key": "hf_bad_token"}
+    )
     assert response.status_code == 422
-    assert response.json()["detail"]["error"] == "invalid_hf_token"
-    assert "Token invalide" in response.json()["detail"]["message"]
-    mocks["save_hf_token"].assert_not_called()
+    assert response.json()["detail"]["error"] == "invalid_provider_key"
+    assert "Clé invalide" in response.json()["detail"]["message"]
+    mocks["save_llm_provider"].assert_not_called()
 
 
-def test_post_settings_hf_token_empty_clears_token(client_with_settings) -> None:
+def test_put_llm_provider_empty_key_deletes_it(client_with_settings) -> None:
     client, mocks = client_with_settings
-    response = client.post("/api/settings/hf-token", json={"hf_token": ""})
+    response = client.put(
+        "/api/settings/llm-providers/huggingface", json={"api_key": ""}
+    )
     assert response.status_code == 200
-    assert response.json() == {"hf_token_set": False}
-    mocks["delete_hf_token"].assert_called_once()
-    mocks["validate_hf_token"].assert_not_called()
+    mocks["delete_llm_provider"].assert_called_once()
+    mocks["validate_provider_key"].assert_not_called()
 
 
-def test_post_settings_hf_token_requires_auth(client) -> None:
-    response = client.post("/api/settings/hf-token", json={"hf_token": "x"})
+def test_put_llm_provider_rejects_unknown_provider_name(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.put(
+        "/api/settings/llm-providers/not-a-real-provider", json={"api_key": "x"}
+    )
+    assert response.status_code == 404
+
+
+def test_put_llm_provider_requires_auth(client) -> None:
+    response = client.put(
+        "/api/settings/llm-providers/huggingface", json={"api_key": "x"}
+    )
     assert response.status_code == 401
 
 
-def test_delete_settings_hf_token_clears(client_with_settings) -> None:
+def test_delete_llm_provider_removes_it(client_with_settings) -> None:
     client, mocks = client_with_settings
-    response = client.delete("/api/settings/hf-token")
+    response = client.delete("/api/settings/llm-providers/huggingface")
     assert response.status_code == 200
-    assert response.json() == {"hf_token_set": False}
-    mocks["delete_hf_token"].assert_called_once()
+    mocks["delete_llm_provider"].assert_called_once()
 
 
-def test_delete_settings_hf_token_requires_auth(client) -> None:
-    response = client.delete("/api/settings/hf-token")
+def test_delete_llm_provider_requires_auth(client) -> None:
+    response = client.delete("/api/settings/llm-providers/huggingface")
+    assert response.status_code == 401
+
+
+def test_put_llm_providers_reorder_updates_order(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    mocks["get_llm_providers"].return_value = [
+        {"provider": "groq", "sort_order": 0},
+        {"provider": "huggingface", "sort_order": 1},
+    ]
+    response = client.put(
+        "/api/settings/llm-providers/reorder",
+        json={"order": ["groq", "huggingface"]},
+    )
+    assert response.status_code == 200
+    call_args = mocks["reorder_llm_providers"].call_args[0]
+    assert call_args[2] == ["groq", "huggingface"]
+    assert response.json()["llm_providers"] == [
+        {"provider": "groq", "sort_order": 0},
+        {"provider": "huggingface", "sort_order": 1},
+    ]
+
+
+def test_put_llm_providers_reorder_requires_auth(client) -> None:
+    response = client.put("/api/settings/llm-providers/reorder", json={"order": []})
     assert response.status_code == 401

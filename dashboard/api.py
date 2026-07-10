@@ -27,6 +27,8 @@ REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 router = APIRouter(prefix="/api")
 
+_KNOWN_LLM_PROVIDERS = {"huggingface", "ollama_cloud", "openai", "anthropic", "groq"}
+
 
 @router.get("/health")
 async def health() -> dict[str, str]:
@@ -174,14 +176,21 @@ async def start_prepare_route(
                 ),
             },
         )
-    hf_token = user_data.get_hf_token(db.conn, user_id)
-    if not hf_token:
+    provider_names = [
+        p["provider"] for p in user_data.get_llm_providers(db.conn, user_id)
+    ]
+    providers_configured = [
+        name
+        for name in provider_names
+        if user_data.get_llm_provider_key(db.conn, user_id, name) is not None
+    ]
+    if not providers_configured:
         raise HTTPException(
             status_code=422,
             detail={
                 "error": "hf_token_missing",
                 "message": (
-                    "Ajoute ton token Hugging Face dans les paramètres avant "
+                    "Ajoute au moins un fournisseur LLM dans les paramètres avant "
                     "de préparer une candidature."
                 ),
             },
@@ -476,12 +485,12 @@ async def get_settings_route(
     user_id = current_user["sub"]
     settings = user_data.get_settings(conn, user_id)
     ats_targets = user_data.get_ats_targets(conn, user_id)
-    hf_token_set = user_data.get_hf_token(conn, user_id) is not None
+    llm_providers = user_data.get_llm_providers(conn, user_id)
     onboarding = user_data.get_onboarding_state(conn, user_id)
     return {
         "settings": settings,
         "ats_targets": ats_targets,
-        "hf_token_set": hf_token_set,
+        "llm_providers": llm_providers,
         "onboarding": onboarding,
         "available_portals": list_portals_meta(),
     }
@@ -530,38 +539,55 @@ async def delete_settings_ats(
     return {"ats_targets": ats_targets}
 
 
-@router.post("/settings/hf-token")
-async def save_settings_hf_token(
+@router.put("/settings/llm-providers/reorder")
+async def reorder_settings_llm_providers(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user_api),
     body: dict = Body(...),
 ) -> dict:
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
-    token = body.get("hf_token", "").strip()
-    if not token:
-        user_data.delete_hf_token(conn, user_id)
+    user_data.reorder_llm_providers(conn, user_id, body.get("order", []))
+    conn.commit()
+    return {"llm_providers": user_data.get_llm_providers(conn, user_id)}
+
+
+@router.put("/settings/llm-providers/{provider}")
+async def save_settings_llm_provider(
+    request: Request,
+    provider: str,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    body: dict = Body(...),
+) -> dict:
+    if provider not in _KNOWN_LLM_PROVIDERS:
+        raise HTTPException(status_code=404, detail="Unknown provider")
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    api_key = body.get("api_key", "").strip()
+    if not api_key:
+        user_data.delete_llm_provider(conn, user_id, provider)
         conn.commit()
-        return {"hf_token_set": False}
+        return {"llm_providers": user_data.get_llm_providers(conn, user_id)}
     try:
-        await asyncio.to_thread(llm.validate_hf_token, token)
+        await asyncio.to_thread(llm.validate_provider_key, provider, api_key)
     except llm.LLMError as exc:
         raise HTTPException(
             status_code=422,
-            detail={"error": "invalid_hf_token", "message": str(exc)},
+            detail={"error": "invalid_provider_key", "message": str(exc)},
         )
-    user_data.save_hf_token(conn, user_id, token)
+    user_data.save_llm_provider(conn, user_id, provider, api_key)
     conn.commit()
-    return {"hf_token_set": True}
+    return {"llm_providers": user_data.get_llm_providers(conn, user_id)}
 
 
-@router.delete("/settings/hf-token")
-async def delete_settings_hf_token(
+@router.delete("/settings/llm-providers/{provider}")
+async def delete_settings_llm_provider(
     request: Request,
+    provider: str,
     current_user: CurrentUser = Depends(get_current_user_api),
 ) -> dict:
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
-    user_data.delete_hf_token(conn, user_id)
+    user_data.delete_llm_provider(conn, user_id, provider)
     conn.commit()
-    return {"hf_token_set": False}
+    return {"llm_providers": user_data.get_llm_providers(conn, user_id)}

@@ -153,7 +153,7 @@ def test_require_onboarding_complete_passes_through_when_complete(monkeypatch) -
             "is_complete": True,
             "profile_complete": True,
             "search_complete": True,
-            "hf_token_complete": True,
+            "llm_provider_complete": True,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -177,7 +177,7 @@ def test_require_onboarding_complete_redirects_to_profile_when_profile_incomplet
             "is_complete": False,
             "profile_complete": False,
             "search_complete": False,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -203,7 +203,7 @@ def test_require_onboarding_complete_redirects_to_settings_when_only_search_inco
             "is_complete": False,
             "profile_complete": True,
             "search_complete": False,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -229,7 +229,7 @@ def test_require_onboarding_complete_redirects_to_settings_when_only_hf_token_in
             "is_complete": False,
             "profile_complete": True,
             "search_complete": True,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -254,7 +254,7 @@ def test_require_onboarding_complete_api_passes_through_when_complete(
             "is_complete": True,
             "profile_complete": True,
             "search_complete": True,
-            "hf_token_complete": True,
+            "llm_provider_complete": True,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -278,7 +278,7 @@ def test_require_onboarding_complete_api_raises_403_with_profile_redirect(
             "is_complete": False,
             "profile_complete": False,
             "search_complete": False,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())
@@ -307,7 +307,7 @@ def test_require_onboarding_complete_api_raises_403_with_settings_redirect(
             "is_complete": False,
             "profile_complete": True,
             "search_complete": False,
-            "hf_token_complete": False,
+            "llm_provider_complete": False,
         },
     )
     request = _request_with_cookie_and_app(token, conn=object())

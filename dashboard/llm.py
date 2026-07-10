@@ -1,7 +1,10 @@
 """LLM client and phase functions for server-side candidature prep.
 
-Hugging Face Inference Providers (openai/gpt-oss-120b) is the sole provider,
-via HF's OpenAI-compatible router, using each user's own token.
+Each user configures one or more providers (Hugging Face, Ollama Cloud,
+OpenAI, Anthropic, Groq) with their own API key in /settings, in a
+user-chosen try-order. call_llm() walks that ordered list and falls back
+to the next provider on any failure - a single provider outage no longer
+blocks candidature prep.
 """
 
 from __future__ import annotations
@@ -11,33 +14,43 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from anthropic import Anthropic
+from anthropic import APIError as AnthropicAPIError
+from anthropic import AuthenticationError as AnthropicAuthenticationError
+from anthropic import PermissionDeniedError as AnthropicPermissionDeniedError
 from openai import AuthenticationError, OpenAI, OpenAIError, PermissionDeniedError
 
 logger = logging.getLogger(__name__)
 
-_HF_MODEL = "openai/gpt-oss-120b:fastest"
+# provider -> (base_url, default_model). Anthropic has no OpenAI-compatible
+# endpoint and is dispatched separately in call_llm()/validate_provider_key().
+_PROVIDER_DEFAULTS: dict[str, tuple[str, str]] = {
+    "huggingface": ("https://router.huggingface.co/v1", "openai/gpt-oss-120b:fastest"),
+    "ollama_cloud": ("https://ollama.com/v1", "llama3.3"),
+    "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
+    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+}
+_ANTHROPIC_MODEL = "claude-sonnet-4-5"
 
 
 class LLMError(Exception):
-    """Raised when Hugging Face fails to answer."""
+    """Raised when every configured LLM provider fails to answer."""
 
 
 class GroundingError(Exception):
     """Raised when a cover letter still cites an unknown experience_id after retry."""
 
 
-def _call_hf(
-    hf_token: str, system_prompt: str, user_prompt: str, json_mode: bool
+def _call_openai_compatible(
+    provider: str, api_key: str, system_prompt: str, user_prompt: str, json_mode: bool
 ) -> str:
-    client = OpenAI(
-        api_key=hf_token,
-        base_url="https://router.huggingface.co/v1",
-    )
+    base_url, model = _PROVIDER_DEFAULTS[provider]
+    client = OpenAI(api_key=api_key, base_url=base_url)
     kwargs: dict[str, Any] = {}
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     response = client.chat.completions.create(
-        model=_HF_MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -47,50 +60,90 @@ def _call_hf(
     return response.choices[0].message.content or ""
 
 
-def validate_hf_token(hf_token: str) -> None:
-    """Raise LLMError with a specific, actionable message if the token doesn't work."""
-    client = OpenAI(api_key=hf_token, base_url="https://router.huggingface.co/v1")
+def _call_anthropic(
+    api_key: str, system_prompt: str, user_prompt: str, json_mode: bool
+) -> str:
+    if json_mode:
+        user_prompt = f"{user_prompt}\n\nRespond with a JSON object, no other text."
+    client = Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=_ANTHROPIC_MODEL,
+        max_tokens=4096,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")
+
+
+def validate_provider_key(provider: str, api_key: str) -> None:
+    """Raise LLMError with a specific, actionable message if the key doesn't work."""
     try:
-        client.chat.completions.create(
-            model=_HF_MODEL,
-            messages=[{"role": "user", "content": "hi"}],
-            max_tokens=1,
-        )
-    except AuthenticationError as exc:
+        if provider == "anthropic":
+            Anthropic(api_key=api_key).messages.create(
+                model=_ANTHROPIC_MODEL,
+                max_tokens=1,
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        else:
+            base_url, model = _PROVIDER_DEFAULTS[provider]
+            OpenAI(api_key=api_key, base_url=base_url).chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": "hi"}],
+                max_tokens=1,
+            )
+    except (AuthenticationError, AnthropicAuthenticationError) as exc:
         raise LLMError(
-            "Token invalide — vérifie que le copier-coller est complet."
+            "Clé invalide — vérifie que le copier-coller est complet."
         ) from exc
-    except PermissionDeniedError as exc:
+    except (PermissionDeniedError, AnthropicPermissionDeniedError) as exc:
         raise LLMError(
-            "Token valide mais sans la permission Inference Providers — "
-            "active-la dans les paramètres du token sur Hugging Face."
+            "Clé valide mais sans les permissions requises — vérifie sa "
+            "configuration chez le fournisseur."
         ) from exc
-    except OpenAIError as exc:
+    except (OpenAIError, AnthropicAPIError) as exc:
         raise LLMError(
-            "Impossible de vérifier le token pour le moment, réessaie."
+            "Impossible de vérifier la clé pour le moment, réessaie."
         ) from exc
 
 
 def call_llm(
-    hf_token: str,
+    providers: list[tuple[str, str]],
     system_prompt: str,
     user_prompt: str,
     *,
     json_schema: dict | None = None,
 ) -> str:
-    """Call Hugging Face. Raises LLMError on any failure."""
+    """Try each (provider, api_key) in order, falling back on any failure.
+    Raises LLMError if providers is empty or every provider fails."""
+    if not providers:
+        raise LLMError("Aucun fournisseur LLM configuré.")
+
     json_mode = json_schema is not None
     if json_mode:
         user_prompt = (
             f"{user_prompt}\n\nRespond with a JSON object matching this shape: "
             f"{json.dumps(json_schema)}"
         )
-    try:
-        result = _call_hf(hf_token, system_prompt, user_prompt, json_mode)
-        logger.info("llm: answered by huggingface")
-        return result
-    except OpenAIError as exc:
-        raise LLMError(f"Hugging Face failed: {exc}") from exc
+
+    last_exc: Exception | None = None
+    for provider, api_key in providers:
+        try:
+            if provider == "anthropic":
+                result = _call_anthropic(api_key, system_prompt, user_prompt, json_mode)
+            else:
+                result = _call_openai_compatible(
+                    provider, api_key, system_prompt, user_prompt, json_mode
+                )
+            logger.info("llm: answered by %s", provider)
+            return result
+        except (AuthenticationError, PermissionDeniedError) as exc:
+            logger.warning("llm: %s rejected the configured key: %s", provider, exc)
+            last_exc = exc
+        except Exception as exc:
+            logger.warning("llm: %s failed, trying next provider: %s", provider, exc)
+            last_exc = exc
+
+    raise LLMError(f"All configured LLM providers failed: {last_exc}") from last_exc
 
 
 @dataclass
@@ -121,7 +174,9 @@ _ANALYZE_OFFER_SYSTEM_PROMPT = (
 )
 
 
-def analyze_offer(hf_token: str, offer: dict[str, Any]) -> OfferAnalysis:
+def analyze_offer(
+    providers: list[tuple[str, str]], offer: dict[str, Any]
+) -> OfferAnalysis:
     user_prompt = (
         f"Job posting for {offer.get('role', '')} at {offer.get('company', '')}:\n\n"
         f"{offer.get('description', '')}\n\n"
@@ -134,7 +189,7 @@ def analyze_offer(hf_token: str, offer: dict[str, Any]) -> OfferAnalysis:
         "English fluency)."
     )
     raw = call_llm(
-        hf_token,
+        providers,
         _ANALYZE_OFFER_SYSTEM_PROMPT,
         user_prompt,
         json_schema=_ANALYZE_OFFER_SCHEMA,
@@ -166,7 +221,10 @@ _REWRITE_CV_SUMMARY_SYSTEM_PROMPT = (
 
 
 def rewrite_cv_summary(
-    hf_token: str, profile: dict[str, Any], cv: dict[str, Any], analysis: OfferAnalysis
+    providers: list[tuple[str, str]],
+    profile: dict[str, Any],
+    cv: dict[str, Any],
+    analysis: OfferAnalysis,
 ) -> CvRewrite:
     known_skills = [s["skill"] for s in cv.get("skills", [])]
     lang = "English" if analysis.requires_english_cv else "French"
@@ -181,7 +239,7 @@ def rewrite_cv_summary(
         "and domain."
     )
     raw = call_llm(
-        hf_token,
+        providers,
         _REWRITE_CV_SUMMARY_SYSTEM_PROMPT,
         user_prompt,
         json_schema=_REWRITE_CV_SUMMARY_SCHEMA,
@@ -243,7 +301,7 @@ _COVER_LETTER_SYSTEM_PROMPT = (
 
 
 def write_cover_letter(
-    hf_token: str,
+    providers: list[tuple[str, str]],
     profile: dict[str, Any],
     cv: dict[str, Any],
     offer: dict[str, Any],
@@ -280,7 +338,7 @@ def write_cover_letter(
     invalid: list[dict[str, Any]] = []
     for attempt in range(2):
         raw = call_llm(
-            hf_token,
+            providers,
             _COVER_LETTER_SYSTEM_PROMPT,
             user_prompt,
             json_schema=_COVER_LETTER_SCHEMA,
@@ -326,7 +384,7 @@ _PREP_SHEET_SYSTEM_PROMPT = (
 
 
 def generate_prep_questions(
-    hf_token: str, offer: dict[str, Any], analysis: OfferAnalysis
+    providers: list[tuple[str, str]], offer: dict[str, Any], analysis: OfferAnalysis
 ) -> PrepSheetDraft:
     user_prompt = (
         f"Company: {offer.get('company', '')}\nRole: {offer.get('role', '')}\n"
@@ -337,7 +395,10 @@ def generate_prep_questions(
         "MLOps/deployment, behavioural, and why-us/why-this-role."
     )
     raw = call_llm(
-        hf_token, _PREP_SHEET_SYSTEM_PROMPT, user_prompt, json_schema=_PREP_SHEET_SCHEMA
+        providers,
+        _PREP_SHEET_SYSTEM_PROMPT,
+        user_prompt,
+        json_schema=_PREP_SHEET_SCHEMA,
     )
     data = json.loads(raw)
     return PrepSheetDraft(

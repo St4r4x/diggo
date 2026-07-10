@@ -14,3 +14,4 @@ psycopg2-binary==2.9.12
 PyJWT==2.9.0
 cryptography==42.0.8
 openai==2.44.0
+anthropic==0.40.0

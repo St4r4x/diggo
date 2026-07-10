@@ -11,23 +11,90 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 import llm
 
 
-def test_call_llm_uses_hf_when_it_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm, "_call_hf", lambda *a, **k: "hf answer")
-
-    result = llm.call_llm("test-hf-token", "system", "user")
-    assert result == "hf answer"
-
-
-def test_call_llm_raises_llm_error_when_hf_fails(
+def test_call_llm_uses_first_provider_when_it_succeeds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _fail_hf(*a: object, **k: object) -> str:
-        raise llm.OpenAIError("hf is down")
+    monkeypatch.setattr(llm, "_call_openai_compatible", lambda *a, **k: "first answer")
 
-    monkeypatch.setattr(llm, "_call_hf", _fail_hf)
+    result = llm.call_llm([("huggingface", "hf_token")], "system", "user")
+    assert result == "first answer"
+
+
+def test_call_llm_falls_back_to_second_provider_on_transient_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    def _fake_call(provider, api_key, system_prompt, user_prompt, json_mode):
+        calls.append(provider)
+        if provider == "huggingface":
+            raise llm.OpenAIError("network down")
+        return "groq answer"
+
+    monkeypatch.setattr(llm, "_call_openai_compatible", _fake_call)
+
+    result = llm.call_llm(
+        [("huggingface", "hf_token"), ("groq", "groq_key")], "system", "user"
+    )
+    assert result == "groq answer"
+    assert calls == ["huggingface", "groq"]
+
+
+def test_call_llm_falls_back_to_second_provider_on_auth_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    def _fake_call(provider, api_key, system_prompt, user_prompt, json_mode):
+        calls.append(provider)
+        if provider == "huggingface":
+            raise llm.AuthenticationError(
+                message="bad key", response=_fake_response(401), body=None
+            )
+        return "groq answer"
+
+    monkeypatch.setattr(llm, "_call_openai_compatible", _fake_call)
+
+    result = llm.call_llm(
+        [("huggingface", "hf_token"), ("groq", "groq_key")], "system", "user"
+    )
+    assert result == "groq answer"
+    assert calls == ["huggingface", "groq"]
+
+
+def test_call_llm_dispatches_anthropic_to_its_own_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = []
+
+    def _fake_anthropic(api_key, system_prompt, user_prompt, json_mode):
+        seen.append(api_key)
+        return "claude answer"
+
+    monkeypatch.setattr(llm, "_call_anthropic", _fake_anthropic)
+
+    result = llm.call_llm([("anthropic", "sk-ant-key")], "system", "user")
+    assert result == "claude answer"
+    assert seen == ["sk-ant-key"]
+
+
+def test_call_llm_raises_llm_error_when_all_providers_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _always_fail(provider, api_key, system_prompt, user_prompt, json_mode):
+        raise llm.OpenAIError(f"{provider} is down")
+
+    monkeypatch.setattr(llm, "_call_openai_compatible", _always_fail)
 
     with pytest.raises(llm.LLMError):
-        llm.call_llm("test-hf-token", "system", "user")
+        llm.call_llm(
+            [("huggingface", "hf_token"), ("groq", "groq_key")], "system", "user"
+        )
+
+
+def test_call_llm_raises_llm_error_immediately_when_no_providers() -> None:
+    with pytest.raises(llm.LLMError, match="Aucun fournisseur"):
+        llm.call_llm([], "system", "user")
 
 
 def test_call_llm_appends_json_schema_hint_to_user_prompt(
@@ -35,18 +102,23 @@ def test_call_llm_appends_json_schema_hint_to_user_prompt(
 ) -> None:
     seen_prompts = []
 
-    def _capture(
-        hf_token: str, system_prompt: str, user_prompt: str, json_mode: bool
-    ) -> str:
+    def _capture(provider, api_key, system_prompt, user_prompt, json_mode):
         seen_prompts.append(user_prompt)
         return "{}"
 
-    monkeypatch.setattr(llm, "_call_hf", _capture)
-    llm.call_llm("test-hf-token", "system", "user", json_schema={"foo": "bar"})
+    monkeypatch.setattr(llm, "_call_openai_compatible", _capture)
+    llm.call_llm(
+        [("huggingface", "hf_token")],
+        "system",
+        "user",
+        json_schema={"foo": "bar"},
+    )
     assert '"foo": "bar"' in seen_prompts[0]
 
 
-def test_validate_hf_token_succeeds_silently(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_provider_key_succeeds_silently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _FakeClient:
         class chat:
             class completions:
@@ -55,7 +127,7 @@ def test_validate_hf_token_succeeds_silently(monkeypatch: pytest.MonkeyPatch) ->
                     return None
 
     monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
-    llm.validate_hf_token("hf_valid_token")  # should not raise
+    llm.validate_provider_key("huggingface", "hf_valid_token")  # should not raise
 
 
 def _fake_response(status_code: int):
@@ -65,7 +137,7 @@ def _fake_response(status_code: int):
     return httpx.Response(status_code, request=request)
 
 
-def test_validate_hf_token_raises_llm_error_on_invalid_token(
+def test_validate_provider_key_raises_llm_error_on_invalid_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _raise_auth_error(**kwargs):
@@ -80,10 +152,10 @@ def test_validate_hf_token_raises_llm_error_on_invalid_token(
 
     monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
     with pytest.raises(llm.LLMError, match="invalide"):
-        llm.validate_hf_token("hf_bad_token")
+        llm.validate_provider_key("huggingface", "hf_bad_token")
 
 
-def test_validate_hf_token_raises_llm_error_on_missing_permission(
+def test_validate_provider_key_raises_llm_error_on_missing_permission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _raise_permission_error(**kwargs):
@@ -98,10 +170,12 @@ def test_validate_hf_token_raises_llm_error_on_missing_permission(
 
     monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
     with pytest.raises(llm.LLMError, match="permission"):
-        llm.validate_hf_token("hf_token_without_inference_permission")
+        llm.validate_provider_key(
+            "huggingface", "hf_token_without_inference_permission"
+        )
 
 
-def test_validate_hf_token_raises_llm_error_on_other_failure(
+def test_validate_provider_key_raises_llm_error_on_other_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _raise_generic_error(**kwargs):
@@ -114,7 +188,7 @@ def test_validate_hf_token_raises_llm_error_on_other_failure(
 
     monkeypatch.setattr(llm, "OpenAI", lambda **kwargs: _FakeClient())
     with pytest.raises(llm.LLMError, match="réessaie"):
-        llm.validate_hf_token("hf_some_token")
+        llm.validate_provider_key("huggingface", "hf_some_token")
 
 
 _CANNED_ANALYSIS = {
@@ -136,7 +210,7 @@ def test_analyze_offer_parses_llm_response(monkeypatch: pytest.MonkeyPatch) -> N
         "description": "We need PyTorch...",
     }
 
-    analysis = llm.analyze_offer("test-hf-token", offer)
+    analysis = llm.analyze_offer([("huggingface", "test-hf-token")], offer)
 
     assert analysis.top_skills == ["PyTorch", "Kubernetes", "RAG"]
     assert analysis.offer_language == "en"
@@ -176,7 +250,9 @@ def test_rewrite_cv_summary_keeps_known_skills(monkeypatch: pytest.MonkeyPatch) 
         requires_english_cv=False,
     )
 
-    result = llm.rewrite_cv_summary("test-hf-token", {}, _SAMPLE_CV, analysis)
+    result = llm.rewrite_cv_summary(
+        [("huggingface", "test-hf-token")], {}, _SAMPLE_CV, analysis
+    )
 
     assert result.highlighted_skills == ["PyTorch"]
     assert result.summary == "Tailored summary."
@@ -200,7 +276,9 @@ def test_rewrite_cv_summary_drops_unknown_skill(
         requires_english_cv=False,
     )
 
-    result = llm.rewrite_cv_summary("test-hf-token", {}, _SAMPLE_CV, analysis)
+    result = llm.rewrite_cv_summary(
+        [("huggingface", "test-hf-token")], {}, _SAMPLE_CV, analysis
+    )
 
     assert result.highlighted_skills == ["PyTorch"]
 
@@ -230,7 +308,7 @@ def test_write_cover_letter_accepts_valid_citations(
     monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
 
     result = llm.write_cover_letter(
-        "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+        [("huggingface", "test-hf-token")], {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
     )
 
     assert result.paragraphs == ["Hook.", "Proof.", "Close."]
@@ -257,7 +335,7 @@ def test_write_cover_letter_retries_once_on_invalid_citation(
     calls = []
 
     def _fake_call_llm(
-        hf_token: str, system_prompt: str, user_prompt: str, **kwargs: object
+        providers: list, system_prompt: str, user_prompt: str, **kwargs: object
     ) -> str:
         calls.append(user_prompt)
         return responses[len(calls) - 1]
@@ -265,7 +343,7 @@ def test_write_cover_letter_retries_once_on_invalid_citation(
     monkeypatch.setattr(llm, "call_llm", _fake_call_llm)
 
     result = llm.write_cover_letter(
-        "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+        [("huggingface", "test-hf-token")], {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
     )
 
     assert len(calls) == 2
@@ -284,7 +362,11 @@ def test_write_cover_letter_raises_grounding_error_after_second_invalid_citation
 
     with pytest.raises(llm.GroundingError):
         llm.write_cover_letter(
-            "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+            [("huggingface", "test-hf-token")],
+            {},
+            _SAMPLE_CV,
+            _SAMPLE_OFFER,
+            _analysis(),
         )
 
 
@@ -304,7 +386,9 @@ def test_generate_prep_questions_parses_llm_response(
     }
     monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
 
-    result = llm.generate_prep_questions("test-hf-token", _SAMPLE_OFFER, _analysis())
+    result = llm.generate_prep_questions(
+        [("huggingface", "test-hf-token")], _SAMPLE_OFFER, _analysis()
+    )
 
     assert result.company_summary == "AI startup building developer tools."
     assert result.tech_stack == ["Python", "Kubernetes"]

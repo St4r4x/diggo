@@ -29,6 +29,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - README: documented the two previously-unlisted Claude Code modes, `generate-cover-letter` and `rescore-offers`
 
 ### Changed
+- `dashboard/llm.py` — `call_llm()` now takes an ordered `providers: list[tuple[str, str]]` instead of a single `hf_token: str`, trying each `(provider, api_key)` pair in turn and falling back to the next on any failure (auth, permission, or transient); `validate_hf_token` renamed to `validate_provider_key(provider, api_key)`; added `_call_anthropic` (Anthropic has no OpenAI-compatible endpoint) alongside the renamed `_call_openai_compatible` (formerly `_call_hf`), and a `_PROVIDER_DEFAULTS` map for huggingface/ollama_cloud/openai/groq base URLs and default models. `analyze_offer`, `rewrite_cv_summary`, `write_cover_letter`, and `generate_prep_questions` all take `providers` instead of `hf_token` as their first argument
+- `requirements.txt` — added `anthropic==0.40.0` for the new Anthropic provider
 - `docker-compose.yml` — `proxy` now has a healthcheck (`wget` against `/api/health` through nginx), matching `api`/`web`; removed the `./dashboard/templates` bind mount, a leftover from the deleted Jinja2 templates
 - `supabase/config.toml`, `CLAUDE.md`, `scripts/models.py`, `docs/todo-deployment.md` — renamed lingering `career-ops-fr` references to `diggo`
 - `README.md` — local dev setup now installs `requirements-dev.txt` (adds pytest for contributors) instead of `requirements.txt`

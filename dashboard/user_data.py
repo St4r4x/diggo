@@ -184,14 +184,30 @@ def _fernet() -> Fernet:
     return Fernet(os.environ["SECRET_KEY"].encode())
 
 
-def get_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> str | None:
+def get_llm_providers(
+    conn: psycopg2.extensions.connection, user_id: str
+) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT hf_token_encrypted FROM user_settings WHERE user_id = %s",
+            "SELECT provider, sort_order FROM user_llm_providers"
+            " WHERE user_id = %s ORDER BY sort_order",
             (user_id,),
         )
+        rows = cur.fetchall()
+    return [{"provider": r[0], "sort_order": r[1]} for r in rows]
+
+
+def get_llm_provider_key(
+    conn: psycopg2.extensions.connection, user_id: str, provider: str
+) -> str | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT api_key_encrypted FROM user_llm_providers"
+            " WHERE user_id = %s AND provider = %s",
+            (user_id, provider),
+        )
         row = cur.fetchone()
-    if row is None or row[0] is None:
+    if row is None:
         return None
     try:
         return _fernet().decrypt(bytes(row[0])).decode()
@@ -199,30 +215,52 @@ def get_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> str | No
         return None
 
 
-def save_hf_token(
-    conn: psycopg2.extensions.connection, user_id: str, token: str
+def save_llm_provider(
+    conn: psycopg2.extensions.connection, user_id: str, provider: str, api_key: str
 ) -> None:
-    encrypted = _fernet().encrypt(token.encode())
+    encrypted = _fernet().encrypt(api_key.encode())
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO user_settings (user_id, hf_token_encrypted) VALUES (%s, %s)"
-            " ON CONFLICT (user_id) DO UPDATE SET hf_token_encrypted = EXCLUDED.hf_token_encrypted",
-            (user_id, psycopg2.Binary(encrypted)),
+            "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM user_llm_providers"
+            " WHERE user_id = %s AND provider != %s",
+            (user_id, provider),
+        )
+        next_sort_order = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO user_llm_providers (user_id, provider, api_key_encrypted, sort_order)"
+            " VALUES (%s, %s, %s, %s)"
+            " ON CONFLICT (user_id, provider) DO UPDATE SET"
+            " api_key_encrypted = EXCLUDED.api_key_encrypted",
+            (user_id, provider, psycopg2.Binary(encrypted), next_sort_order),
         )
 
 
-def delete_hf_token(conn: psycopg2.extensions.connection, user_id: str) -> None:
+def delete_llm_provider(
+    conn: psycopg2.extensions.connection, user_id: str, provider: str
+) -> None:
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE user_settings SET hf_token_encrypted = NULL WHERE user_id = %s",
-            (user_id,),
+            "DELETE FROM user_llm_providers WHERE user_id = %s AND provider = %s",
+            (user_id, provider),
         )
+
+
+def reorder_llm_providers(
+    conn: psycopg2.extensions.connection, user_id: str, order: list[str]
+) -> None:
+    with conn.cursor() as cur:
+        for index, provider in enumerate(order):
+            cur.execute(
+                "UPDATE user_llm_providers SET sort_order = %s"
+                " WHERE user_id = %s AND provider = %s",
+                (index, user_id, provider),
+            )
 
 
 def get_onboarding_state(
     conn: psycopg2.extensions.connection, user_id: str
 ) -> dict[str, Any]:
-    """Compute onboarding completeness live from existing profile/CV/settings/token data."""
+    """Compute onboarding completeness live from existing profile/CV/settings/provider data."""
     profile = get_profile(conn, user_id)
     cv = get_cv(conn, user_id, lang="fr")
     profile_complete = bool(
@@ -236,13 +274,13 @@ def get_onboarding_state(
     settings = get_settings(conn, user_id)
     search_complete = len(settings["keywords"]) >= 1
 
-    hf_token_complete = get_hf_token(conn, user_id) is not None
+    llm_provider_complete = len(get_llm_providers(conn, user_id)) >= 1
 
     return {
         "profile_complete": profile_complete,
         "search_complete": search_complete,
-        "hf_token_complete": hf_token_complete,
-        "is_complete": profile_complete and search_complete and hf_token_complete,
+        "llm_provider_complete": llm_provider_complete,
+        "is_complete": profile_complete and search_complete and llm_provider_complete,
     }
 
 

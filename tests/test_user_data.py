@@ -42,8 +42,18 @@ CREATE TEMP TABLE user_settings (
     salary_min INT NOT NULL DEFAULT 0,
     salary_max INT NOT NULL DEFAULT 0,
     target_companies TEXT[] NOT NULL DEFAULT '{}',
-    follow_up_days INT NOT NULL DEFAULT 7,
-    hf_token_encrypted BYTEA
+    follow_up_days INT NOT NULL DEFAULT 7
+)
+"""
+
+_CREATE_LLM_PROVIDERS = """
+CREATE TEMP TABLE user_llm_providers (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    api_key_encrypted BYTEA NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    UNIQUE (user_id, provider)
 )
 """
 
@@ -55,6 +65,7 @@ def conn(monkeypatch):
     with c.cursor() as cur:
         cur.execute(_CREATE_PROFILES)
         cur.execute(_CREATE_SETTINGS)
+        cur.execute(_CREATE_LLM_PROVIDERS)
     c.commit()
     monkeypatch.setattr(user_data, "_migrate_profile_from_files", lambda: None)
     monkeypatch.setattr(user_data, "_migrate_settings_from_files", lambda: None)
@@ -131,55 +142,90 @@ def test_save_and_get_settings(conn):
     assert result["salary_min"] == 40000
 
 
-def test_hf_token_missing_returns_none(conn, monkeypatch):
+def test_llm_providers_missing_returns_empty_list(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    assert user_data.get_llm_providers(conn, USER_A) == []
+
+
+def test_llm_provider_key_missing_returns_none(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    assert user_data.get_llm_provider_key(conn, USER_A, "huggingface") is None
+
+
+def test_save_and_get_llm_provider_roundtrip(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_secret123")
+    conn.commit()
+    assert user_data.get_llm_provider_key(conn, USER_A, "huggingface") == "hf_secret123"
+    providers = user_data.get_llm_providers(conn, USER_A)
+    assert providers == [{"provider": "huggingface", "sort_order": 0}]
+
+
+def test_save_llm_provider_isolated_per_user(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_secret123")
+    conn.commit()
+    assert user_data.get_llm_provider_key(conn, USER_B, "huggingface") is None
+
+
+def test_save_llm_provider_twice_overwrites_key(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_first")
+    conn.commit()
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_second")
+    conn.commit()
+    assert user_data.get_llm_provider_key(conn, USER_A, "huggingface") == "hf_second"
+    providers = user_data.get_llm_providers(conn, USER_A)
+    assert len(providers) == 1
+
+
+def test_save_second_llm_provider_appends_after_first(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_key")
+    conn.commit()
+    user_data.save_llm_provider(conn, USER_A, "groq", "groq_key")
+    conn.commit()
+    providers = user_data.get_llm_providers(conn, USER_A)
+    assert providers == [
+        {"provider": "huggingface", "sort_order": 0},
+        {"provider": "groq", "sort_order": 1},
+    ]
+
+
+def test_delete_llm_provider_removes_it(conn, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_secret123")
+    conn.commit()
+    user_data.delete_llm_provider(conn, USER_A, "huggingface")
+    conn.commit()
+    assert user_data.get_llm_providers(conn, USER_A) == []
+
+
+def test_llm_provider_key_undecryptable_with_current_key_returns_none(
+    conn, monkeypatch
+):
+    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_secret123")
+    conn.commit()
 
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    assert user_data.get_hf_token(conn, USER_A) is None
+    assert user_data.get_llm_provider_key(conn, USER_A, "huggingface") is None
 
 
-def test_hf_token_save_and_get_roundtrip(conn, monkeypatch):
-
+def test_reorder_llm_providers_updates_sort_order(conn, monkeypatch):
     monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    user_data.save_hf_token(conn, USER_A, "hf_secret123")
-    conn.commit()
-    assert user_data.get_hf_token(conn, USER_A) == "hf_secret123"
-
-
-def test_hf_token_isolated_per_user(conn, monkeypatch):
-
-    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    user_data.save_hf_token(conn, USER_A, "hf_secret123")
-    conn.commit()
-    assert user_data.get_hf_token(conn, USER_B) is None
-
-
-def test_hf_token_save_twice_overwrites(conn, monkeypatch):
-
-    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    user_data.save_hf_token(conn, USER_A, "hf_first")
-    conn.commit()
-    user_data.save_hf_token(conn, USER_A, "hf_second")
-    conn.commit()
-    assert user_data.get_hf_token(conn, USER_A) == "hf_second"
-
-
-def test_delete_hf_token_clears_it(conn, monkeypatch):
-
-    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    user_data.save_hf_token(conn, USER_A, "hf_secret123")
-    conn.commit()
-    user_data.delete_hf_token(conn, USER_A)
-    conn.commit()
-    assert user_data.get_hf_token(conn, USER_A) is None
-
-
-def test_hf_token_undecryptable_with_current_key_returns_none(conn, monkeypatch):
-    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    user_data.save_hf_token(conn, USER_A, "hf_secret123")
+    user_data.save_llm_provider(conn, USER_A, "huggingface", "hf_key")
+    user_data.save_llm_provider(conn, USER_A, "groq", "groq_key")
     conn.commit()
 
-    monkeypatch.setenv("SECRET_KEY", Fernet.generate_key().decode())
-    assert user_data.get_hf_token(conn, USER_A) is None
+    user_data.reorder_llm_providers(conn, USER_A, ["groq", "huggingface"])
+    conn.commit()
+
+    providers = user_data.get_llm_providers(conn, USER_A)
+    assert providers == [
+        {"provider": "groq", "sort_order": 0},
+        {"provider": "huggingface", "sort_order": 1},
+    ]
 
 
 _CREATE_ATS_TARGETS = """
@@ -509,7 +555,13 @@ def test_migrate_cv_from_files_includes_projects_languages_hobbies(
 
 
 _CREATE_ONBOARDING_TABLES = (
-    _CREATE_PROFILES + ";" + _CREATE_SETTINGS + ";" + _CREATE_CV_TABLES
+    _CREATE_PROFILES
+    + ";"
+    + _CREATE_SETTINGS
+    + ";"
+    + _CREATE_LLM_PROVIDERS
+    + ";"
+    + _CREATE_CV_TABLES
 )
 
 
@@ -534,7 +586,7 @@ def test_onboarding_state_all_incomplete_by_default(conn_onboarding):
     state = user_data.get_onboarding_state(conn_onboarding, USER_A)
     assert state["profile_complete"] is False
     assert state["search_complete"] is False
-    assert state["hf_token_complete"] is False
+    assert state["llm_provider_complete"] is False
     assert state["is_complete"] is False
 
 
@@ -606,14 +658,16 @@ def test_onboarding_state_search_complete_requires_keywords(conn_onboarding):
     assert state["search_complete"] is True
 
 
-def test_onboarding_state_hf_token_complete_requires_saved_token(conn_onboarding):
+def test_onboarding_state_llm_provider_complete_requires_saved_provider(
+    conn_onboarding,
+):
     state = user_data.get_onboarding_state(conn_onboarding, USER_A)
-    assert state["hf_token_complete"] is False
+    assert state["llm_provider_complete"] is False
 
-    user_data.save_hf_token(conn_onboarding, USER_A, "hf_secret123")
+    user_data.save_llm_provider(conn_onboarding, USER_A, "huggingface", "hf_secret123")
     conn_onboarding.commit()
     state = user_data.get_onboarding_state(conn_onboarding, USER_A)
-    assert state["hf_token_complete"] is True
+    assert state["llm_provider_complete"] is True
 
 
 def test_onboarding_state_is_complete_requires_all_three(conn_onboarding):
@@ -666,9 +720,9 @@ def test_onboarding_state_is_complete_requires_all_three(conn_onboarding):
     )
     conn_onboarding.commit()
     state = user_data.get_onboarding_state(conn_onboarding, USER_A)
-    assert state["is_complete"] is False  # HF token still missing
+    assert state["is_complete"] is False  # LLM provider still missing
 
-    user_data.save_hf_token(conn_onboarding, USER_A, "hf_secret123")
+    user_data.save_llm_provider(conn_onboarding, USER_A, "huggingface", "hf_secret123")
     conn_onboarding.commit()
     state = user_data.get_onboarding_state(conn_onboarding, USER_A)
     assert state["is_complete"] is True

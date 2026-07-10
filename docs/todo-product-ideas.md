@@ -31,14 +31,9 @@ Voir aussi [docs/todo-deployment.md](todo-deployment.md) (audit du 2026-07-03) :
 
 ---
 
-## 3. Connecter d'autres LLM
+## 3. Connecter d'autres LLM — ✅ fait (2026-07-10)
 
-**État actuel (vérifié dans le code)** : `dashboard/llm.py` code en dur Hugging Face Inference Providers comme unique fournisseur (`_HF_MODEL = "openai/gpt-oss-120b:fastest"`, client OpenAI SDK pointé sur `router.huggingface.co`). Chaque utilisateur apporte déjà son propre token HF (`/settings`, `validate_hf_token` déjà en place).
-
-Comme l'appel passe déjà par un client au format OpenAI-compatible, ajouter un autre fournisseur revient surtout à :
-- extraire une petite abstraction (`call_llm(prompt, provider, api_key)` → route vers le bon `base_url`/modèle selon le provider),
-- laisser l'utilisateur choisir son provider dans `/settings` (token HF, clé OpenAI, clé Anthropic, clé Groq...),
-- garder le modèle "bring your own key" déjà en place plutôt que de centraliser la facture LLM sur le compte Diggo — cohérent avec l'architecture actuelle, évite que le service absorbe le coût d'inférence de tous les utilisateurs.
+`dashboard/llm.py` supporte maintenant Hugging Face, Ollama Cloud, OpenAI, Anthropic et Groq, avec fallback automatique dans l'ordre configuré par l'utilisateur (`user_llm_providers`, `/settings`). Modèle "bring your own key" conservé, aucune facturation centralisée sur le compte Diggo. Voir `docs/superpowers/specs/2026-07-10-llm-providers-fallback-design.md`.
 
 ---
 

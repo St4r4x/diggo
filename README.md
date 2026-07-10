@@ -280,7 +280,7 @@ dashboard/
   profile_parser.py         Profile load/save — delegates to user_data (DB); file fallback for migration
   scan_state.py             Per-user in-process scan state (start/poll)
   prepare_state.py          Per-offer in-process prepare state (start/poll)
-  llm.py                    LLM client + phase functions for server-side candidature prep (Hugging Face Inference Providers)
+  llm.py                    LLM client + phase functions for server-side candidature prep (Hugging Face, Ollama Cloud, OpenAI, Anthropic, Groq, with automatic fallback)
   data/                     (gitignored)
 
 frontend/

@@ -210,25 +210,26 @@ def expire_stale_offers(user_id: str) -> int:
 async def _run_pipeline(
     settings: dict, *, skip_descriptions: bool = False, user_id: str | None = None
 ) -> list[RawOffer]:
-    search_cfg: dict = settings.get("search", {})
+    # settings.yaml nests these under "search"; DB-backed settings are flat
+    search_cfg: dict = settings.get("search", settings)
     keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])
-    portal_queries: list[str] = search_cfg.get(
-        "portal_queries", [keyword_list[0]] if keyword_list else ["AI Engineer"]
-    )
     location: str = search_cfg.get("location", "Paris")
+    enabled_portals: list[str] = search_cfg.get("enabled_portals") or []
     portal_ids = list_portal_ids()
+    if enabled_portals:
+        portal_ids = [p for p in portal_ids if p in enabled_portals]
     logger.info(
         "Scanning %d portals with %d queries in %s",
         len(portal_ids),
-        len(portal_queries),
+        len(keyword_list),
         location,
     )
     portal_raw: list[RawOffer] = []
     batches = await asyncio.gather(
-        *[run_scan(portal_ids, keywords=q, location=location) for q in portal_queries],
+        *[run_scan(portal_ids, keywords=q, location=location) for q in keyword_list],
         return_exceptions=True,
     )
-    for query, batch in zip(portal_queries, batches):
+    for query, batch in zip(keyword_list, batches):
         if isinstance(batch, Exception):
             logger.error("Portal query '%s' failed: %s", query, batch)
         else:

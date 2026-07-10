@@ -156,7 +156,7 @@ export type ProfileResponse = {
 
 export type Settings = {
   keywords: string[];
-  portal_queries: string[];
+  enabled_portals: string[];
   location: string;
   contract: string;
   experience_max_years: number;
@@ -172,9 +172,16 @@ export type AtsTarget = {
   careers_url: string;
 };
 
+export type Portal = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 export type SettingsResponse = {
   settings: Settings;
   ats_targets: AtsTarget[];
   hf_token_set: boolean;
   onboarding: OnboardingState;
+  available_portals: Portal[];
 };

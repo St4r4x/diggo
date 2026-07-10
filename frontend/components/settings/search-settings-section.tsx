@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Settings } from "@/lib/types";
+import type { Portal, Settings } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 
 async function saveSearchSettings(settings: Settings): Promise<void> {
@@ -15,7 +15,13 @@ async function saveSearchSettings(settings: Settings): Promise<void> {
   if (!res.ok) throw new Error("failed to save search settings");
 }
 
-export function SearchSettingsSection({ settings }: { settings: Settings }) {
+export function SearchSettingsSection({
+  settings,
+  availablePortals,
+}: {
+  settings: Settings;
+  availablePortals: Portal[];
+}) {
   const [form, setForm] = useState(settings);
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -27,10 +33,7 @@ export function SearchSettingsSection({ settings }: { settings: Settings }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function updateLines(
-    key: "keywords" | "portal_queries" | "target_companies",
-    text: string,
-  ) {
+  function updateLines(key: "keywords" | "target_companies", text: string) {
     updateField(
       key,
       text
@@ -38,6 +41,15 @@ export function SearchSettingsSection({ settings }: { settings: Settings }) {
         .map((l) => l.trim())
         .filter(Boolean),
     );
+  }
+
+  function togglePortal(portalId: string) {
+    setForm((f) => ({
+      ...f,
+      enabled_portals: f.enabled_portals.includes(portalId)
+        ? f.enabled_portals.filter((p) => p !== portalId)
+        : [...f.enabled_portals, portalId],
+    }));
   }
 
   return (
@@ -63,15 +75,33 @@ export function SearchSettingsSection({ settings }: { settings: Settings }) {
             />
           </div>
           <div>
-            <label className="block text-sm text-muted-foreground mb-1">
-              Portal queries (un par ligne)
-            </label>
-            <textarea
-              rows={4}
-              value={form.portal_queries.join("\n")}
-              onChange={(e) => updateLines("portal_queries", e.target.value)}
-              className="w-full text-sm rounded px-3 py-2 bg-background border border-border text-foreground font-mono"
-            />
+            <label className="block text-sm text-muted-foreground mb-1">Portails actifs</label>
+            <p className="text-xs text-muted-foreground mb-1">
+              Aucune sélection = tous les portails actifs.
+            </p>
+            <div className="rounded px-3 py-2 bg-background border border-border space-y-1.5">
+              {availablePortals.map((portal) => (
+                <label
+                  key={portal.id}
+                  className="flex items-start gap-2 text-sm cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_portals.includes(portal.id)}
+                    onChange={() => togglePortal(portal.id)}
+                    className="cursor-pointer mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span>{portal.name}</span>
+                    {portal.status === "needs_auth" && (
+                      <span className="text-xs text-muted-foreground">
+                        nécessite une inscription
+                      </span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">

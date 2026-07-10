@@ -37,7 +37,7 @@ export function SettingsClient() {
       <div className="max-w-3xl mx-auto py-8 px-4 space-y-8">
         <OnboardingBanner onboarding={data.onboarding} />
         <h1 className="text-2xl font-bold">Paramètres</h1>
-        <SearchSettingsSection settings={data.settings} />
+        <SearchSettingsSection settings={data.settings} availablePortals={data.available_portals} />
         <HfTokenSection hfTokenSet={data.hf_token_set} />
         <AtsTargetsSection atsTargets={data.ats_targets} />
       </div>

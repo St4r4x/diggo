@@ -21,6 +21,7 @@ from auth import (
     validate_access_token,
 )
 from db import VALID_STATUSES, build_funnel, parse_description
+from scripts.scan_portals import list_portals_meta
 
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
@@ -337,15 +338,18 @@ async def update_profile_text(
     return {"ok": True}
 
 
+def _lang_query(lang: str = Query("fr")) -> str:
+    """Normalize the ?lang= query param, matching the old Jinja2 routes' fallback."""
+    return lang if lang in ("fr", "en") else "fr"
+
+
 @router.put("/profile/cv/meta")
 async def update_profile_cv_meta(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user_api),
-    lang: str = Query("fr"),
+    lang: str = Depends(_lang_query),
     body: dict = Body(...),
 ) -> dict:
-    if lang not in ("fr", "en"):
-        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     user_data.save_cv_meta(conn, user_id, lang, body.get("summary", ""))
@@ -357,11 +361,9 @@ async def update_profile_cv_meta(
 async def update_profile_cv_experience(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user_api),
-    lang: str = Query("fr"),
+    lang: str = Depends(_lang_query),
     entries: list = Body(...),
 ) -> dict:
-    if lang not in ("fr", "en"):
-        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     user_data.save_experience(conn, user_id, lang, entries)
@@ -386,11 +388,9 @@ async def delete_profile_cv_experience(
 async def update_profile_cv_skills(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user_api),
-    lang: str = Query("fr"),
+    lang: str = Depends(_lang_query),
     entries: list = Body(...),
 ) -> dict:
-    if lang not in ("fr", "en"):
-        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     user_data.save_skills(conn, user_id, lang, entries)
@@ -415,11 +415,9 @@ async def update_profile_cv_certifications(
 async def update_profile_cv_education(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user_api),
-    lang: str = Query("fr"),
+    lang: str = Depends(_lang_query),
     entries: list = Body(...),
 ) -> dict:
-    if lang not in ("fr", "en"):
-        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     user_data.save_education(conn, user_id, lang, entries)
@@ -443,6 +441,7 @@ async def get_settings_route(
         "ats_targets": ats_targets,
         "hf_token_set": hf_token_set,
         "onboarding": onboarding,
+        "available_portals": list_portals_meta(),
     }
 
 

@@ -8,6 +8,8 @@ from datetime import date
 from scripts.scan_portals import (
     build_search_url,
     extract_offer_from_card_data,
+    list_portal_ids,
+    list_portals_meta,
     parse_date_string,
 )
 
@@ -242,3 +244,18 @@ class TestFetchDescriptionUnit:
         )
         assert result == ""
         mock_page.close.assert_awaited_once()
+
+
+class TestListPortalsMeta:
+    def test_returns_one_entry_per_portal_id(self) -> None:
+        metas = list_portals_meta()
+        assert {m["id"] for m in metas} == set(list_portal_ids())
+
+    def test_apec_is_active(self) -> None:
+        metas = {m["id"]: m for m in list_portals_meta()}
+        assert metas["apec"]["status"] == "active"
+        assert metas["apec"]["name"] == "APEC"
+
+    def test_each_entry_has_id_name_status(self) -> None:
+        for meta in list_portals_meta():
+            assert set(meta.keys()) == {"id", "name", "status"}

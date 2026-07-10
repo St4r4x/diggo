@@ -35,7 +35,7 @@ _CREATE_SETTINGS = """
 CREATE TEMP TABLE user_settings (
     user_id TEXT PRIMARY KEY,
     keywords TEXT[] NOT NULL DEFAULT '{}',
-    portal_queries TEXT[] NOT NULL DEFAULT '{}',
+    enabled_portals TEXT[] NOT NULL DEFAULT '{}',
     location TEXT NOT NULL DEFAULT '',
     contract TEXT NOT NULL DEFAULT 'CDI',
     experience_max_years INT NOT NULL DEFAULT 3,
@@ -115,7 +115,7 @@ def test_get_settings_empty_returns_defaults(conn):
 def test_save_and_get_settings(conn):
     data = {
         "keywords": ["AI Engineer", "ML Engineer"],
-        "portal_queries": ["AI"],
+        "enabled_portals": ["apec"],
         "location": "Paris",
         "contract": "CDI",
         "experience_max_years": 3,
@@ -492,7 +492,7 @@ def test_onboarding_state_search_complete_requires_keywords(conn_onboarding):
         USER_A,
         {
             "keywords": ["AI Engineer"],
-            "portal_queries": [],
+            "enabled_portals": [],
             "location": "",
             "contract": "CDI",
             "experience_max_years": 3,
@@ -555,7 +555,7 @@ def test_onboarding_state_is_complete_requires_all_three(conn_onboarding):
         USER_A,
         {
             "keywords": ["AI Engineer"],
-            "portal_queries": [],
+            "enabled_portals": [],
             "location": "",
             "contract": "CDI",
             "experience_max_years": 3,

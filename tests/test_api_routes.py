@@ -66,7 +66,7 @@ FAKE_ONBOARDING = {
 
 FAKE_SETTINGS = {
     "keywords": ["AI Engineer"],
-    "portal_queries": ["AI Engineer"],
+    "enabled_portals": ["apec"],
     "location": "Paris",
     "contract": "CDI",
     "experience_max_years": 3,
@@ -1028,6 +1028,9 @@ def test_get_settings_returns_200_with_data(client_with_settings) -> None:
     assert body["ats_targets"] == FAKE_ATS_TARGETS
     assert body["hf_token_set"] is False
     assert body["onboarding"] == FAKE_ONBOARDING
+    portal_ids = {p["id"] for p in body["available_portals"]}
+    assert "apec" in portal_ids
+    assert all({"id", "name", "status"} <= p.keys() for p in body["available_portals"])
 
 
 def test_get_settings_requires_auth(client) -> None:
@@ -1039,7 +1042,7 @@ def test_put_settings_search_saves_data(client_with_settings) -> None:
     client, mocks = client_with_settings
     payload = {
         "keywords": ["ML Engineer"],
-        "portal_queries": [],
+        "enabled_portals": [],
         "location": "Lyon",
         "contract": "CDI",
         "experience_max_years": 5,

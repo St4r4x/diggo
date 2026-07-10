@@ -25,7 +25,7 @@ _PROFILE_KEYS = (
 )
 _SETTINGS_KEYS = (
     "keywords",
-    "portal_queries",
+    "enabled_portals",
     "location",
     "contract",
     "experience_max_years",
@@ -43,7 +43,7 @@ def _empty_profile() -> dict[str, Any]:
 def _empty_settings() -> dict[str, Any]:
     return {
         "keywords": [],
-        "portal_queries": [],
+        "enabled_portals": [],
         "location": "",
         "contract": "CDI",
         "experience_max_years": 3,
@@ -89,7 +89,7 @@ def _migrate_settings_from_files() -> dict[str, Any] | None:
         companies = [str(x) for x in targets]
     return {
         "keywords": list(search.get("keywords", [])),
-        "portal_queries": list(search.get("portal_queries", [])),
+        "enabled_portals": list(search.get("enabled_portals", [])),
         "location": str(search.get("location", "") or ""),
         "contract": str(search.get("contract", "CDI") or "CDI"),
         "experience_max_years": int(search.get("experience_max_years", 3)),
@@ -143,7 +143,7 @@ def get_settings(conn: psycopg2.extensions.connection, user_id: str) -> dict[str
         row = cur.fetchone()
     if row is not None:
         result = dict(zip(_SETTINGS_KEYS, row))
-        for k in ("keywords", "portal_queries", "target_companies"):
+        for k in ("keywords", "enabled_portals", "target_companies"):
             if result[k] is None:
                 result[k] = []
         return result
@@ -163,7 +163,7 @@ def save_settings(
     updates = ", ".join(f"{k} = EXCLUDED.{k}" for k in _SETTINGS_KEYS)
     values = (
         data.get("keywords", []),
-        data.get("portal_queries", []),
+        data.get("enabled_portals", []),
         str(data.get("location", "")),
         str(data.get("contract", "CDI")),
         int(data.get("experience_max_years", 3)),
@@ -371,25 +371,28 @@ def get_cv(
             (user_id, lang),
         )
         exp_rows = cur.fetchall()
-        experience = []
-        for row in exp_rows:
-            exp_id, title, company, etype, period, sort_order = row
+        exp_ids = [row[0] for row in exp_rows]
+        bullets_by_exp: dict[int, list[str]] = {exp_id: [] for exp_id in exp_ids}
+        if exp_ids:
             cur.execute(
-                "SELECT text FROM user_experience_bullets WHERE experience_id = %s ORDER BY sort_order",
-                (exp_id,),
+                "SELECT experience_id, text FROM user_experience_bullets"
+                " WHERE experience_id = ANY(%s) ORDER BY experience_id, sort_order",
+                (exp_ids,),
             )
-            bullets = [r[0] for r in cur.fetchall()]
-            experience.append(
-                {
-                    "id": exp_id,
-                    "title": title,
-                    "company": company,
-                    "type": etype,
-                    "period": period,
-                    "sort_order": sort_order,
-                    "bullets": bullets,
-                }
-            )
+            for exp_id, text in cur.fetchall():
+                bullets_by_exp[exp_id].append(text)
+        experience = [
+            {
+                "id": exp_id,
+                "title": title,
+                "company": company,
+                "type": etype,
+                "period": period,
+                "sort_order": sort_order,
+                "bullets": bullets_by_exp[exp_id],
+            }
+            for exp_id, title, company, etype, period, sort_order in exp_rows
+        ]
         cur.execute(
             "SELECT id, category, skill, sort_order FROM user_skills"
             " WHERE user_id = %s AND lang = %s ORDER BY sort_order",

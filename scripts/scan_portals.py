@@ -120,6 +120,21 @@ def list_portal_ids() -> list[str]:
     return sorted(p.stem for p in _PORTALS_DIR.glob("*.yaml"))
 
 
+def list_portals_meta() -> list[dict[str, str]]:
+    """Return {id, name, status} for every configured portal."""
+    metas = []
+    for portal_id in list_portal_ids():
+        config = load_portal_config(portal_id)
+        metas.append(
+            {
+                "id": portal_id,
+                "name": config.get("name", portal_id),
+                "status": config.get("status", "active"),
+            }
+        )
+    return metas
+
+
 async def _card_text(card, sel: str) -> str:
     if not sel:
         return ""

@@ -10,6 +10,7 @@ import psycopg2
 import pytest
 
 from scripts.import_offers import (
+    _run_pipeline,
     existing_urls,
     import_offers,
     insert_offer,
@@ -421,3 +422,53 @@ class TestExpireStaleOffers:
         self._seed(mock_pg_connect, "https://jobs.example.com/3", "Envoyée")
         io.expire_stale_offers(TEST_USER)
         assert len(checked) == 0
+
+
+class TestRunPipeline:
+    def _patch_common(
+        self, monkeypatch: pytest.MonkeyPatch, run_scan_calls: list
+    ) -> None:
+        async def fake_run_scan(portal_ids, keywords, location, **kw):
+            run_scan_calls.append(list(portal_ids))
+            return []
+
+        async def fake_scan_ats(**kw):
+            return []
+
+        monkeypatch.setattr("scripts.import_offers.run_scan", fake_run_scan)
+        monkeypatch.setattr("scripts.import_offers.scan_ats", fake_scan_ats)
+        monkeypatch.setattr(
+            "scripts.import_offers.list_portal_ids",
+            lambda: ["apec", "indeed", "linkedin"],
+        )
+
+    @pytest.mark.asyncio
+    async def test_filters_to_enabled_portals(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        run_scan_calls: list = []
+        self._patch_common(monkeypatch, run_scan_calls)
+        settings = {"keywords": ["ML Engineer"], "enabled_portals": ["apec"]}
+        await _run_pipeline(settings, user_id=TEST_USER)
+        assert run_scan_calls == [["apec"]]
+
+    @pytest.mark.asyncio
+    async def test_empty_enabled_portals_means_no_restriction(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        run_scan_calls: list = []
+        self._patch_common(monkeypatch, run_scan_calls)
+        settings = {"keywords": ["ML Engineer"], "enabled_portals": []}
+        await _run_pipeline(settings, user_id=TEST_USER)
+        assert run_scan_calls == [["apec", "indeed", "linkedin"]]
+
+    @pytest.mark.asyncio
+    async def test_reads_flat_db_backed_settings(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """DB-backed settings are a flat dict, not nested under "search"."""
+        run_scan_calls: list = []
+        self._patch_common(monkeypatch, run_scan_calls)
+        settings = {"keywords": ["ML Engineer", "AI Engineer"], "enabled_portals": []}
+        await _run_pipeline(settings, user_id=TEST_USER)
+        assert len(run_scan_calls) == 2  # one scan per keyword variant

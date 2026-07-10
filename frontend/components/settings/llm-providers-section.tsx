@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LlmProvider, LlmProviderName, SettingsResponse } from "@/lib/types";
 import { ALL_LLM_PROVIDERS, llmProviderLabel } from "@/lib/llm-providers";
@@ -58,6 +58,7 @@ function ProviderRow({
   onSave,
   onDelete,
   errorMessage,
+  savedNonce,
 }: {
   provider: LlmProviderName;
   configured: boolean;
@@ -68,8 +69,15 @@ function ProviderRow({
   onSave: (apiKey: string) => void;
   onDelete: () => void;
   errorMessage?: string;
+  savedNonce: number;
 }) {
   const [apiKey, setApiKey] = useState("");
+
+  // Clear the input only once the save mutation for this row actually succeeds
+  // (savedNonce is bumped by the parent's onSuccess), not optimistically on submit.
+  useEffect(() => {
+    setApiKey("");
+  }, [savedNonce]);
 
   return (
     <div
@@ -108,7 +116,6 @@ function ProviderRow({
         onSubmit={(e) => {
           e.preventDefault();
           onSave(apiKey);
-          setApiKey("");
         }}
         className="flex gap-2"
       >
@@ -149,12 +156,15 @@ export function LlmProvidersSection({
 }) {
   const queryClient = useQueryClient();
   const [rowError, setRowError] = useState<Record<string, string>>({});
+  const [savedNonce, setSavedNonce] = useState<Record<string, number>>({});
+  const [reorderError, setReorderError] = useState("");
 
   const saveMutation = useMutation({
     mutationFn: ({ provider, apiKey }: { provider: LlmProviderName; apiKey: string }) =>
       saveProvider(provider, apiKey),
     onSuccess: (data, { provider }) => {
       setRowError((prev) => ({ ...prev, [provider]: "" }));
+      setSavedNonce((prev) => ({ ...prev, [provider]: (prev[provider] ?? 0) + 1 }));
       queryClient.setQueryData<SettingsResponse>(["settings"], (old) =>
         old ? { ...old, llm_providers: data.llm_providers } : old,
       );
@@ -166,19 +176,27 @@ export function LlmProvidersSection({
 
   const deleteMutation = useMutation({
     mutationFn: (provider: LlmProviderName) => deleteProvider(provider),
-    onSuccess: (data) => {
+    onSuccess: (data, provider) => {
+      setRowError((prev) => ({ ...prev, [provider]: "" }));
       queryClient.setQueryData<SettingsResponse>(["settings"], (old) =>
         old ? { ...old, llm_providers: data.llm_providers } : old,
       );
+    },
+    onError: (err: Error, provider) => {
+      setRowError((prev) => ({ ...prev, [provider]: err.message }));
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: (order: LlmProviderName[]) => reorderProviders(order),
     onSuccess: (data) => {
+      setReorderError("");
       queryClient.setQueryData<SettingsResponse>(["settings"], (old) =>
         old ? { ...old, llm_providers: data.llm_providers } : old,
       );
+    },
+    onError: (err: Error) => {
+      setReorderError(err.message);
     },
   });
 
@@ -205,6 +223,7 @@ export function LlmProvidersSection({
         lettre, fiche entretien) essaie chacun dans l&apos;ordre ci-dessous et bascule
         automatiquement sur le suivant en cas d&apos;échec.
       </p>
+      {reorderError && <p className="text-xs text-destructive mb-2">{reorderError}</p>}
       <div className="flex flex-col gap-2">
         {configuredOrder.map((provider, i) => (
           <ProviderRow
@@ -218,6 +237,7 @@ export function LlmProvidersSection({
             onSave={(apiKey) => saveMutation.mutate({ provider, apiKey })}
             onDelete={() => deleteMutation.mutate(provider)}
             errorMessage={rowError[provider]}
+            savedNonce={savedNonce[provider] ?? 0}
           />
         ))}
         {unconfigured.map((provider) => (
@@ -232,6 +252,7 @@ export function LlmProvidersSection({
             onSave={(apiKey) => saveMutation.mutate({ provider, apiKey })}
             onDelete={() => {}}
             errorMessage={rowError[provider]}
+            savedNonce={savedNonce[provider] ?? 0}
           />
         ))}
       </div>

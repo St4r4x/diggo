@@ -44,7 +44,10 @@ class GroundingError(Exception):
 def _call_openai_compatible(
     provider: str, api_key: str, system_prompt: str, user_prompt: str, json_mode: bool
 ) -> str:
-    base_url, model = _PROVIDER_DEFAULTS[provider]
+    try:
+        base_url, model = _PROVIDER_DEFAULTS[provider]
+    except KeyError as exc:
+        raise ValueError(f"No provider config for {provider!r}") from exc
     client = OpenAI(api_key=api_key, base_url=base_url)
     kwargs: dict[str, Any] = {}
     if json_mode:
@@ -139,6 +142,10 @@ def call_llm(
         except (AuthenticationError, PermissionDeniedError) as exc:
             logger.warning("llm: %s rejected the configured key: %s", provider, exc)
             last_exc = exc
+        except ValueError:
+            # Missing _PROVIDER_DEFAULTS entry: a code/config bug, not a
+            # provider outage - don't hide it behind the fallback loop.
+            raise
         except Exception as exc:
             logger.warning("llm: %s failed, trying next provider: %s", provider, exc)
             last_exc = exc

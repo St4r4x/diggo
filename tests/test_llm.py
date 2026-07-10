@@ -97,6 +97,44 @@ def test_call_llm_raises_llm_error_immediately_when_no_providers() -> None:
         llm.call_llm([], "system", "user")
 
 
+def test_call_openai_compatible_raises_value_error_for_unknown_provider() -> None:
+    """A provider name absent from _PROVIDER_DEFAULTS is a code/config bug,
+    not an API failure - it must be caught before the bare KeyError leaks."""
+    with pytest.raises(
+        ValueError, match="No provider config for 'not_a_real_provider'"
+    ):
+        llm._call_openai_compatible(
+            "not_a_real_provider", "some_key", "system", "user", False
+        )
+
+
+def test_call_llm_surfaces_missing_provider_config_instead_of_swallowing_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fallback loop must not treat a missing-provider-config ValueError
+    like a normal provider outage and silently move on to the next one."""
+    calls = []
+
+    def _fake_call(provider, api_key, system_prompt, user_prompt, json_mode):
+        calls.append(provider)
+        if provider == "not_a_real_provider":
+            raise ValueError(f"No provider config for {provider!r}")
+        return "should never be reached"
+
+    monkeypatch.setattr(llm, "_call_openai_compatible", _fake_call)
+
+    with pytest.raises(
+        ValueError, match="No provider config for 'not_a_real_provider'"
+    ):
+        llm.call_llm(
+            [("not_a_real_provider", "some_key"), ("groq", "groq_key")],
+            "system",
+            "user",
+        )
+    # must raise immediately - never tries the second (valid) provider
+    assert calls == ["not_a_real_provider"]
+
+
 def test_call_llm_appends_json_schema_hint_to_user_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

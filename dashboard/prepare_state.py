@@ -65,10 +65,16 @@ async def _run_prepare(offer_id: int, user_id: str, skip_prep: bool) -> None:
                 providers.append((name, key))
         if not providers:
             _status[offer_id] = "error"
-            _error[offer_id] = (
-                "Ajoute au moins un fournisseur LLM dans les paramètres avant de "
-                "préparer une candidature."
-            )
+            if provider_names:
+                _error[offer_id] = (
+                    "Aucune des clés de fournisseur LLM configurées n'a pu être "
+                    "déchiffrée. Réenregistre ta clé dans les paramètres."
+                )
+            else:
+                _error[offer_id] = (
+                    "Ajoute au moins un fournisseur LLM dans les paramètres avant "
+                    "de préparer une candidature."
+                )
             return
 
         try:

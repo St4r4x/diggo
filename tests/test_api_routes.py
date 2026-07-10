@@ -1226,6 +1226,23 @@ def test_put_llm_provider_empty_key_deletes_it(client_with_settings) -> None:
     mocks["validate_provider_key"].assert_not_called()
 
 
+def test_put_llm_provider_rejects_non_string_api_key(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.put(
+        "/api/settings/llm-providers/huggingface", json={"api_key": None}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "invalid_request"
+    mocks["validate_provider_key"].assert_not_called()
+    mocks["save_llm_provider"].assert_not_called()
+
+    response = client.put(
+        "/api/settings/llm-providers/huggingface", json={"api_key": 123}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "invalid_request"
+
+
 def test_put_llm_provider_rejects_unknown_provider_name(client_with_settings) -> None:
     client, mocks = client_with_settings
     response = client.put(

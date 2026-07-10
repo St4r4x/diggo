@@ -563,7 +563,13 @@ async def save_settings_llm_provider(
         raise HTTPException(status_code=404, detail="Unknown provider")
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
-    api_key = body.get("api_key", "").strip()
+    raw_api_key = body.get("api_key", "")
+    if not isinstance(raw_api_key, str):
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_request", "message": "api_key must be a string"},
+        )
+    api_key = raw_api_key.strip()
     if not api_key:
         user_data.delete_llm_provider(conn, user_id, provider)
         conn.commit()

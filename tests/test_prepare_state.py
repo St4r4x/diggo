@@ -392,6 +392,41 @@ def test_run_prepare_no_providers_configured_sets_error_state(
     assert "fournisseur LLM" in state["error"]
 
 
+def test_run_prepare_all_configured_keys_undecryptable_sets_specific_error_state(
+    prepared_db, monkeypatch
+) -> None:
+    """A provider is configured but its stored key can't be decrypted (e.g.
+    after a SECRET_KEY rotation) - the error must say so, not the generic
+    "add a provider" message a user with zero providers would see."""
+    # Baseline: what the genuinely-empty-provider-list error looks like.
+    prepare_state._status.clear()
+    empty_offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
+    monkeypatch.setattr(user_data, "get_llm_providers", lambda conn, uid: [])
+    asyncio.run(prepare_state._run_prepare(empty_offer_id, USER_A, skip_prep=False))
+    no_providers_configured_error = prepare_state.get_prepare_state(empty_offer_id)[
+        "error"
+    ]
+
+    # One provider configured, but its key doesn't decrypt.
+    prepare_state._status.clear()
+    offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [{"provider": "huggingface", "sort_order": 0}],
+    )
+    monkeypatch.setattr(
+        user_data, "get_llm_provider_key", lambda conn, uid, provider: None
+    )
+
+    asyncio.run(prepare_state._run_prepare(offer_id, USER_A, skip_prep=False))
+
+    state = prepare_state.get_prepare_state(offer_id)
+    assert state["status"] == "error"
+    assert "déchiffr" in state["error"]
+    assert state["error"] != no_providers_configured_error
+
+
 def test_run_prepare_skips_provider_whose_key_fails_to_decrypt(
     prepared_db, monkeypatch, tmp_path
 ) -> None:

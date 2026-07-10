@@ -135,7 +135,7 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 | `/candidatures` | Offer list with filters and a read-only detail panel — served by the Next.js frontend (`web`); shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget — served by the Next.js frontend (`web`) |
 | `/profile` | Profile editor — contact info, résumé, and CV editor (FR/EN tabs, editable) — served by the Next.js frontend (`web`) |
-| `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD, Hugging Face API token |
+| `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD, Hugging Face API token — served by the Next.js frontend (`web`) |
 | `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |
 
 Status changes, notes, and the "Préparer candidature"/"Préparer entretien" action commands are implemented as backend routes (`POST /offers/{offer_id}`, `/status`, `/notes`, `/prepare`) but not yet reachable from the migrated `/candidatures` page's UI — pending a later sub-phase.
@@ -225,7 +225,7 @@ docker compose --profile manual run --rm pipeline
 docker compose exec api python3 scripts/backfill_descriptions.py
 ```
 
-The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`; the migrated pages — `/`, `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password`, `/candidatures` — to `web`; everything else still to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
+The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, pure JSON API under `/api/*` — no rendered pages left), `web` (Next.js frontend, serving the entire dashboard: `/`, `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password`, `/candidatures`, `/stats`, `/profile`, `/settings`), `proxy` (nginx, routes `/api/*` and `/_next/*` accordingly, every other path to `web`). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
 
 ---
 

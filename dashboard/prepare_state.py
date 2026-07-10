@@ -55,37 +55,44 @@ async def _run_prepare(offer_id: int, user_id: str, skip_prep: bool) -> None:
             _error[offer_id] = "Offre introuvable."
             return
 
-        hf_token = user_data.get_hf_token(conn, user_id)
-        if not hf_token:
+        provider_names = [
+            p["provider"] for p in user_data.get_llm_providers(conn, user_id)
+        ]
+        providers: list[tuple[str, str]] = []
+        for name in provider_names:
+            key = user_data.get_llm_provider_key(conn, user_id, name)
+            if key is not None:
+                providers.append((name, key))
+        if not providers:
             _status[offer_id] = "error"
             _error[offer_id] = (
-                "Ajoute ton token Hugging Face dans les paramètres avant de "
+                "Ajoute au moins un fournisseur LLM dans les paramètres avant de "
                 "préparer une candidature."
             )
             return
 
         try:
             _stage[offer_id] = "Analyse de l'offre…"
-            analysis = await asyncio.to_thread(llm.analyze_offer, hf_token, offer)
+            analysis = await asyncio.to_thread(llm.analyze_offer, providers, offer)
             cv_lang = "en" if analysis.requires_english_cv else "fr"
             cv = user_data.get_cv(conn, user_id, lang=cv_lang)
             profile = user_data.get_profile(conn, user_id)
 
             _stage[offer_id] = "Rédaction du CV…"
             cv_rewrite = await asyncio.to_thread(
-                llm.rewrite_cv_summary, hf_token, profile, cv, analysis
+                llm.rewrite_cv_summary, providers, profile, cv, analysis
             )
 
             _stage[offer_id] = "Rédaction de la lettre…"
             cover_letter_draft = await asyncio.to_thread(
-                llm.write_cover_letter, hf_token, profile, cv, offer, analysis
+                llm.write_cover_letter, providers, profile, cv, offer, analysis
             )
 
             prep_draft = None
             if not skip_prep:
                 _stage[offer_id] = "Génération de la fiche d'entretien…"
                 prep_draft = await asyncio.to_thread(
-                    llm.generate_prep_questions, hf_token, offer, analysis
+                    llm.generate_prep_questions, providers, offer, analysis
                 )
         except (llm.LLMError, llm.GroundingError) as exc:
             _status[offer_id] = "error"

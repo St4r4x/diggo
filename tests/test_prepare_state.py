@@ -161,13 +161,22 @@ def _insert_row(db, user_id: str, description: str = "") -> int:
 
 
 def _patch_phases(monkeypatch) -> None:
-    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [{"provider": "huggingface", "sort_order": 0}],
+    )
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_provider_key",
+        lambda conn, uid, provider: "test-hf-token",
+    )
     monkeypatch.setattr(user_data, "get_profile", lambda conn, uid: _SAMPLE_PROFILE)
     monkeypatch.setattr(user_data, "get_cv", lambda conn, uid, lang="fr": _SAMPLE_CV)
     monkeypatch.setattr(
         llm,
         "analyze_offer",
-        lambda hf_token, offer: llm.OfferAnalysis(
+        lambda providers, offer: llm.OfferAnalysis(
             top_skills=["PyTorch"],
             keywords=["MLOps"],
             company_context="AI startup.",
@@ -180,14 +189,14 @@ def _patch_phases(monkeypatch) -> None:
     monkeypatch.setattr(
         llm,
         "rewrite_cv_summary",
-        lambda hf_token, profile, cv, analysis: llm.CvRewrite(
+        lambda providers, profile, cv, analysis: llm.CvRewrite(
             highlighted_skills=["PyTorch"], summary="Tailored summary."
         ),
     )
     monkeypatch.setattr(
         llm,
         "write_cover_letter",
-        lambda hf_token, profile, cv, offer, analysis: llm.CoverLetterDraft(
+        lambda providers, profile, cv, offer, analysis: llm.CoverLetterDraft(
             paragraphs=["Hook.", "Proof.", "Close."],
             citations=[{"claim": "Built RAG pipelines", "experience_id": 1}],
         ),
@@ -195,7 +204,7 @@ def _patch_phases(monkeypatch) -> None:
     monkeypatch.setattr(
         llm,
         "generate_prep_questions",
-        lambda hf_token, offer, analysis: llm.PrepSheetDraft(
+        lambda providers, offer, analysis: llm.PrepSheetDraft(
             company_summary="AI startup.",
             tech_stack=["Python"],
             questions=[{"theme": "Technique ML", "question": "Explain RAG."}],
@@ -303,7 +312,7 @@ def test_run_prepare_skip_prep_leaves_prep_sheet_path_empty(
     offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
     _patch_phases(monkeypatch)
 
-    def _fail_prep_questions(hf_token, offer, analysis):
+    def _fail_prep_questions(providers, offer, analysis):
         raise AssertionError("should not be called when skip_prep=True")
 
     monkeypatch.setattr(llm, "generate_prep_questions", _fail_prep_questions)
@@ -325,9 +334,18 @@ def test_run_prepare_skip_prep_leaves_prep_sheet_path_empty(
 def test_run_prepare_llm_failure_sets_error(prepared_db, monkeypatch) -> None:
     prepare_state._status.clear()
     offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
-    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [{"provider": "huggingface", "sort_order": 0}],
+    )
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_provider_key",
+        lambda conn, uid, provider: "test-hf-token",
+    )
 
-    def _fail_analyze(hf_token, offer):
+    def _fail_analyze(providers, offer):
         raise llm.LLMError("both providers down")
 
     monkeypatch.setattr(llm, "analyze_offer", _fail_analyze)
@@ -358,3 +376,96 @@ def test_run_prepare_pdf_failure_sets_error(prepared_db, monkeypatch) -> None:
     assert "Échec de la génération des PDF" in state["error"]
     offer = prepared_db.get_by_id(offer_id, user_id=USER_A)
     assert offer["cv_path"] == ""
+
+
+def test_run_prepare_no_providers_configured_sets_error_state(
+    prepared_db, monkeypatch
+) -> None:
+    prepare_state._status.clear()
+    offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
+    monkeypatch.setattr(user_data, "get_llm_providers", lambda conn, uid: [])
+
+    asyncio.run(prepare_state._run_prepare(offer_id, USER_A, skip_prep=False))
+
+    state = prepare_state.get_prepare_state(offer_id)
+    assert state["status"] == "error"
+    assert "fournisseur LLM" in state["error"]
+
+
+def test_run_prepare_skips_provider_whose_key_fails_to_decrypt(
+    prepared_db, monkeypatch, tmp_path
+) -> None:
+    prepare_state._status.clear()
+    offer_id = _insert_row(prepared_db, USER_A, description=_LONG_DESCRIPTION)
+    monkeypatch.setattr(
+        user_data,
+        "get_llm_providers",
+        lambda conn, uid: [
+            {"provider": "huggingface", "sort_order": 0},
+            {"provider": "groq", "sort_order": 1},
+        ],
+    )
+
+    def _key(conn, uid, provider):
+        return None if provider == "huggingface" else "groq_key"
+
+    monkeypatch.setattr(user_data, "get_llm_provider_key", _key)
+    monkeypatch.setattr(user_data, "get_profile", lambda conn, uid: _SAMPLE_PROFILE)
+    monkeypatch.setattr(user_data, "get_cv", lambda conn, uid, lang="fr": _SAMPLE_CV)
+
+    seen_providers = []
+
+    def _fake_analyze(providers, offer):
+        seen_providers.extend(p for p, _ in providers)
+        return llm.OfferAnalysis(
+            top_skills=["PyTorch"],
+            keywords=["MLOps"],
+            company_context="AI startup.",
+            gaps=[],
+            hook_angle="Their open-source engine.",
+            offer_language="fr",
+            requires_english_cv=False,
+        )
+
+    monkeypatch.setattr(llm, "analyze_offer", _fake_analyze)
+    monkeypatch.setattr(
+        llm,
+        "rewrite_cv_summary",
+        lambda providers, profile, cv, analysis: llm.CvRewrite(
+            highlighted_skills=["PyTorch"], summary="Tailored summary."
+        ),
+    )
+    monkeypatch.setattr(
+        llm,
+        "write_cover_letter",
+        lambda providers, profile, cv, offer, analysis: llm.CoverLetterDraft(
+            paragraphs=["Hook.", "Proof.", "Close."],
+            citations=[{"claim": "Built RAG pipelines", "experience_id": 1}],
+        ),
+    )
+    monkeypatch.setattr(
+        llm,
+        "generate_prep_questions",
+        lambda providers, offer, analysis: llm.PrepSheetDraft(
+            company_summary="AI startup.",
+            tech_stack=["Python"],
+            questions=[{"theme": "Technique", "question": "How would you..."}],
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.generate_pdf.generate_pdf", lambda ctx, **kw: tmp_path / "cv.pdf"
+    )
+    monkeypatch.setattr(
+        "scripts.generate_cover_letter.generate_pdf",
+        lambda ctx, **kw: tmp_path / "cl.pdf",
+    )
+    monkeypatch.setattr(
+        "scripts.generate_prep_sheet.generate_pdf",
+        lambda ctx, **kw: tmp_path / "prep.pdf",
+    )
+
+    asyncio.run(prepare_state._run_prepare(offer_id, USER_A, skip_prep=False))
+
+    assert seen_providers == ["groq"]
+    state = prepare_state.get_prepare_state(offer_id)
+    assert state["status"] == "done"

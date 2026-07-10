@@ -153,3 +153,28 @@ export type ProfileResponse = {
   cv_en: Cv;
   onboarding: OnboardingState;
 };
+
+export type Settings = {
+  keywords: string[];
+  portal_queries: string[];
+  location: string;
+  contract: string;
+  experience_max_years: number;
+  salary_min: number;
+  salary_max: number;
+  target_companies: string[];
+  follow_up_days: number;
+};
+
+export type AtsTarget = {
+  id: number;
+  name: string;
+  careers_url: string;
+};
+
+export type SettingsResponse = {
+  settings: Settings;
+  ats_targets: AtsTarget[];
+  hf_token_set: boolean;
+  onboarding: OnboardingState;
+};

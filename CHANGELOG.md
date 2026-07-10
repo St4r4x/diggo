@@ -52,6 +52,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components/profile/editable-list-form.tsx` — shared generic list editor, reused by the skills/certifications/education sections
 - `frontend/components/profile/cv-experience-section.tsx`, `experience-edit-form.tsx` — edit UI for CV experience entries (nested bullet-point CRUD, instant single-row delete via `DELETE /api/profile/cv/experience/{id}`), completing the Profile page's edit surface
 - `dashboard/api.py` — `GET /api/settings`, `PUT /api/settings/search`, `POST`/`DELETE /api/settings/ats`, `POST`/`DELETE /api/settings/hf-token` — the JSON API the migrated Settings page will consume, all gated by `get_current_user_api` only (no onboarding gate, since Settings is itself part of onboarding completeness)
+- `frontend/app/settings/page.tsx`, `frontend/components/settings/settings-client.tsx`, `search-settings-section.tsx`, `ats-targets-section.tsx`, `hf-token-section.tsx` — the Settings page (search preferences, ATS targets, Hugging Face token), reproducing the former Jinja2 `settings.html`'s always-editable forms on the design system — no read/edit toggle, matching the old UI's own behavior
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
